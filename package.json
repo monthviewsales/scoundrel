@@ -23,7 +23,11 @@
   "homepage": "https://github.com/monthviewsales/scoundrel#readme",
   "dependencies": {
     "@solana-tracker/data-api": "^0.0.12",
+    "commander": "^14.0.0",
     "dotenv": "^17.2.1",
     "openai": "^5.16.0"
+  },
+  "bin": {
+    "scoundrel": "./index.js"
   }
 }
