@@ -65,6 +65,42 @@
         "required": ["mint", "ts", "reason"]
       }
     },
+
+    "signature_trades": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mint": { "type": "string" },
+          "buy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ts": { "type": "number" },
+              "price_usd": { "type": ["number", "null"] },
+              "size_sol": { "type": ["number", "null"] }
+            },
+            "required": ["ts", "price_usd", "size_sol"]
+          },
+          "sell": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ts": { "type": "number" },
+              "price_usd": { "type": ["number", "null"] },
+              "size_sol": { "type": ["number", "null"] }
+            },
+            "required": ["ts", "price_usd", "size_sol"]
+          },
+          "pnl_usd": { "type": ["number", "null"] },
+          "hold_minutes": { "type": ["number", "null"] }
+        },
+        "required": ["mint", "buy", "sell", "pnl_usd", "hold_minutes"]
+      }
+    },
+
     "version": { "type": "string" }
   },
   "required": [
@@ -76,6 +112,7 @@
     "time_preferences",
     "notes",
     "examples",
+    "signature_trades",
     "version"
   ]
 }
