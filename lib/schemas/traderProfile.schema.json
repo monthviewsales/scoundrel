@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TraderProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "traderName": { "type": "string" },
+    "wallet": { "type": "string" },
+    "style_tags": { "type": "array", "items": { "type": "string" } },
+    "entry_pattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "typical_hold_minutes": { "type": "number" },
+        "entry_trigger": { "type": "string" },
+        "avg_size_sol": { "type": "number" },
+        "priority_fee_tolerance": { "type": "number" },
+        "slippage_tolerance_pct": { "type": "number" }
+      },
+      "required": [
+        "typical_hold_minutes",
+        "entry_trigger",
+        "avg_size_sol",
+        "priority_fee_tolerance",
+        "slippage_tolerance_pct"
+      ]
+    },
+    "risk_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "liq_floor_usd": { "type": "number" },
+        "spread_ceiling_pct": { "type": "number" },
+        "rug_flags_avoided": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": [
+        "liq_floor_usd",
+        "spread_ceiling_pct",
+        "rug_flags_avoided"
+      ]
+    },
+    "time_preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active_hours_utc": { "type": "array", "items": { "type": "integer" } },
+        "cooldown_minutes_between_buys": { "type": "number" }
+      },
+      "required": [
+        "active_hours_utc",
+        "cooldown_minutes_between_buys"
+      ]
+    },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mint": { "type": "string" },
+          "ts": { "type": "number" },
+          "reason": { "type": "string" }
+        },
+        "required": ["mint", "ts", "reason"]
+      }
+    },
+    "version": { "type": "string" }
+  },
+  "required": [
+    "traderName",
+    "wallet",
+    "style_tags",
+    "entry_pattern",
+    "risk_profile",
+    "time_preferences",
+    "notes",
+    "examples",
+    "version"
+  ]
+}

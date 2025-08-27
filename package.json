@@ -1,0 +1,33 @@
+{
+  "name": "scoundrel",
+  "version": "1.0.0",
+  "description": "Scoundrel is a research and trading side project designed to explore the use of OpenAI’s APIs and SolanaTracker data to improve memecoin trading strategies. The main goals are:",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/monthviewsales/scoundrel.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/monthviewsales/scoundrel/issues"
+  },
+  "homepage": "https://github.com/monthviewsales/scoundrel#readme",
+  "dependencies": {
+    "@solana-tracker/data-api": "^0.0.12",
+    "commander": "^14.0.0",
+    "dotenv": "^17.2.1",
+    "openai": "^5.16.0"
+  },
+  "bin": {
+    "scoundrel": "./index.js"
+  }
+}

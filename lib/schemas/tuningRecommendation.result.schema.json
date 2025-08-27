@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TuningRecommendation",
+  "type": "object",
+  "properties": {
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "param": { "type": "string" },
+          "action": { "type": "string", "enum": ["increase", "decrease", "set"] },
+          "value": { "type": ["number", "string"] },
+          "reason": { "type": "string" },
+          "risk": { "type": "string" }
+        },
+        "required": ["param", "action", "value"]
+      }
+    },
+    "confidence": { "type": "number" }
+  },
+  "required": ["changes"],
+  "additionalProperties": false
+}
