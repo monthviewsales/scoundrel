@@ -1,4 +1,3 @@
----
 ## Requirements
 
 - A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).  
