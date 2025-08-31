@@ -65,6 +65,72 @@
         "required": ["mint", "ts", "reason"]
       }
     },
+
+    "signature_trades": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mint": { "type": "string" },
+          "buy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ts": { "type": "number" },
+              "token_unit_price_usd": { "type": ["number", "null"] },
+              "leg_value_usd": { "type": ["number", "null"] },
+              "size_sol": { "type": ["number", "null"] }
+            },
+            "required": [
+              "ts",
+              "token_unit_price_usd",
+              "leg_value_usd",
+              "size_sol"
+            ]
+          },
+          "sell": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "ts": { "type": "number" },
+              "token_unit_price_usd": { "type": ["number", "null"] },
+              "leg_value_usd": { "type": ["number", "null"] },
+              "size_sol": { "type": ["number", "null"] }
+            },
+            "required": [
+              "ts",
+              "token_unit_price_usd",
+              "leg_value_usd",
+              "size_sol"
+            ]
+          },
+          "pnl_usd": { "type": ["number", "null"] },
+          "hold_minutes": { "type": ["number", "null"] },
+          "pool_liquidity_usd_at_entry": { "type": ["number", "null"] },
+          "marketcap_usd_at_entry":     { "type": ["number", "null"] },
+          "liquidity_to_mc_ratio":      { "type": ["number", "null"] },
+          "buy_to_mc_ratio":            { "type": ["number", "null"] },
+          "buy_to_pool_ratio":          { "type": ["number", "null"] },
+          "analysis":                   { "type": "string" }
+        },
+        "required": [
+          "mint",
+          "buy",
+          "sell",
+          "pnl_usd",
+          "hold_minutes",
+          "pool_liquidity_usd_at_entry",
+          "marketcap_usd_at_entry",
+          "liquidity_to_mc_ratio",
+          "buy_to_mc_ratio",
+          "buy_to_pool_ratio",
+          "analysis"
+        ]
+      }
+    },
+
     "version": { "type": "string" }
   },
   "required": [
@@ -76,6 +142,7 @@
     "time_preferences",
     "notes",
     "examples",
+    "signature_trades",
     "version"
   ]
 }
