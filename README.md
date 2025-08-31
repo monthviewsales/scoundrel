@@ -1,9 +1,22 @@
-# scoundrel
+---
+## Requirements
 
-# scoundrel
+- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).  
+- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.  
+
+# Scoundrel — a VAULT77 🔐77 relic
+
+> *Unearthed from VAULT77, Scoundrel is a relic software tool built for trench operators.  
+> It harvests and analyzes the trading patterns of top wallets, relays strategies, and keeps the link open to save our futures.*
+
+## 📡 Connect with VAULT77
+
+- **VAULT77 Community**: [Join on X](https://x.com/i/communities/1962257350309650488)  
+- **Telegram (Community)**: [@BurnWalletBroadcast](https://t.me/BurnWalletBroadcast)  
+> Join VAULT77 🔐77 and become part of the operator network.
 
 ## Project Goals
-Scoundrel is a research and trading side project designed to explore the use of OpenAI’s APIs and SolanaTracker data to improve memecoin trading strategies. The main goals are:
+Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading side project designed to explore the use of OpenAI’s APIs and SolanaTracker data to improve memecoin trading strategies. The main goals are:
 
 1. **Learn from Top Traders**  
    Analyze the historical on-chain trades of well-known wallets to identify styles, strategies, and patterns that consistently produce profitable results.
