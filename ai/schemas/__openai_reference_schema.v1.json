@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://openai.com/structured-output/reference",
+  "title": "OpenAI Responses Structured Output Reference (Strict Mode)",
+  "description": "This schema is provided as a reference for Scoundrel developers. It demonstrates the structure OpenAI expects for json_schema-based structured outputs when using strict mode.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The schema name passed to OpenAI (required by the API)."
+    },
+    "strict": {
+      "type": "boolean",
+      "description": "If true, the model must adhere to this schema exactly, with all required fields present and no extra keys."
+    },
+    "schema": {
+      "type": "object",
+      "description": "The actual JSON Schema definition describing the expected model output.",
+      "additionalProperties": false,
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Reference to the JSON Schema standard, typically draft-07."
+        },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["object"],
+          "description": "Root type is always an object for structured outputs."
+        },
+        "additionalProperties": { "type": "boolean" },
+        "properties": {
+          "type": "object",
+          "description": "Defines allowed fields in the model output.",
+          "additionalProperties": false,
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "description": "Nested property definition.",
+              "properties": {
+                "type": {
+                  "type": ["string", "array"],
+                  "description": "Type(s) allowed for this property."
+                },
+                "description": { "type": "string" },
+                "enum": { "type": "array", "items": { "type": ["string", "number", "boolean"] } },
+                "items": {
+                  "type": ["object", "boolean"],
+                  "description": "Schema for array elements, if this field is an array."
+                },
+                "properties": {
+                  "type": "object",
+                  "description": "Nested object property definitions.",
+                  "additionalProperties": true
+                },
+                "required": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Explicitly required field names."
+                },
+                "additionalProperties": { "type": "boolean" }
+              },
+              "required": ["type"]
+            }
+          }
+        },
+        "required": {
+          "type": "array",
+          "description": "Array of property names that must be present in the model output.",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["type", "properties", "required"]
+    }
+  },
+  "required": ["name", "strict", "schema"]
+}
