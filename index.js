@@ -4,11 +4,13 @@ require('dotenv').config();
 const { program } = require('commander');
 const fs = require('fs');
 const path = require('path');
+const { query, ping } = require('./lib/db/mysql');
+const { requestId } = require('./lib/id/issuer');
 
 function loadHarvest() {
     try {
         // Lazy-load to keep startup fast and allow running without Solana deps during setup
-        return require('./lib/harvestwallet').harvestWallet;
+        return require('./lib/harvestWallet').harvestWallet;
     } catch (e) {
         console.error('[scoundrel] Missing ./lib/harvestWallet. Create a stub that exports { harvestWallet }.');
         process.exit(1);
@@ -114,6 +116,30 @@ program
             const outPath = path.join(dir, fname);
             fs.writeFileSync(outPath, JSON.stringify(result.openAiResult, null, 2));
             console.log(`[scoundrel] ✅ wrote profile (responses) to ${outPath}`);
+            // --- persist to DB ---
+            try {
+                const profileId = await requestId({ prefix: 'profile' });
+                await query(
+                    `INSERT INTO sc_profiles (
+                        profile_id, name, wallet, profile, source
+                    ) VALUES (
+                        :profile_id, :name, :wallet, CAST(:profile AS JSON), :source
+                    )`,
+                    {
+                        profile_id: profileId,
+                        name: traderName || walletId,
+                        wallet: walletId,
+                        profile: JSON.stringify(result.openAiResult),
+                        source: 'build-profile'
+                    }
+                );
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[scoundrel] persisted profile to DB as ${profileId}`);
+                }
+            } catch (dbErr) {
+                console.warn('[scoundrel] warning: failed to persist profile to DB:', dbErr?.message || dbErr);
+            }
+            // ---------------------
             process.exit(0);
         } catch (err) {
             console.error('[scoundrel] ❌ build-profile failed:', err?.message || err);
@@ -202,7 +228,7 @@ program
 program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
-    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n\nExample:\n  $ scoundrel test\n`)
+    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
     .action(async () => {
         const hasKey = !!process.env.OPENAI_API_KEY;
         console.log('[scoundrel] environment check:');
@@ -224,6 +250,30 @@ program
             const ok = fs.existsSync(p);
             console.log(`  ${path.relative(process.cwd(), p)}: ${ok ? 'present' : 'missing'}`);
         });
+
+        // DB diagnostics
+        const {
+            DB_ENGINE = 'mysql',
+            DB_HOST = 'localhost',
+            DB_PORT = '3306',
+            DB_NAME = '(unset)',
+            DB_USER = '(unset)',
+            DB_POOL_LIMIT = '30',
+        } = process.env;
+
+        console.log('\n[db] configuration:');
+        console.log(`  Engine   : ${DB_ENGINE}`);
+        console.log(`  Host     : ${DB_HOST}:${DB_PORT}`);
+        console.log(`  Database : ${DB_NAME}`);
+        console.log(`  User     : ${DB_USER}`);
+        console.log(`  Pool     : ${DB_POOL_LIMIT}`);
+
+        try {
+            await ping();
+            console.log('[db] ✅ connected');
+        } catch (e) {
+            console.log('[db] ❌ connection failed:', e?.message || e);
+        }
 
         if (!hasKey) {
             console.log('\nTip: add OPENAI_API_KEY to your .env file.');
