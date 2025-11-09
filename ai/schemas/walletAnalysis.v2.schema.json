@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": { "type": "string" },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style": { "enum": ["scalper","swing","diamond","paper","unknown"] },
+        "entryMethod": { "enum": ["sniper","twap","vwap","dca","scale_in","unknown"] },
+        "entryMethodConfidence": { "type": ["number","null"], "minimum": 0, "maximum": 1 },
+        "avgHoldMins": { "type": ["number","null"] },
+        "medianHoldMins": { "type": ["number","null"] },
+        "p90HoldMins": { "type": ["number","null"] },
+        "winRate": { "type": ["number","null"], "minimum": 0, "maximum": 1 },
+        "notes": { "type": ["string","null"] }
+      },
+      "required": [
+        "style",
+        "entryMethod",
+        "entryMethodConfidence",
+        "avgHoldMins",
+        "medianHoldMins",
+        "p90HoldMins",
+        "winRate",
+        "notes"
+      ]
+    },
+    "entryPerf": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "method": { "enum": ["sniper","twap","vwap","dca","scale_in"] },
+          "avgPct": { "type": ["number","null"] },
+          "medianPct": { "type": ["number","null"] },
+          "n": { "type": "integer", "minimum": 0 }
+        },
+        "required": ["method","avgPct","medianPct","n"]
+      }
+    },
+    "exitHeuristics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "trailPct": { "type": ["number","null"] },
+        "timeStopMins": { "type": ["number","null"] },
+        "liqMinUsd": { "type": ["number","null"] },
+        "volumeDropPct": { "type": ["number","null"] }
+      },
+      "required": ["trailPct","timeStopMins","liqMinUsd","volumeDropPct"]
+    },
+    "top_mints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mint": { "type": "string" },
+          "symbol": { "type": ["string","null"] },
+          "trades": { "type": "integer" },
+          "estPnLUsd": { "type": ["number","null"] }
+        },
+        "required": ["mint","symbol","trades","estPnLUsd"]
+      }
+    },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ts": { "type": ["string","number"] },
+          "mint": { "type": ["string","null"] },
+          "action": { "type": ["string","null"] },
+          "qty": { "type": ["number","null"] },
+          "usd": { "type": ["number","null"] },
+          "note": { "type": ["string","null"] }
+        },
+        "required": ["ts","mint","action","qty","usd","note"]
+      }
+    }
+  },
+  "required": [
+    "summary",
+    "behavior",
+    "entryPerf",
+    "exitHeuristics",
+    "top_mints",
+    "risks",
+    "timeline"
+  ]
+}
