@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS sc_asks (
   correlation_id CHAR(26) NULL,
   question TEXT NOT NULL,
   profile JSON NULL,
-  rows JSON NULL,
+  `rows` JSON NULL,
   model VARCHAR(64) NOT NULL,
   temperature DECIMAL(3,2) NOT NULL,
   response_raw JSON NOT NULL,
@@ -52,6 +52,19 @@ CREATE TABLE IF NOT EXISTS sc_profiles (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_sc_profiles_name (name),
   INDEX idx_sc_profiles_wallet (wallet)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- Persist outputs for all AI jobs (v1 simple)
+CREATE TABLE IF NOT EXISTS sc_job_runs (
+  job_run_id  CHAR(26)   NOT NULL PRIMARY KEY,  -- ULID
+  job         VARCHAR(64) NOT NULL,             -- e.g., walletAnalysis
+  context     JSON        NULL,                 -- free-form tags: { wallet, tradeId, mint, label, ... }
+  input       JSON        NOT NULL,             -- payload given to the job (e.g., merged)
+  response_raw JSON       NOT NULL,             -- raw model output
+  created_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_sc_job_runs_job_created (job, created_at)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;

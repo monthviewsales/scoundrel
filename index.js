@@ -32,6 +32,7 @@ program
     .version('0.1.0');
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
+program.addHelpText('after', `\nDatabase env:\n  DB_ENGINE=mysql\n  DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_POOL_LIMIT (default 30)\n`);
 
 program
     .command('research')
@@ -118,7 +119,8 @@ program
             console.log(`[scoundrel] ✅ wrote profile (responses) to ${outPath}`);
             // --- persist to DB ---
             try {
-                const profileId = await requestId({ prefix: 'profile' });
+                const profileIdRaw = await requestId({ prefix: 'profile' });
+                const profileId = String(profileIdRaw).slice(-26);
                 await query(
                     `INSERT INTO sc_profiles (
                         profile_id, name, wallet, profile, source
@@ -150,12 +152,13 @@ program
 program
     .command('ask')
     .description('Ask a question about a trader using their saved profile (Responses API)')
-    .requiredOption('-n, --name <traderName>', 'Trader alias used when saving the profile')
+    .option('-n, --name <traderName>', 'Trader alias used when saving the profile (optional, defaults to "default" if omitted)')
     .requiredOption('-q, --question <text>', 'Question to ask')
     .addHelpText('after', `\nExamples:\n  $ scoundrel ask -n Gh0stee -q "What patterns do you see?"\n  $ scoundrel ask -n Gh0stee -q "List common entry mistakes."\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n  -q, --question <text>     Natural language question\n\nNotes:\n  • Reads ./profiles/<name>.json as context.\n  • May also include recent enriched rows from ./data/ if available.\n`)
     .action(async (opts) => {
         const askProcessor = loadProcessor('ask');
-        const profilePath = path.join(process.cwd(), 'profiles', `${opts.name.replace(/[^a-z0-9_-]/gi, '_')}.json`);
+        const alias = opts.name ? opts.name.replace(/[^a-z0-9_-]/gi, '_') : 'default';
+        const profilePath = path.join(process.cwd(), 'profiles', `${alias}.json`);
         if (!fs.existsSync(profilePath)) {
             console.error(`[scoundrel] profile not found: ${profilePath}`);
             process.exit(1);
@@ -193,7 +196,7 @@ program
     .requiredOption('-n, --name <traderName>', 'Trader alias used when saving the profile')
     .addHelpText('after', `\nExamples:\n  $ scoundrel tune -n Gh0stee\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n\nNotes:\n  • Uses current settings from environment with sensible defaults.\n  • Returns concise advice plus optional structured changes.\n\nRelevant env (defaults in parentheses):\n  LIQUIDITY_FLOOR_USD (50000), SPREAD_CEILING_PCT (1.25), SLIPPAGE_PCT (0.8),\n  MAX_POSITION_PCT (0.35), TRAIL_STOP_TYPE (trailing), TRAIL_PCT (12),\n  TRAIL_ARM_AT_PROFIT_PCT (6), PRIORITY_FEE_SOL (0.00002)\n`)
     .action(async (opts) => {
-        const tuneProcessor = loadProcessor('tune');
+        const tuneProcessor = loadProcessor('tuneStrategy');
         const profilePath = path.join(process.cwd(), 'profiles', `${opts.name.replace(/[^a-z0-9_-]/gi, '_')}.json`);
         if (!fs.existsSync(profilePath)) {
             console.error(`[scoundrel] profile not found: ${profilePath}`);
@@ -215,7 +218,7 @@ program
 
         try {
             const runTune = (typeof tuneProcessor === 'function') ? tuneProcessor : (tuneProcessor && tuneProcessor.tune);
-            if (!runTune) { console.error('[scoundrel] ./lib/tune must export a default function or { tune }'); process.exit(1); }
+            if (!runTune) { console.error('[scoundrel] ./lib/tuneStrategy must export a default function or { tune }'); process.exit(1); }
             const rec = await runTune({ profile, currentSettings });
             console.log(rec);
             process.exit(0);
@@ -238,12 +241,14 @@ program
 
         // Check presence of core modules in the new pipeline
         const pathsToCheck = [
-            path.join(__dirname, 'lib', 'harvestwallet.js'),
+            path.join(__dirname, 'lib', 'harvestWallet.js'),
             path.join(__dirname, 'ai', 'client.js'),
             path.join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
             path.join(__dirname, 'ai', 'schemas', 'walletAnalysis.v1.schema.json'),
+            path.join(__dirname, 'ai', 'jobs', 'tuneStrategy.js'),
+            path.join(__dirname, 'ai', 'schemas', 'tuneStrategy.v1.schema.json'),
             path.join(__dirname, 'lib', 'ask.js'),
-            path.join(__dirname, 'lib', 'tune.js'),
+            path.join(__dirname, 'lib', 'tuneStrategy.js'),
         ];
         console.log('\n[scoundrel] core files:');
         pathsToCheck.forEach(p => {

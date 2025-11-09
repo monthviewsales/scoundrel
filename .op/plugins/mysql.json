@@ -1,0 +1,15 @@
+{
+	"account_id": "XA4DKJQXGZCMPKBQU4BAEQVLPM",
+	"entrypoint": [
+		"mysql"
+	],
+	"credentials": [
+		{
+			"plugin": "mysql",
+			"credential_type": "database_credentials",
+			"usage_id": "database_credentials",
+			"vault_id": "qxlbzq3cckz6qa7zu3d266vmhu",
+			"item_id": "cypmpt7jumjnt27vk653chsxsu"
+		}
+	]
+}

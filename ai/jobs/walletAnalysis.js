@@ -20,6 +20,7 @@ async function analyzeWallet({ merged, model, purpose }) {
 
   const out = parseResponsesJSON(res);
   log.debug('[walletAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
+
   return out;
 }
 
