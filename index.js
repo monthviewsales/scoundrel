@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // index.js — Scoundrel CLI
 require('dotenv').config();
-const { program } = require('commander');
-const fs = require('fs');
-const path = require('path');
-const { query, ping } = require('./lib/db/mysql');
-const { requestId } = require('./lib/id/issuer');
+import { program } from 'commander';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'fs';
+import { join, relative } from 'path';
+import { query, ping } from './lib/db/mysql';
+import { requestId } from './lib/id/issuer';
 
 function loadHarvest() {
     try {
@@ -31,7 +31,7 @@ program
     .description('Research & validation tooling for memecoin trading using SolanaTracker + OpenAI')
     .version('0.1.0');
 
-program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
+program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
 program.addHelpText('after', `\nDatabase env:\n  DB_ENGINE=mysql\n  DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_POOL_LIMIT (default 30)\n`);
 
 program
@@ -41,7 +41,8 @@ program
     .option('-s, --start <isoOrEpoch>', 'Start time (ISO or epoch seconds)')
     .option('-e, --end <isoOrEpoch>', 'End time (ISO or epoch seconds)')
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel research <WALLET>\n  $ scoundrel research <WALLET> -n Gh0stee\n  $ scoundrel research <WALLET> --start 2025-01-01T00:00:00Z --end 2025-01-31T23:59:59Z\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Optional alias to tag harvest artifacts\n\nNotes:\n  • Writes small samples to ./data/ for inspection in development.\n  • Uses SOLANATRACKER_API_KEY from .env.\n`)
+    .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel research <WALLET>\n  $ scoundrel research <WALLET> -n Gh0stee\n  $ scoundrel research <WALLET> --start 2025-01-01T00:00:00Z --end 2025-01-31T23:59:59Z\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Optional alias to tag harvest artifacts\n  -f, --feature-mint-count <num>  Number of recent mints to summarize for features (default: 8)\n\nNotes:\n  • Writes small samples to ./data/ for inspection in development.\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • The configured feature-mint count is written to the merged meta for traceability.\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -60,10 +61,11 @@ program
         const startTime = parseTs(opts.start);
         const endTime = parseTs(opts.end);
         const traderName = opts.name || process.env.TEST_TRADER || null;
+        const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
 
         console.log(`[scoundrel] Research starting for wallet ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
-            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime });
+            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, featureMintCount });
             const count = (result && typeof result.count === 'number') ? result.count : 0;
             console.log(`[scoundrel] ✅ harvested ${count} trades from ${walletId}`);
             process.exit(0);
@@ -81,7 +83,8 @@ program
     .option('-e, --end <isoOrEpoch>', 'End time (ISO or epoch seconds)')
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel build-profile <WALLET>\n  $ scoundrel build-profile <WALLET> -n Gh0stee -l 500\n  $ scoundrel build-profile <WALLET> --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Alias used as output filename under ./profiles/\n  -l, --limit <num>         Max trades to pull (default: HARVEST_LIMIT or 500)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/<name>.json using OpenAI Responses.\n  • Also writes raw samples to ./data/ (trades + chart) in development.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel build-profile <WALLET>\n  $ scoundrel build-profile <WALLET> -n Gh0stee -l 500\n  $ scoundrel build-profile <WALLET> --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Alias used as output filename under ./profiles/\n  -l, --limit <num>         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count <num>  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/<name>.json using OpenAI Responses.\n  • Also writes raw samples to ./data/ (trades + chart) in development.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -100,10 +103,11 @@ program
         const endTime = parseTs(opts.end);
         const traderName = opts.name || process.env.TEST_TRADER || null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
+        const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
 
         console.log(`[scoundrel] Build-profile for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
-            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit });
+            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount });
 
             // Require the new Responses-based analysis
             if (!result || !result.openAiResult) {
@@ -111,11 +115,11 @@ program
                 process.exit(1);
             }
 
-            const dir = path.join(process.cwd(), 'profiles');
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            const dir = join(process.cwd(), 'profiles');
+            if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
             const fname = `${(traderName || walletId).replace(/[^a-z0-9_-]/gi, '_')}.json`;
-            const outPath = path.join(dir, fname);
-            fs.writeFileSync(outPath, JSON.stringify(result.openAiResult, null, 2));
+            const outPath = join(dir, fname);
+            writeFileSync(outPath, JSON.stringify(result.openAiResult, null, 2));
             console.log(`[scoundrel] ✅ wrote profile (responses) to ${outPath}`);
             // --- persist to DB ---
             try {
@@ -158,22 +162,22 @@ program
     .action(async (opts) => {
         const askProcessor = loadProcessor('ask');
         const alias = opts.name ? opts.name.replace(/[^a-z0-9_-]/gi, '_') : 'default';
-        const profilePath = path.join(process.cwd(), 'profiles', `${alias}.json`);
-        if (!fs.existsSync(profilePath)) {
+        const profilePath = join(process.cwd(), 'profiles', `${alias}.json`);
+        if (!existsSync(profilePath)) {
             console.error(`[scoundrel] profile not found: ${profilePath}`);
             process.exit(1);
         }
-        const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+        const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
 
         // Optionally include recent enriched rows if present
         let rows = [];
-        const dataDir = path.join(process.cwd(), 'data');
-        if (fs.existsSync(dataDir)) {
-            const candidates = fs.readdirSync(dataDir).filter(f => f.endsWith('-enriched.json'));
+        const dataDir = join(process.cwd(), 'data');
+        if (existsSync(dataDir)) {
+            const candidates = readdirSync(dataDir).filter(f => f.endsWith('-enriched.json'));
             if (candidates.length) {
                 try {
-                    const last = path.join(dataDir, candidates.sort().pop());
-                    rows = JSON.parse(fs.readFileSync(last, 'utf8'));
+                    const last = join(dataDir, candidates.sort().pop());
+                    rows = JSON.parse(readFileSync(last, 'utf8'));
                 } catch (_) { }
             }
         }
@@ -197,12 +201,12 @@ program
     .addHelpText('after', `\nExamples:\n  $ scoundrel tune -n Gh0stee\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n\nNotes:\n  • Uses current settings from environment with sensible defaults.\n  • Returns concise advice plus optional structured changes.\n\nRelevant env (defaults in parentheses):\n  LIQUIDITY_FLOOR_USD (50000), SPREAD_CEILING_PCT (1.25), SLIPPAGE_PCT (0.8),\n  MAX_POSITION_PCT (0.35), TRAIL_STOP_TYPE (trailing), TRAIL_PCT (12),\n  TRAIL_ARM_AT_PROFIT_PCT (6), PRIORITY_FEE_SOL (0.00002)\n`)
     .action(async (opts) => {
         const tuneProcessor = loadProcessor('tuneStrategy');
-        const profilePath = path.join(process.cwd(), 'profiles', `${opts.name.replace(/[^a-z0-9_-]/gi, '_')}.json`);
-        if (!fs.existsSync(profilePath)) {
+        const profilePath = join(process.cwd(), 'profiles', `${opts.name.replace(/[^a-z0-9_-]/gi, '_')}.json`);
+        if (!existsSync(profilePath)) {
             console.error(`[scoundrel] profile not found: ${profilePath}`);
             process.exit(1);
         }
-        const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+        const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
 
         // Minimal current settings (could be read from your bot/env later)
         const currentSettings = {
@@ -241,19 +245,19 @@ program
 
         // Check presence of core modules in the new pipeline
         const pathsToCheck = [
-            path.join(__dirname, 'lib', 'harvestWallet.js'),
-            path.join(__dirname, 'ai', 'client.js'),
-            path.join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
-            path.join(__dirname, 'ai', 'schemas', 'walletAnalysis.v1.schema.json'),
-            path.join(__dirname, 'ai', 'jobs', 'tuneStrategy.js'),
-            path.join(__dirname, 'ai', 'schemas', 'tuneStrategy.v1.schema.json'),
-            path.join(__dirname, 'lib', 'ask.js'),
-            path.join(__dirname, 'lib', 'tuneStrategy.js'),
+            join(__dirname, 'lib', 'harvestWallet.js'),
+            join(__dirname, 'ai', 'client.js'),
+            join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
+            join(__dirname, 'ai', 'schemas', 'walletAnalysis.v1.schema.json'),
+            join(__dirname, 'ai', 'jobs', 'tuneStrategy.js'),
+            join(__dirname, 'ai', 'schemas', 'tuneStrategy.v1.schema.json'),
+            join(__dirname, 'lib', 'ask.js'),
+            join(__dirname, 'lib', 'tuneStrategy.js'),
         ];
         console.log('\n[scoundrel] core files:');
         pathsToCheck.forEach(p => {
-            const ok = fs.existsSync(p);
-            console.log(`  ${path.relative(process.cwd(), p)}: ${ok ? 'present' : 'missing'}`);
+            const ok = existsSync(p);
+            console.log(`  ${relative(process.cwd(), p)}: ${ok ? 'present' : 'missing'}`);
         });
 
         // DB diagnostics
