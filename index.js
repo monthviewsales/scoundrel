@@ -291,46 +291,8 @@ program
             process.exit(1);
         }
     });
-
-program
-    .command('tune')
-    .description('Get safe, incremental tuning recommendations based on a trader profile (Responses API)')
-    .requiredOption('-n, --name <traderName>', 'Trader alias used when saving the profile')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel tune -n Gh0stee\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n\nNotes:\n  • Uses current settings from environment with sensible defaults.\n  • Returns concise advice plus optional structured changes.\n\nRelevant env (defaults in parentheses):\n  LIQUIDITY_FLOOR_USD (50000), SPREAD_CEILING_PCT (1.25), SLIPPAGE_PCT (0.8),\n  MAX_POSITION_PCT (0.35), TRAIL_STOP_TYPE (trailing), TRAIL_PCT (12),\n  TRAIL_ARM_AT_PROFIT_PCT (6), PRIORITY_FEE_SOL (0.00002)\n`)
-    .action(async (opts) => {
-        const tuneProcessor = loadProcessor('tuneStrategy');
-        const profilePath = join(process.cwd(), 'profiles', `${opts.name.replace(/[^a-z0-9_-]/gi, '_')}.json`);
-        if (!existsSync(profilePath)) {
-            console.error(`[scoundrel] profile not found: ${profilePath}`);
-            process.exit(1);
-        }
-        const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
-
-        // Minimal current settings (could be read from your bot/env later)
-        const currentSettings = {
-            LIQUIDITY_FLOOR_USD: Number(process.env.LIQUIDITY_FLOOR_USD || 50000),
-            SPREAD_CEILING_PCT: Number(process.env.SPREAD_CEILING_PCT || 1.25),
-            SLIPPAGE_PCT: Number(process.env.SLIPPAGE_PCT || 0.8),
-            MAX_POSITION_PCT: Number(process.env.MAX_POSITION_PCT || 0.35),
-            TRAIL_STOP_TYPE: process.env.TRAIL_STOP_TYPE || 'trailing',
-            TRAIL_PCT: Number(process.env.TRAIL_PCT || 12),
-            TRAIL_ARM_AT_PROFIT_PCT: Number(process.env.TRAIL_ARM_AT_PROFIT_PCT || 6),
-            PRIORITY_FEE_SOL: Number(process.env.PRIORITY_FEE_SOL || 0.00002),
-        };
-
-        try {
-            const runTune = (typeof tuneProcessor === 'function') ? tuneProcessor : (tuneProcessor && tuneProcessor.tune);
-            if (!runTune) { console.error('[scoundrel] ./lib/tuneStrategy must export a default function or { tune }'); process.exit(1); }
-            const rec = await runTune({ profile, currentSettings });
-            console.log(rec);
-            process.exit(0);
-        } catch (err) {
-            console.error('[scoundrel] ❌ tune failed:', err?.message || err);
-            process.exit(1);
-        }
-    });
-
-program
+    
+progam
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
     .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
@@ -346,11 +308,7 @@ program
             join(__dirname, 'lib', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
             join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
-            join(__dirname, 'ai', 'schemas', 'walletAnalysis.v1.schema.json'),
-            join(__dirname, 'ai', 'jobs', 'tuneStrategy.js'),
-            join(__dirname, 'ai', 'schemas', 'tuneStrategy.v1.schema.json'),
             join(__dirname, 'lib', 'ask.js'),
-            join(__dirname, 'lib', 'tuneStrategy.js'),
         ];
         console.log('\n[scoundrel] core files:');
         pathsToCheck.forEach(p => {
