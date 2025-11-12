@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoundrel.ai/schemas/heuristics.v1.schema.json",
+  "title": "Heuristics Profile v1",
+  "description": "Structured output for heuristic behavioral analysis of a trader wallet.",
+  "type": "object",
+  "properties": {
+    "strengths": {
+      "type": "array",
+      "description": "Positive traits or tendencies in this trader’s behavior.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "weaknesses": {
+      "type": "array",
+      "description": "Common mistakes or negative patterns in this trader’s behavior.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "patterns": {
+      "type": "array",
+      "description": "Observed behavioral or trading patterns (e.g. exits quickly, scales in).",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "antiPatterns": {
+      "type": "array",
+      "description": "Behaviors that consistently lead to poor performance or losses.",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+  "required": ["strengths", "weaknesses", "patterns", "antiPatterns"],
+  "additionalProperties": false
+}

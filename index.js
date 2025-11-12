@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // index.js — Scoundrel CLI
 require('dotenv').config();
-import { program } from 'commander';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'fs';
-import { join, relative } from 'path';
-import { query, ping } from './lib/db/mysql';
-import { requestId } from './lib/id/issuer';
+const { program } = require('commander');
+const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
+const { join, relative } = require('path');
+const { query, ping } = require('./lib/db/mysql');
+const { requestId } = require('./lib/id/issuer');
 
 function loadHarvest() {
     try {
@@ -74,6 +74,7 @@ program
             process.exit(1);
         }
     });
+
 
 program
     .command('build-profile')
@@ -149,6 +150,35 @@ program
             process.exit(0);
         } catch (err) {
             console.error('[scoundrel] ❌ build-profile failed:', err?.message || err);
+            process.exit(1);
+        }
+    });
+
+// --- dossier command ---
+program
+    .command('dossier')
+    .argument('<walletId>', 'Solana wallet address to analyze')
+    .description('Forge a complete behavioral dossier for a wallet (Stages 0–4 pipeline)')
+    .option('-n, --name <traderName>', 'Trader alias for this wallet (optional)')
+    .option('-f, --feature-mint-count <num>', 'Number of recent mints to summarize for technique features (default: 8)')
+    .option('--live-tools', 'Allow limited live SolanaTracker queries (guarded, capped)')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier <WALLET>\n  $ scoundrel dossier <WALLET> -n Gh0stee\n  $ scoundrel dossier <WALLET> -f 12 --live-tools\n\nNotes:\n  • Runs the full profileChain orchestrator (Harvest → Technique → Outcomes → Heuristics).\n  • Writes detailed artifacts under ./data/ and ./profiles/.\n  • Upserts structured results into sc_wallet_profiles tables.\n  • Safe guardrails prevent excessive API use.\n`)
+    .action(async (walletId, opts) => {
+        console.log(`[scoundrel] dossier building for wallet ${walletId}${opts.name ? ` (trader: ${opts.name})` : ''}…`);
+        try {
+            const { runProfileChain } = require('./ai/pipelines/profileChain');
+            const traderName = opts.name || null;
+            const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : 8;
+            const liveTools = !!opts.liveTools;
+
+            const result = await runProfileChain({ wallet: walletId, traderName, featureMintCount, liveTools });
+            console.log(`[scoundrel] ✅ dossier complete for ${walletId}`);
+            if (result && result.profile) {
+                console.log(`[scoundrel] profile summary:`, JSON.stringify(result.profile.summary || {}, null, 2));
+            }
+            process.exit(0);
+        } catch (err) {
+            console.error('[scoundrel] ❌ dossier failed:', err?.message || err);
             process.exit(1);
         }
     });

@@ -7,7 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "db:migrate:profiles": "mysql < sql/2025-11-11_profiles.sql"
   },
   "repository": {
     "type": "git",
