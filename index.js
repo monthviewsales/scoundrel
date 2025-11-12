@@ -87,6 +87,7 @@ program
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
+    .option('-r, --resend', 'Resend the latest merged file for this trader (-n) to AI without re-harvesting data', false)
     .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
@@ -110,6 +111,85 @@ program
 
         console.log(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
+            // ----- RESEND MODE: reuse latest merged payload and skip harvesting -----
+            if (opts.resend) {
+                const alias = (traderName || walletId).replace(/[^a-z0-9_-]/gi, '_');
+                const dataDir = join(process.cwd(), 'data');
+                if (!existsSync(dataDir)) {
+                    console.error('[scoundrel] Data directory not found:', dataDir);
+                    process.exit(1);
+                }
+                const prefix = `${alias}-merged-`;
+                const candidates = readdirSync(dataDir)
+                    .filter(f => f.startsWith(prefix) && f.endsWith('.json'))
+                    .sort();
+                if (candidates.length === 0) {
+                    console.error(`[scoundrel] No merged files found for "${alias}" in ${dataDir}. Run without --resend first.`);
+                    process.exit(1);
+                }
+                const latestFile = candidates[candidates.length - 1];
+                const latestPath = join(dataDir, latestFile);
+                console.log(`[scoundrel] Reusing merged payload: ${latestFile}`);
+                let merged;
+                try {
+                    merged = JSON.parse(readFileSync(latestPath, 'utf8'));
+                } catch (e) {
+                    console.error('[scoundrel] Failed to read/parse merged JSON:', latestPath, e?.message || e);
+                    process.exit(1);
+                }
+                const { analyzeWallet } = require('./ai/jobs/walletAnalysis');
+                const aiOut = await analyzeWallet({ merged });
+                const openAiResult = aiOut && aiOut.version ? aiOut : { version: 'dossier.freeform.v1', markdown: String(aiOut || '') };
+
+                // Write profile JSON under ./profiles
+                const dir = join(process.cwd(), 'profiles');
+                if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+                const fname = `${alias}.json`;
+                const outPath = join(dir, fname);
+                writeFileSync(outPath, JSON.stringify(openAiResult, null, 2));
+                console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);
+
+                // Persist to DB (sc_profiles), mirroring the normal path
+                try {
+                    const profileIdRaw = await requestId({ prefix: 'profile' });
+                    const profileId = String(profileIdRaw).slice(-26);
+                    await query(
+                        `INSERT INTO sc_profiles (
+                            profile_id, name, wallet, profile, source
+                        ) VALUES (
+                            :profile_id, :name, :wallet, CAST(:profile AS JSON), :source
+                        )
+                        ON DUPLICATE KEY UPDATE
+                            name = VALUES(name),
+                            wallet = VALUES(wallet),
+                            profile = VALUES(profile),
+                            source = VALUES(source)`,
+                        {
+                            profile_id: profileId,
+                            name: traderName || walletId,
+                            wallet: walletId,
+                            profile: JSON.stringify(openAiResult),
+                            source: 'dossier-resend',
+                        }
+                    );
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log(`[scoundrel] upserted profile in DB as ${profileId}`);
+                    }
+                } catch (dbErr) {
+                    console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
+                }
+
+                // Print brief console output if markdown present
+                if (openAiResult && openAiResult.markdown) {
+                    console.log('\n=== Dossier (resend) ===\n');
+                    console.log(openAiResult.markdown);
+                }
+
+                console.log(`[scoundrel] ✅ dossier (resend) complete for ${walletId}`);
+                process.exit(0);
+            }
+            // ----- END RESEND MODE -----
+
             // Single-pass: SolanaTracker fetches + merge + one OpenAI Responses call handled by harvestWallet
             const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount });
 
