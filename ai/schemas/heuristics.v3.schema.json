@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://scoundrel.ai/schemas/heuristics.v2.schema.json",
-  "title": "Heuristics Profile v2",
+  "$id": "https://scoundrel.ai/schemas/heuristics.v3.schema.json",
+  "title": "Heuristics Profile v3",
   "description": "Portfolio-aware heuristics derived from technique & outcomes with optional wallet-level context.",
   "type": "object",
   "properties": {
@@ -38,9 +38,7 @@
         "properties": {
           "title": { "type": "string" },
           "when": { "type": "string", "description": "Trigger condition, e.g., 'roi_pct >= 8%'" },
-          "then": { "type": "string", "description": "Action to take, e.g., 'set trailing stop at +3%'" },
-          "rationale": { "type": "string" },
-          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+          "then": { "type": "string", "description": "Action to take, e.g., 'set trailing stop at +3%'" }
         },
         "required": ["title", "when", "then"],
         "additionalProperties": false
@@ -75,9 +73,24 @@
       "description": "Specific missing fields or tests that would raise confidence next run.",
       "items": { "type": "string" },
       "default": []
+    },
+    "narrativeMarkdown": {
+      "type": "string",
+      "description": "Long-form analysis in Markdown with sections: Executive Summary, Technique & Execution, Volatility & Risk, Loss Discipline & Exits, What to Try Next, Evidence."
     }
   },
 
-  "required": ["strengths", "weaknesses", "patterns", "antiPatterns"],
+  "required": [
+    "strengths",
+    "weaknesses",
+    "patterns",
+    "antiPatterns",
+    "rulesToTest",
+    "riskBadges",
+    "portfolioNotes",
+    "confidence",
+    "whatWouldRaiseConfidence",
+    "narrativeMarkdown"
+  ],
   "additionalProperties": false
 }

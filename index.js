@@ -10,9 +10,9 @@ const { requestId } = require('./lib/id/issuer');
 function loadHarvest() {
     try {
         // Lazy-load to keep startup fast and allow running without Solana deps during setup
-        return require('./lib/harvestWallet').harvestWallet;
+        return require('./lib/dossier').harvestWallet;
     } catch (e) {
-        console.error('[scoundrel] Missing ./lib/harvestWallet. Create a stub that exports { harvestWallet }.');
+        console.error('[scoundrel] Missing ./lib/dossier. Create a stub that exports { harvestWallet }.');
         process.exit(1);
     }
 }
@@ -76,16 +76,18 @@ program
     });
 
 
+
+// --- dossier command ---
 program
-    .command('build-profile')
+    .command('dossier')
     .argument('<walletId>', 'Solana wallet address to analyze')
-    .description('Harvest trades + chart and build a schema-locked profile JSON via OpenAI Responses')
+    .description('Harvest trades + chart and build a schema-locked profile JSON via a single OpenAI Responses call')
     .option('-s, --start <isoOrEpoch>', 'Start time (ISO or epoch seconds)')
     .option('-e, --end <isoOrEpoch>', 'End time (ISO or epoch seconds)')
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel build-profile <WALLET>\n  $ scoundrel build-profile <WALLET> -n Gh0stee -l 500\n  $ scoundrel build-profile <WALLET> --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Alias used as output filename under ./profiles/\n  -l, --limit <num>         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count <num>  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/<name>.json using OpenAI Responses.\n  • Also writes raw samples to ./data/ (trades + chart) in development.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -106,23 +108,26 @@ program
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
 
-        console.log(`[scoundrel] Build-profile for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
+        console.log(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
+            // Single-pass: SolanaTracker fetches + merge + one OpenAI Responses call handled by harvestWallet
             const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount });
 
-            // Require the new Responses-based analysis
+            // Expect Responses output from harvest step
             if (!result || !result.openAiResult) {
                 console.error('[scoundrel] No Responses output (openAiResult) returned by harvestWallet.');
                 process.exit(1);
             }
 
+            // Write profile JSON under ./profiles
             const dir = join(process.cwd(), 'profiles');
             if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
             const fname = `${(traderName || walletId).replace(/[^a-z0-9_-]/gi, '_')}.json`;
             const outPath = join(dir, fname);
             writeFileSync(outPath, JSON.stringify(result.openAiResult, null, 2));
-            console.log(`[scoundrel] ✅ wrote profile (responses) to ${outPath}`);
-            // --- persist to DB ---
+            console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);
+
+            // Persist to DB (sc_profiles), mirroring the previous build-profile upsert
             try {
                 const profileIdRaw = await requestId({ prefix: 'profile' });
                 const profileId = String(profileIdRaw).slice(-26);
@@ -131,79 +136,43 @@ program
                         profile_id, name, wallet, profile, source
                     ) VALUES (
                         :profile_id, :name, :wallet, CAST(:profile AS JSON), :source
-                    )`,
+                    )
+                    ON DUPLICATE KEY UPDATE
+                        name = VALUES(name),
+                        wallet = VALUES(wallet),
+                        profile = VALUES(profile),
+                        source = VALUES(source)`,
                     {
                         profile_id: profileId,
                         name: traderName || walletId,
                         wallet: walletId,
                         profile: JSON.stringify(result.openAiResult),
-                        source: 'build-profile'
+                        source: 'dossier',
                     }
                 );
                 if (process.env.NODE_ENV === 'development') {
-                    console.log(`[scoundrel] persisted profile to DB as ${profileId}`);
+                    console.log(`[scoundrel] upserted profile in DB as ${profileId}`);
                 }
             } catch (dbErr) {
-                console.warn('[scoundrel] warning: failed to persist profile to DB:', dbErr?.message || dbErr);
+                console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
             }
-            // ---------------------
-            process.exit(0);
-        } catch (err) {
-            console.error('[scoundrel] ❌ build-profile failed:', err?.message || err);
-            process.exit(1);
-        }
-    });
 
-// --- dossier command ---
-program
-    .command('dossier')
-    .argument('<walletId>', 'Solana wallet address to analyze')
-    .description('Forge a complete behavioral dossier for a wallet (Stages 0–4 pipeline)')
-    .option('-n, --name <traderName>', 'Trader alias for this wallet (optional)')
-    .option('-f, --feature-mint-count <num>', 'Number of recent mints to summarize for technique features (default: 8)')
-    .option('--live-tools', 'Allow limited live SolanaTracker queries (guarded, capped)')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier <WALLET>\n  $ scoundrel dossier <WALLET> -n Gh0stee\n  $ scoundrel dossier <WALLET> -f 12 --live-tools\n\nNotes:\n  • Runs the full profileChain orchestrator (Harvest → Technique → Outcomes → Heuristics).\n  • Writes detailed artifacts under ./data/ and ./profiles/.\n  • Upserts structured results into sc_wallet_profiles tables.\n  • Safe guardrails prevent excessive API use.\n`)
-    .action(async (walletId, opts) => {
-        console.log(`[scoundrel] dossier building for wallet ${walletId}${opts.name ? ` (trader: ${opts.name})` : ''}…`);
-        try {
-            const { runProfileChain } = require('./ai/pipelines/profileChain');
-            const traderName = opts.name || null;
-            const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : 8;
-            const liveTools = !!opts.liveTools;
-
-            const result = await runProfileChain({ wallet: walletId, traderName, featureMintCount, liveTools });
-            console.log(`[scoundrel] ✅ dossier complete for ${walletId}`);
-            if (result && result.summary) {
-                const s = result.summary;
-                console.log(`[scoundrel] profile summary:`, JSON.stringify(s, null, 2));
-                const parts = [
-                    s.style ? `style=${s.style}` : null,
-                    s.entryTechnique ? `entry=${s.entryTechnique}` : null,
-                    (typeof s.winRate === 'number') ? `winRate=${(s.winRate*100).toFixed(1)}%` : null,
-                    (typeof s.medianExitPct === 'number') ? `medianExit=${s.medianExitPct.toFixed(1)}%` : null,
-                    (typeof s.medianHoldMins === 'number') ? `hold≈${Math.round(s.medianHoldMins)}m` : null,
-                ].filter(Boolean).join(' · ');
-                if (parts) console.log(`[scoundrel] ${parts}`);
-            }
-            // --- optional wallet performance header (monthly + curve) ---
+            // Optional concise console output (keep it short)
             try {
-                const perf = Array.isArray(result?.wallet_performance) ? result.wallet_performance : [];
-                if (perf.length) {
-                    const last6 = perf.slice(-6);
-                    const line = last6.map(p => {
-                        const m = p?.month || '????-??';
-                        const v = (typeof p?.pnl_pct === 'number') ? `${p.pnl_pct >= 0 ? '+' : ''}${p.pnl_pct.toFixed(2)}%` : 'n/a';
-                        return `${m}:${v}`;
-                    }).join(' ');
-                    console.log(`[scoundrel] monthly: ${line}`);
+                const s = result.openAiResult?.summary || result.summary;
+                if (s) {
+                    const parts = [
+                        s.style ? `style=${s.style}` : null,
+                        s.entryTechnique ? `entry=${s.entryTechnique}` : null,
+                        (typeof s.winRate === 'number') ? `winRate=${(s.winRate*100).toFixed(1)}%` : null,
+                        (typeof s.medianExitPct === 'number') ? `medianExit=${s.medianExitPct.toFixed(1)}%` : null,
+                        (typeof s.medianHoldMins === 'number') ? `hold≈${Math.round(s.medianHoldMins)}m` : null,
+                    ].filter(Boolean).join(' · ');
+                    if (parts) console.log(`[scoundrel] ${parts}`);
                 }
-                const wc = result?.wallet_curve || {};
-                const dd = (typeof wc.max_drawdown_pct === 'number') ? wc.max_drawdown_pct.toFixed(1) : null;
-                const vol = (typeof wc.volatility_30d_pct === 'number') ? wc.volatility_30d_pct.toFixed(1) : null;
-                if (dd !== null || vol !== null) {
-                    console.log(`[scoundrel] curve: ${dd !== null ? `DD=${dd}%` : ''}${dd !== null && vol !== null ? ' · ' : ''}${vol !== null ? `vol30d=${vol}%` : ''}`);
-                }
-            } catch (_) { /* noop: optional header */ }
+            } catch (_) { /* keep console output minimal if missing */ }
+
+            console.log(`[scoundrel] ✅ dossier complete for ${walletId}`);
             process.exit(0);
         } catch (err) {
             console.error('[scoundrel] ❌ dossier failed:', err?.message || err);
@@ -303,7 +272,7 @@ program
 
         // Check presence of core modules in the new pipeline
         const pathsToCheck = [
-            join(__dirname, 'lib', 'harvestWallet.js'),
+            join(__dirname, 'lib', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
             join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
             join(__dirname, 'ai', 'schemas', 'walletAnalysis.v1.schema.json'),

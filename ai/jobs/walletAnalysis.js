@@ -1,44 +1,62 @@
 // ai/jobs/walletAnalysis.js
 const { callResponses, parseResponsesJSON, log } = require('../client');
-const schema = require('../schemas/walletAnalysis.v3.schema.json');
-const { summarizeForSidecar } = require('../../lib/analysis/chartSummarizer');
-
-// If you’ve saved the Dashboard Prompt, paste its id below.
-// You can override via env OPENAI_PROMPT_ID if you prefer not to hardcode.
-const PROMPT_ID = 'pmpt_69127f39f93081908453beb8aea5713e083828843fb7c044';
 
 const SYSTEM = [
-'You\'re my blockchain financial analyst.  I\'ll be sending you JSON based trading intel on some of the biggest public traders on Solana.',
-'Review the data in these reports to build a trading profile to help me understand their style and strategies and gain an edge over them.'
+  'You are an on-chain trading analyst with CT (Crypto Twitter) energy.',
+  'Use ONLY the provided JSON object named "merged" as your source of truth.',
+  'Organize sections by token address (mint) — NOT just symbol. If multiple tokens share a symbol (e.g., MAYHEM), treat each mint as a unique entry and include both symbol and mint in the heading.',
+  'Write in Markdown with clear headings per mint, like: ### SYMBOL (MINT)',
+  'Tone: confident, witty, CT-style — slightly snarky but data-driven.',
+  'Use short punchy sentences, emojis only for emphasis (🔥📈💀), and highlight key takeaways like a degen analyst posting alpha on X.',
+  'Prefer hard numbers over adjectives. Limit decimals to 2 places.',
+  'Never invent data; if info is missing, call it out.',
+  'Summarize at the top with a quick performance snapshot and vibe check on the trader’s style and risk.',
+  'Your output MUST be a JSON object with this shape:',
+  '{ "version": "dossier.freeform.v1", "markdown": "<your markdown write-up>" }'
 ].join(' ');
 
 async function analyzeWallet({ merged, model, purpose }) {
-  if (!merged || !merged.techniqueFeatures) {
-    throw new Error('[walletAnalysis] missing merged.techniqueFeatures');
+  if (!merged) {
+    throw new Error('[walletAnalysis] missing merged payload');
   }
 
-  const usePrompt = PROMPT_ID && !/REPLACE_ME/.test(PROMPT_ID);
-
-  const features = merged && merged.techniqueFeatures ? merged.techniqueFeatures : null;
-  if (!features) throw new Error('[walletAnalysis] missing merged.techniqueFeatures');
-
-  const chartBlocks = merged && merged.chart ? summarizeForSidecar(merged.chart) : { wallet_performance: [], wallet_curve: {} };
-
   const res = await callResponses({
-    schema,
-    name: 'wallet_analysis_v3',
-    // Prefer Dashboard Prompt; fall back to inline SYSTEM for local/dev
-    ...(usePrompt ? { prompt: { id: PROMPT_ID } } : { system: SYSTEM }),
-    user: {
-      features,
-      wallet_performance: chartBlocks.wallet_performance,
-      wallet_curve: chartBlocks.wallet_curve
+    system: SYSTEM,
+    model,
+    temperature: 0.5,
+    top_p: 0.9,
+    seed: 77,
+    // Provide a minimal JSON schema envelope expected by callResponses (schema mode)
+    name: 'dossier_freeform_v1',
+    schema: {
+      type: 'object',
+      properties: {
+        version: { type: 'string' },
+        markdown: { type: 'string' }
+      },
+      required: ['version', 'markdown'],
+      additionalProperties: false
     },
+    // Pass the entire merged payload so the model can cite facts/examples freely
+    user: { merged }
   });
 
-  const out = parseResponsesJSON(res);
-  log.debug('[walletAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
+  let out;
+  try {
+    out = parseResponsesJSON(res);
+  } catch (e) {
+    // If the model returned raw markdown text, wrap it into the freeform envelope
+    const text = (res && typeof res === 'string') ? res : '';
+    out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
+  }
 
+  // If parsed but missing the expected envelope, wrap it
+  if (!out || typeof out !== 'object' || !out.markdown) {
+    const text = typeof out === 'string' ? out : JSON.stringify(out || {});
+    out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
+  }
+
+  log.debug('[walletAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
   return out;
 }
 

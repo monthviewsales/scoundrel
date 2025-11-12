@@ -23,7 +23,7 @@ const CAPS = Object.freeze({
 
 // --- Safe requires ---
 let harvestMod;
-try { harvestMod = require('../../lib/harvestWallet'); } catch (_) { harvestMod = null; }
+try { harvestMod = require('../../lib/dossier'); } catch (_) { harvestMod = null; }
 let analysisMod;
 try { analysisMod = require('../jobs/walletAnalysis'); } catch (_) { analysisMod = null; }
 let outcomesAgent;
@@ -181,11 +181,17 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
   const profilesDir = path.join(process.cwd(), 'profiles');
   ensureDir(profilesDir);
   ensureDir(path.join(profilesDir, '.machine'));
-  try { fs.writeFileSync(path.join(profilesDir, `${wallet}.json`), J({ wallet, traderName: traderName || null, summary: summarizeProfile(profile) })); } catch (_) {}
+  const safeAlias = (traderName || wallet).replace(/[^a-z0-9_-]/gi, '_');
+  try {
+    fs.writeFileSync(
+      path.join(profilesDir, `${safeAlias}.json`),
+      J({ wallet, traderName: traderName || null, summary: summarizeProfile(profile) })
+    );
+  } catch (_) {}
   let nextVersion = '0-dev';
   try {
     nextVersion = await safeVersionFor(wallet);
-    fs.writeFileSync(path.join(profilesDir, `.machine/${wallet}-v${nextVersion}.json`), J(profile));
+    fs.writeFileSync(path.join(profilesDir, `.machine/${safeAlias}-v${nextVersion}.json`), J(profile));
   } catch (_) {}
   // Write sidecar JSON with chart summary and meta
   try {
@@ -201,7 +207,7 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
       aggregates: outcomes || null,
     };
     fs.writeFileSync(
-      path.join(profilesDir, `.machine/${wallet}-v${nextVersion}.sidecar.json`),
+      path.join(profilesDir, `.machine/${safeAlias}-v${nextVersion}.sidecar.json`),
       J(sidecar)
     );
   } catch (_) {}
