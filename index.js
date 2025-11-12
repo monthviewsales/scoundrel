@@ -237,22 +237,13 @@ program
                 console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
             }
 
-            // Optional concise console output (keep it short)
-            try {
-                const s = result.openAiResult?.summary || result.summary;
-                if (s) {
-                    const parts = [
-                        s.style ? `style=${s.style}` : null,
-                        s.entryTechnique ? `entry=${s.entryTechnique}` : null,
-                        (typeof s.winRate === 'number') ? `winRate=${(s.winRate*100).toFixed(1)}%` : null,
-                        (typeof s.medianExitPct === 'number') ? `medianExit=${s.medianExitPct.toFixed(1)}%` : null,
-                        (typeof s.medianHoldMins === 'number') ? `hold≈${Math.round(s.medianHoldMins)}m` : null,
-                    ].filter(Boolean).join(' · ');
-                    if (parts) console.log(`[scoundrel] ${parts}`);
-                }
-            } catch (_) { /* keep console output minimal if missing */ }
-
-            console.log(`[scoundrel] ✅ dossier complete for ${walletId}`);
+            // Normal send: print the dossier to console (same as --resend), then exit
+            if (result.openAiResult && result.openAiResult.markdown) {
+                console.log('\n=== Dossier ===\n');
+                console.log(result.openAiResult.markdown);
+            } else {
+                console.log('[scoundrel] (no markdown field in openAiResult)');
+            }
             process.exit(0);
         } catch (err) {
             console.error('[scoundrel] ❌ dossier failed:', err?.message || err);
