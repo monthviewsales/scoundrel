@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scoundrel.ai/schemas/heuristics.v2.schema.json",
+  "title": "Heuristics Profile v2",
+  "description": "Portfolio-aware heuristics derived from technique & outcomes with optional wallet-level context.",
+  "type": "object",
+  "properties": {
+    "strengths": {
+      "type": "array",
+      "description": "Positive traits or tendencies in this trader’s behavior.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "weaknesses": {
+      "type": "array",
+      "description": "Common mistakes or negative patterns in this trader’s behavior.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "patterns": {
+      "type": "array",
+      "description": "Observed behavioral or trading patterns (e.g. exits quickly, scales in).",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "antiPatterns": {
+      "type": "array",
+      "description": "Behaviors that consistently lead to poor performance or losses.",
+      "items": { "type": "string" },
+      "default": []
+    },
+
+    "rulesToTest": {
+      "type": "array",
+      "description": "Concrete, testable rules the trader/bot should try. Keep each rule concise and trigger-based.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "when": { "type": "string", "description": "Trigger condition, e.g., 'roi_pct >= 8%'" },
+          "then": { "type": "string", "description": "Action to take, e.g., 'set trailing stop at +3%'" },
+          "rationale": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "required": ["title", "when", "then"],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+
+    "riskBadges": {
+      "type": "array",
+      "description": "Short tags derived from portfolio stats (e.g., 'DD-Extreme', 'High-Variance-Exits').",
+      "items": { "type": "string" },
+      "default": []
+    },
+
+    "portfolioNotes": {
+      "type": "array",
+      "description": "Observations that tie heuristics to wallet-level context (drawdowns, volatility, streaks).",
+      "items": { "type": "string" },
+      "default": []
+    },
+
+    "confidence": {
+      "type": "number",
+      "description": "Overall confidence in these heuristics given the quality of evidence.",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.5
+    },
+
+    "whatWouldRaiseConfidence": {
+      "type": "array",
+      "description": "Specific missing fields or tests that would raise confidence next run.",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+
+  "required": ["strengths", "weaknesses", "patterns", "antiPatterns"],
+  "additionalProperties": false
+}

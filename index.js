@@ -173,9 +173,37 @@ program
 
             const result = await runProfileChain({ wallet: walletId, traderName, featureMintCount, liveTools });
             console.log(`[scoundrel] ✅ dossier complete for ${walletId}`);
-            if (result && result.profile) {
-                console.log(`[scoundrel] profile summary:`, JSON.stringify(result.profile.summary || {}, null, 2));
+            if (result && result.summary) {
+                const s = result.summary;
+                console.log(`[scoundrel] profile summary:`, JSON.stringify(s, null, 2));
+                const parts = [
+                    s.style ? `style=${s.style}` : null,
+                    s.entryTechnique ? `entry=${s.entryTechnique}` : null,
+                    (typeof s.winRate === 'number') ? `winRate=${(s.winRate*100).toFixed(1)}%` : null,
+                    (typeof s.medianExitPct === 'number') ? `medianExit=${s.medianExitPct.toFixed(1)}%` : null,
+                    (typeof s.medianHoldMins === 'number') ? `hold≈${Math.round(s.medianHoldMins)}m` : null,
+                ].filter(Boolean).join(' · ');
+                if (parts) console.log(`[scoundrel] ${parts}`);
             }
+            // --- optional wallet performance header (monthly + curve) ---
+            try {
+                const perf = Array.isArray(result?.wallet_performance) ? result.wallet_performance : [];
+                if (perf.length) {
+                    const last6 = perf.slice(-6);
+                    const line = last6.map(p => {
+                        const m = p?.month || '????-??';
+                        const v = (typeof p?.pnl_pct === 'number') ? `${p.pnl_pct >= 0 ? '+' : ''}${p.pnl_pct.toFixed(2)}%` : 'n/a';
+                        return `${m}:${v}`;
+                    }).join(' ');
+                    console.log(`[scoundrel] monthly: ${line}`);
+                }
+                const wc = result?.wallet_curve || {};
+                const dd = (typeof wc.max_drawdown_pct === 'number') ? wc.max_drawdown_pct.toFixed(1) : null;
+                const vol = (typeof wc.volatility_30d_pct === 'number') ? wc.volatility_30d_pct.toFixed(1) : null;
+                if (dd !== null || vol !== null) {
+                    console.log(`[scoundrel] curve: ${dd !== null ? `DD=${dd}%` : ''}${dd !== null && vol !== null ? ' · ' : ''}${vol !== null ? `vol30d=${vol}%` : ''}`);
+                }
+            } catch (_) { /* noop: optional header */ }
             process.exit(0);
         } catch (err) {
             console.error('[scoundrel] ❌ dossier failed:', err?.message || err);

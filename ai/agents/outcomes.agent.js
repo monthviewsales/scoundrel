@@ -17,7 +17,21 @@ const log = {
 /**
  * @param {Object} opts
  * @param {Object} opts.merged - merged payload from harvestWallet
- * @returns {Promise<{ winRate:number|null, medianExitPct:number|null, p75ExitPct:number|null, medianHoldMins:number|null, spikeDays:Array<{date:string|null,pnlPct:number}> }>} 
+ * @returns {Promise<{
+ *   winRate:number|null,
+ *   medianExitPct:number|null,
+ *   p75ExitPct:number|null,
+ *   p25ExitPct:number|null,
+ *   p95ExitPct:number|null,
+ *   iqrExitPct:number|null,
+ *   maxWinPct:number|null,
+ *   maxLossPct:number|null,
+ *   pctTradesLtMinus10:number|null,
+ *   medianHoldMins:number|null,
+ *   medianRoundTripPct:number|null,
+ *   medianRoundTripHoldMins:number|null,
+ *   spikeDays:Array<{date:string|null,pnlPct:number}>
+ * }>} 
  */
 async function computeOutcomes({ merged }) {
   if (!merged || typeof merged !== 'object') {

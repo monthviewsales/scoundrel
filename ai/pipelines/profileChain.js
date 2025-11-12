@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { buildTechniqueFeaturesFromMintMap } = require('../../lib/analysis/techniqueOutcomes');
+const { summarizeForSidecar } = require('../../lib/analysis/chartSummarizer');
 
 // --- Hard caps (enforced in tools later; documented here for visibility) ---
 const CAPS = Object.freeze({
@@ -62,6 +63,7 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
   if (!wallet) throw new Error('runProfileChain: wallet is required');
   const id = runId();
   log.info(`start wallet=${wallet} featureMintCount=${featureMintCount} liveTools=${liveTools}`);
+  log.info('stage0: harvest start');
 
   // --- Stage 0: Harvest ---
   if (!harvestMod || !harvestMod.harvestWallet && typeof harvestMod !== 'function') {
@@ -69,9 +71,15 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
   }
   const harvestWallet = harvestMod.harvestWallet || harvestMod; // support default export or named
 
-  const harvestResult = await harvestWallet({ wallet, traderName, featureMintCount });
-  let merged = harvestResult && (harvestResult.merged || harvestResult.mergedPayload || harvestResult.mergedJson);
-  let techniqueFeatures = harvestResult && (harvestResult.techniqueFeatures || harvestResult.features);
+  let merged, techniqueFeatures;
+  try {
+    const harvestResult = await harvestWallet({ wallet, traderName, featureMintCount, runAnalysis: false });
+    merged = harvestResult && (harvestResult.merged || harvestResult.mergedPayload || harvestResult.mergedJson);
+    techniqueFeatures = harvestResult && (harvestResult.techniqueFeatures || harvestResult.features);
+  } catch (e) {
+    log.error('stage0: harvest error:', e && e.stack ? e.stack : (e?.message || e));
+    throw e;
+  }
 
   // Fallback: try to load latest on-disk merged artifact if harvest didn't return it
   if (!merged) {
@@ -111,6 +119,7 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
   ensureDir(dataDir);
   try { fs.writeFileSync(path.join(dataDir, `${wallet}-chain-merged-${id}.json`), J(merged)); } catch (_) {}
 
+  log.info('stage1: technique (LLM) start');
   // --- Stage 1: Technique (LLM via Responses) ---
   if (!analysisMod || typeof analysisMod.analyzeWallet !== 'function') {
     throw new Error('walletAnalysis job not found; expected ../jobs/walletAnalysis.analyzeWallet');
@@ -119,21 +128,36 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
 
   // Dev artifact write
   try { fs.writeFileSync(path.join(dataDir, `${wallet}-technique-${id}.json`), J(technique)); } catch (_) {}
+  log.info('stage1: technique (LLM) done');
 
+  log.info('stage2: outcomes (deterministic) start');
   // --- Stage 2: Outcomes (deterministic Node) ---
   let outcomes = null;
   if (outcomesAgent && typeof outcomesAgent.computeOutcomes === 'function') {
     outcomes = await outcomesAgent.computeOutcomes({ merged });
     try { fs.writeFileSync(path.join(dataDir, `${wallet}-outcomes-${id}.json`), J(outcomes)); } catch (_) {}
+    log.info('stage2: outcomes (deterministic) done');
   } else {
     log.warn('Outcomes agent not available yet; skipping Stage 2');
   }
 
+  // --- Wallet performance/curve summary (chart summarizer) ---
+  // Defensive: always array or []
+  const chartBlocks = summarizeForSidecar(Array.isArray(merged?.chart) ? merged.chart : []);
+
+  log.info('stage4: heuristics (LLM) start');
   // --- Stage 4: Heuristics (tiny LLM) ---
   let heuristics = null;
   if (heuristicsAgent && typeof heuristicsAgent.inferHeuristics === 'function') {
-    heuristics = await heuristicsAgent.inferHeuristics({ technique, outcomes });
+    heuristics = await heuristicsAgent.inferHeuristics({
+      technique,
+      outcomes,
+      wallet_performance: chartBlocks.wallet_performance,
+      wallet_curve: chartBlocks.wallet_curve,
+      analysisId: id,
+    });
     try { fs.writeFileSync(path.join(dataDir, `${wallet}-heuristics-${id}.json`), J(heuristics)); } catch (_) {}
+    log.info('stage4: heuristics (LLM) done');
   } else {
     log.warn('Heuristics agent not available yet; skipping Stage 4');
   }
@@ -149,6 +173,8 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
     heuristics: heuristics || null,
     enrichment: null,
     caps: CAPS,
+    wallet_performance: chartBlocks.wallet_performance,
+    wallet_curve: chartBlocks.wallet_curve,
   };
 
   // Write human/machine artifacts under profiles/
@@ -156,9 +182,28 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
   ensureDir(profilesDir);
   ensureDir(path.join(profilesDir, '.machine'));
   try { fs.writeFileSync(path.join(profilesDir, `${wallet}.json`), J({ wallet, traderName: traderName || null, summary: summarizeProfile(profile) })); } catch (_) {}
+  let nextVersion = '0-dev';
   try {
-    const nextVersion = await safeVersionFor(wallet);
+    nextVersion = await safeVersionFor(wallet);
     fs.writeFileSync(path.join(profilesDir, `.machine/${wallet}-v${nextVersion}.json`), J(profile));
+  } catch (_) {}
+  // Write sidecar JSON with chart summary and meta
+  try {
+    const sidecar = {
+      meta: {
+        wallet,
+        traderName: traderName || null,
+        runId: id,
+        featureMintCount,
+      },
+      wallet_performance: chartBlocks.wallet_performance,
+      wallet_curve: chartBlocks.wallet_curve,
+      aggregates: outcomes || null,
+    };
+    fs.writeFileSync(
+      path.join(profilesDir, `.machine/${wallet}-v${nextVersion}.sidecar.json`),
+      J(sidecar)
+    );
   } catch (_) {}
 
   // --- Persist to DB if module exists ---
@@ -169,7 +214,7 @@ async function runProfileChain({ wallet, traderName, featureMintCount = 8, liveT
   }
 
   log.info('done', { wallet, technique: !!technique, outcomes: !!outcomes, heuristics: !!heuristics });
-  return { technique, outcomes, heuristics, profile };
+  return { technique, outcomes, heuristics, profile, summary: summarizeProfile(profile) };
 }
 
 async function safeVersionFor(wallet) {
