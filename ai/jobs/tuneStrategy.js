@@ -1,3 +1,5 @@
+'use strict';
+
 // ai/jobs/tuneStrategy.js
 const { callResponses, parseResponsesJSON } = require('../client');
 const schema = require('../schemas/tuneStrategy.v1.schema.json');
@@ -13,6 +15,15 @@ const SYSTEM = [
   'Return JSON that matches the schema exactly (answer + bullets + actions + changes + patch + risks + rationale). Use empty arrays/empty object when you have nothing to add. No prose outside JSON.'
 ].join(' ');
 
+/**
+ * Execute the tune strategy Responses job.
+ * @param {Object} params
+ * @param {Object|null} [params.profile=null]
+ * @param {Object|null} [params.currentSettings=null]
+ * @param {string} [params.model]
+ * @param {number} [params.temperature=0.2]
+ * @returns {Promise<Object>}
+ */
 async function run({ profile = null, currentSettings = null, model, temperature = 0.2 }) {
   const res = await callResponses({
     schema,
