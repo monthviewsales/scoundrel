@@ -24,6 +24,7 @@
   "homepage": "https://github.com/monthviewsales/scoundrel#readme",
   "dependencies": {
     "@solana-tracker/data-api": "^0.1.5",
+    "chalk": "^4.1.2",
     "commander": "^14.0.2",
     "dotenv": "^17.2.3",
     "mysql2": "^3.15.3",

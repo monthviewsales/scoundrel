@@ -4,8 +4,15 @@ require('dotenv').config();
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
 const { join, relative } = require('path');
-const { query, ping } = require('./lib/db/mysql');
+const { query, ping, close } = require('./lib/db/mysql');
 const { requestId } = require('./lib/id/issuer');
+const chalk = require('chalk');
+const warchestModule = require('./commands/warchest');
+const warchestRun = typeof warchestModule === 'function'
+    ? warchestModule
+    : warchestModule && typeof warchestModule.run === 'function'
+        ? warchestModule.run
+        : null;
 
 function loadHarvest() {
     try {
@@ -292,7 +299,58 @@ program
         }
     });
     
-progam
+program
+    .command('warchest')
+    .description('Manage your Scoundrel warchest wallet registry')
+    .argument('[subcommand]', 'add|list|remove|set-color')
+    .argument('[arg1]', 'First argument for subcommand (e.g., alias)')
+    .argument('[arg2]', 'Second argument for subcommand (e.g., color)')
+    .option('-s, --solo', 'Select a single wallet interactively (registry-only for now)')
+    .addHelpText('after', `
+Examples:
+  $ scoundrel warchest add
+  $ scoundrel warchest list
+  $ scoundrel warchest remove warlord
+  $ scoundrel warchest set-color warlord cyan
+  $ scoundrel warchest -solo
+`)
+    .action(async (subcommand, arg1, arg2, cmd) => {
+        const args = [];
+
+        const opts = cmd.opts ? cmd.opts() : {};
+        if (opts.solo) {
+            // warchest CLI expects "-solo" or "--solo" in argv
+            args.push('-solo');
+        }
+
+        if (subcommand) args.push(subcommand);
+        if (arg1) args.push(arg1);
+        if (arg2) args.push(arg2);
+
+        try {
+            if (!warchestRun) {
+                throw new Error('warchest command module does not export a runnable function');
+            }
+            await warchestRun(args);
+        } catch (err) {
+            console.error('[scoundrel] ❌ warchest command failed:', err?.message || err);
+            process.exitCode = 1;
+        } finally {
+            try {
+                if (typeof close === 'function') {
+                    await close();
+                }
+            } catch (e) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('[scoundrel] warning: failed to close DB pool:', e?.message || e);
+                }
+            }
+            // Ensure the CLI returns control to the shell after warchest completes
+            process.exit(typeof process.exitCode === 'number' ? process.exitCode : 0);
+        }
+    });
+
+program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
     .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
