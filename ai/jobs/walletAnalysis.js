@@ -1,3 +1,5 @@
+'use strict';
+
 // ai/jobs/walletAnalysis.js
 const { callResponses, parseResponsesJSON, log } = require('../client');
 
@@ -52,6 +54,53 @@ const SYSTEM = [
   '{ "version": "dossier.freeform.v1", "markdown": "<your markdown write-up>" }'
 ].join(' ');
 
+const RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    version: { type: 'string' },
+    markdown: { type: 'string' },
+    operator_summary: {
+      type: 'object',
+      properties: {
+        streak: { type: 'string', enum: ['hot', 'cold', 'mixed', 'unknown'] },
+        window: { type: 'string' },
+        recent_win_rate: { type: ['number', 'null'] },
+        realized_avg_gain_pct: { type: ['number', 'null'] },
+        biggest_win: {
+          type: 'object',
+          properties: {
+            mint: { type: 'string' },
+            symbol: { type: 'string' },
+            gain_pct: { type: ['number', 'null'] }
+          },
+          required: ['mint', 'symbol', 'gain_pct'],
+          additionalProperties: false
+        },
+        biggest_loss: {
+          type: 'object',
+          properties: {
+            mint: { type: 'string' },
+            symbol: { type: 'string' },
+            loss_pct: { type: ['number', 'null'] }
+          },
+          required: ['mint', 'symbol', 'loss_pct'],
+          additionalProperties: false
+        },
+        notes: { type: 'string' }
+      },
+      required: ['streak', 'window', 'recent_win_rate', 'realized_avg_gain_pct', 'biggest_win', 'biggest_loss', 'notes'],
+      additionalProperties: false
+    }
+  },
+  required: ['version', 'markdown', 'operator_summary'],
+  additionalProperties: false
+};
+
+/**
+ * Run the wallet analysis Responses job and normalize the envelope.
+ * @param {{ merged: Object, model?: string, purpose?: string }} params
+ * @returns {Promise<{ version: string, markdown: string, operator_summary?: Object }>}
+ */
 async function analyzeWallet({ merged, model, purpose }) {
   if (!merged) {
     throw new Error('[walletAnalysis] missing merged payload');
@@ -65,47 +114,7 @@ async function analyzeWallet({ merged, model, purpose }) {
     seed: 77,
     // Provide a minimal JSON schema envelope expected by callResponses (schema mode)
     name: 'dossier_freeform_v1',
-    schema: {
-      type: 'object',
-      properties: {
-        version: { type: 'string' },
-        markdown: { type: 'string' },
-        operator_summary: {
-          type: 'object',
-          properties: {
-            streak: { type: 'string', enum: ['hot', 'cold', 'mixed', 'unknown'] },
-            window: { type: 'string' },
-            recent_win_rate: { type: ['number','null'] },
-            realized_avg_gain_pct: { type: ['number','null'] },
-            biggest_win: {
-              type: 'object',
-              properties: {
-                mint: { type: 'string' },
-                symbol: { type: 'string' },
-                gain_pct: { type: ['number','null'] }
-              },
-              required: ['mint', 'symbol', 'gain_pct'],
-              additionalProperties: false
-            },
-            biggest_loss: {
-              type: 'object',
-              properties: {
-                mint: { type: 'string' },
-                symbol: { type: 'string' },
-                loss_pct: { type: ['number','null'] }
-              },
-              required: ['mint', 'symbol', 'loss_pct'],
-              additionalProperties: false
-            },
-            notes: { type: 'string' }
-          },
-          required: ['streak','window','recent_win_rate','realized_avg_gain_pct','biggest_win','biggest_loss','notes'],
-          additionalProperties: false
-        }
-      },
-      required: ['version', 'markdown', 'operator_summary'],
-      additionalProperties: false
-    },
+    schema: RESPONSE_SCHEMA,
     // Pass the entire merged payload so the model can cite facts/examples freely
     user: { merged }
   });
