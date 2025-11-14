@@ -12,6 +12,7 @@ require('dotenv').config();
 
 const chalk = require('chalk');
 const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
+const { createRpcMethods } = require('../lib/solana/rpcMethods');
 
 // ---------- env helpers ----------
 function intFromEnv(name, fallback) {
@@ -242,22 +243,17 @@ function renderHud(state) {
 
 // ---------- helpers for SOL balance refresh ----------
 
-const LAMPORTS_PER_SOL = 1_000_000_000;
-
 /**
- * Fetch the SOL balance for a single wallet via RPC.
- * Assumes the rpc client exposes a getBalance(pubkey) method that
- * returns lamports.
- * @param {*} rpc
+ * Fetch the SOL balance for a single wallet via RPC methods helper.
+ *
+ * @param {*} rpcMethods
  * @param {string} pubkey
  * @returns {Promise<number|null>} balance in SOL or null on error
  */
-async function fetchSolBalance(rpc, pubkey) {
-  if (!rpc) return null;
+async function fetchSolBalance(rpcMethods, pubkey) {
+  if (!rpcMethods || typeof rpcMethods.getSolBalance !== 'function') return null;
   try {
-    const lamports = await rpc.getBalance(pubkey);
-    if (lamports == null) return null;
-    return lamports / LAMPORTS_PER_SOL;
+    return await rpcMethods.getSolBalance(pubkey);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('[HUD] Failed to fetch SOL balance for', pubkey, '-', err.message || err);
@@ -267,19 +263,19 @@ async function fetchSolBalance(rpc, pubkey) {
 
 /**
  * Refresh SOL balances for all wallets and update HUD state.
- * @param {*} rpc
+ * @param {*} rpcMethods
  * @param {Record<string,WalletState>} state
  */
-async function refreshAllSolBalances(rpc, state) {
+async function refreshAllSolBalances(rpcMethods, state) {
   const aliases = Object.keys(state);
-  if (!rpc || aliases.length === 0) return;
+  if (!rpcMethods || aliases.length === 0) return;
 
   const now = Date.now();
 
   await Promise.all(
     aliases.map(async (alias) => {
       const w = state[alias];
-      const bal = await fetchSolBalance(rpc, w.pubkey);
+      const bal = await fetchSolBalance(rpcMethods, w.pubkey);
       if (bal == null) return;
 
       if (w.startSolBalance == null) {
@@ -310,6 +306,7 @@ async function main() {
 
   // Create SolanaTracker RPC client (HTTP + WS).
   const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
+  const rpcMethods = createRpcMethods(rpc, rpcSubs);
 
   // TODO (later): wire up actual subscriptions:
   // - account notifications for SOL
@@ -325,11 +322,11 @@ async function main() {
   }
 
   // Initial SOL balance fetch
-  await refreshAllSolBalances(rpc, state);
+  await refreshAllSolBalances(rpcMethods, state);
 
   // Periodic SOL refresh using HTTP RPC
   const solTimer = setInterval(() => {
-    refreshAllSolBalances(rpc, state).catch((err) => {
+    refreshAllSolBalances(rpcMethods, state).catch((err) => {
       // eslint-disable-next-line no-console
       console.error('[HUD] Error refreshing SOL balances:', err.message || err);
     });
