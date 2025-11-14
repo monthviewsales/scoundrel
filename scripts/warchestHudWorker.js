@@ -24,6 +24,19 @@ function intFromEnv(name, fallback) {
 
 const HUD_RENDER_INTERVAL_MS = intFromEnv('HUD_RENDER_INTERVAL_MS', 750);
 const HUD_SOL_REFRESH_SEC = intFromEnv('HUD_SOL_REFRESH_SEC', 15);
+const HUD_TOKENS_REFRESH_SEC = intFromEnv('HUD_TOKENS_REFRESH_SEC', 30);
+
+const TOKEN_PROGRAM_LEGACY = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const TOKEN_PROGRAM_22 = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+
+const STABLE_MINTS = new Set([
+  // USDC (Solana mainnet)
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  // USDT (Solana mainnet)
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+  // USD1 (World Liberty Financial USD1)
+  'USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB',
+]);
 
 // ---------- colorizer (reuse palette semantics from warchest) ----------
 function colorizer(color) {
@@ -100,7 +113,9 @@ function parseArgs(argv) {
  * @property {number} solDelta
  * @property {number} openedAt
  * @property {number} lastActivityTs
+ * @property {Object<string, number>} startTokenBalances
  * @property {TokenRow[]} tokens
+ * @property {boolean|null} hasToken22
  */
 
 /**
@@ -122,7 +137,9 @@ function buildInitialState(walletSpecs) {
       solDelta: 0,
       openedAt: now,
       lastActivityTs: now,
+      startTokenBalances: {},
       tokens: [],
+      hasToken22: null,
     };
   }
   return state;
@@ -182,12 +199,24 @@ function renderWalletSection(w) {
   const sepRow = '├────────┼───────────────┼──────────────┼──────────────┼──────────┤';
 
   const rows = [];
+
   if (!w.tokens || w.tokens.length === 0) {
     const emptyMsg = '(no tokens yet)';
     const line = `│ ${emptyMsg.padEnd(headerWidth - 1, ' ')}│`;
     rows.push(line);
   } else {
+    const stableTokens = [];
+    const otherTokens = [];
+
     for (const t of w.tokens) {
+      if (t.mint && STABLE_MINTS.has(t.mint)) {
+        stableTokens.push(t);
+      } else {
+        otherTokens.push(t);
+      }
+    }
+
+    const makeRow = (t) => {
       const sym = (t.symbol || '').slice(0, 6).padEnd(6, ' ');
       const mint = shortenPubkey(t.mint || '').slice(0, 15).padEnd(15, ' ');
       const bal = fmtNum(t.balance, 2).padStart(14, ' ');
@@ -196,7 +225,21 @@ function renderWalletSection(w) {
         ? '-'.padStart(10, ' ')
         : (`$${fmtNum(t.usdEstimate, 2)}`).padStart(10, ' ');
 
-      rows.push(`│ ${sym}│ ${mint}│ ${bal}│ ${delta}│ ${usd}│`);
+      return `│ ${sym}│ ${mint}│ ${bal}│ ${delta}│ ${usd}│`;
+    };
+
+    if (stableTokens.length > 0) {
+      for (const t of stableTokens) {
+        rows.push(makeRow(t));
+      }
+      if (otherTokens.length > 0) {
+        // visual divider between stables and the rest
+        rows.push(sepRow);
+      }
+    }
+
+    for (const t of otherTokens) {
+      rows.push(makeRow(t));
     }
   }
 
@@ -291,6 +334,101 @@ async function refreshAllSolBalances(rpcMethods, state) {
   );
 }
 
+/**
+ * Refresh token balances for all wallets and update HUD state.
+ *
+ * @param {*} rpcMethods
+ * @param {Record<string,WalletState>} state
+ * @returns {Promise<void>}
+ */
+async function refreshAllTokenBalances(rpcMethods, state) {
+  const aliases = Object.keys(state);
+  if (!rpcMethods || typeof rpcMethods.getTokenAccountsByOwnerV2 !== 'function' || aliases.length === 0) {
+    return;
+  }
+
+  const now = Date.now();
+  await Promise.all(
+    aliases.map(async (alias) => {
+      const wallet = state[alias];
+      try {
+        const allAccounts = [];
+
+        // Decide whether to check Token-2022 for this wallet.
+        // If hasToken22 is true, always check; if null (unknown), probe once.
+        const shouldCheckToken22 = wallet.hasToken22 !== false;
+
+        if (shouldCheckToken22) {
+          const res22 = await rpcMethods.getTokenAccountsByOwnerV2(wallet.pubkey, {
+            programId: TOKEN_PROGRAM_22,
+            limit: 100,
+            excludeZero: true,
+          });
+          const accounts22 = Array.isArray(res22?.accounts) ? res22.accounts : [];
+          if (accounts22.length > 0) {
+            wallet.hasToken22 = true;
+            allAccounts.push(...accounts22);
+            if (res22?.hasMore) {
+              // eslint-disable-next-line no-console
+              console.debug(`[HUD] Token-22 fetch truncated for ${wallet.alias}; pagination TBD.`);
+            }
+          } else if (wallet.hasToken22 == null) {
+            // We probed and found nothing; skip Token-22 on future cycles.
+            wallet.hasToken22 = false;
+          }
+        }
+
+        // Always query legacy SPL (Tokenkeg) for fungible tokens.
+        const resLegacy = await rpcMethods.getTokenAccountsByOwnerV2(wallet.pubkey, {
+          programId: TOKEN_PROGRAM_LEGACY,
+          limit: 100,
+          excludeZero: true,
+        });
+        const accountsLegacy = Array.isArray(resLegacy?.accounts) ? resLegacy.accounts : [];
+        if (accountsLegacy.length > 0) {
+          allAccounts.push(...accountsLegacy);
+          if (resLegacy?.hasMore) {
+            // eslint-disable-next-line no-console
+            console.debug(`[HUD] Legacy token fetch truncated for ${wallet.alias}; pagination TBD.`);
+          }
+        }
+
+        const aggregated = new Map();
+        for (const account of allAccounts) {
+          const mint = account?.mint;
+          if (!mint) continue;
+          const amount = typeof account.uiAmount === 'number' ? account.uiAmount : Number(account.uiAmount);
+          if (!Number.isFinite(amount)) continue;
+          aggregated.set(mint, (aggregated.get(mint) || 0) + amount);
+        }
+
+        const tokenRows = [];
+        for (const [mint, balance] of aggregated.entries()) {
+          if (!(balance > 0)) continue;
+          let baseline = wallet.startTokenBalances[mint];
+          if (baseline == null) {
+            baseline = balance;
+            wallet.startTokenBalances[mint] = balance;
+          }
+          tokenRows.push({
+            symbol: '',
+            mint,
+            balance,
+            deltaSinceOpen: balance - baseline,
+            usdEstimate: null,
+          });
+        }
+
+        wallet.tokens = tokenRows;
+        wallet.lastActivityTs = now;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[HUD] Failed to fetch tokens for', wallet.alias, wallet.pubkey, '-', err.message || err);
+      }
+    })
+  );
+}
+
 // ---------- main loop ----------
 
 async function main() {
@@ -323,6 +461,7 @@ async function main() {
 
   // Initial SOL balance fetch
   await refreshAllSolBalances(rpcMethods, state);
+  await refreshAllTokenBalances(rpcMethods, state);
 
   // Periodic SOL refresh using HTTP RPC
   const solTimer = setInterval(() => {
@@ -332,6 +471,13 @@ async function main() {
     });
   }, HUD_SOL_REFRESH_SEC * 1000);
 
+  const tokenTimer = setInterval(() => {
+    refreshAllTokenBalances(rpcMethods, state).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('[HUD] Error refreshing token balances:', err.message || err);
+    });
+  }, HUD_TOKENS_REFRESH_SEC * 1000);
+
   // Render loop
   const renderTimer = setInterval(() => {
     renderHud(state);
@@ -340,6 +486,7 @@ async function main() {
   // Graceful shutdown
   function shutdown() {
     clearInterval(solTimer);
+    clearInterval(tokenTimer);
     clearInterval(renderTimer);
     Promise.resolve()
       .then(() => close())
