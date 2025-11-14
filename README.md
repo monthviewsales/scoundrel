@@ -70,6 +70,44 @@ CLI commands ───────────▶ /lib/*.js processors
 
 ---
 
+## Solana RPC methods library
+
+Scoundrel now ships a dedicated SolanaTracker RPC façade at `lib/solana/rpcMethods/`. Think of it as the VAULT77 relay tower: it binds the low-level Kit client to a clean, human-scale API.
+
+```js
+const { createSolanaTrackerRPCClient } = require('./lib/solanaTrackerRPCClient');
+const { createRpcMethods } = require('./lib/solana/rpcMethods');
+
+const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
+const rpcMethods = createRpcMethods(rpc, rpcSubs);
+
+const balance = await rpcMethods.getSolBalance('walletPubkey');
+```
+
+### HTTP helpers (all return Promises)
+
+| Helper | Signature | Notes |
+| --- | --- | --- |
+| `getSolBalance` | `(pubkey: string) => Promise<number>` | Converts lamports → SOL.
+| `getTokenAccountsByOwner` | `(owner: string, opts?) => Promise<{ owner, accounts, raw }>` | Normalized SPL positions.
+| `getTokenAccountsByOwnerV2` | `(owner: string, opts?) => Promise<{ owner, accounts, hasMore, nextCursor, totalCount, raw }>` | Cursor + pagination metadata.
+| `getMultipleAccounts` | `(pubkeys: string[], opts?) => Promise<{ accounts, raw }>` | Batched account infos.
+| `getFirstAvailableBlock` | `() => Promise<number>` | Earliest slot SolanaTracker serves.
+| `getTransaction` | `(signature: string, opts?) => Promise<{ signature, slot, blockTime, transaction, meta, raw } | null>` | Returns `null` when the signature is unknown.
+
+### WebSocket helpers
+
+Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and honors SolanaTracker options (plus optional `onError`).
+
+- `subscribeAccount(pubkey, onUpdate, opts?)`
+- `subscribeBlock(onUpdate, opts?)`
+- `subscribeSlot(onUpdate, opts?)`
+- `subscribeSlotsUpdates(onUpdate, opts?)`
+
+The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+
+---
+
 ## Commands
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
