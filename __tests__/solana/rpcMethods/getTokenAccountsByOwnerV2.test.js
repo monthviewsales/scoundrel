@@ -38,7 +38,11 @@ describe('createGetTokenAccountsByOwnerV2', () => {
     const getTokenAccountsByOwnerV2 = createGetTokenAccountsByOwnerV2(rpc);
     const result = await getTokenAccountsByOwnerV2('Owner1', { limit: 10 });
 
-    expect(rpc.getTokenAccountsByOwnerV2).toHaveBeenCalledWith('Owner1', { limit: 10 });
+    expect(rpc.getTokenAccountsByOwnerV2).toHaveBeenCalledWith(
+      'Owner1',
+      { programId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+      { limit: 10, encoding: 'jsonParsed' },
+    );
     expect(result.accounts).toEqual([
       expect.objectContaining({
         pubkey: 'Account1',

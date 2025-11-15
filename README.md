@@ -108,6 +108,49 @@ The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethod
 
 ---
 
+## SolanaTracker Data API library
+
+`lib/solanaTrackerDataClient.js` follows the same pattern: a thin factory binds the official `@solana-tracker/data-api` SDK to a folder of focused helpers under `lib/solanaTrackerData/methods/`. Every helper lives in its own module, carries unit tests under `__tests__/solanaTrackerData/methods/`, and runs through a shared retry/logger wrapper.
+
+```js
+const { SolanaTrackerDataClient } = require('./lib/solanaTrackerDataClient');
+
+const data = new SolanaTrackerDataClient({ apiKey: process.env.SOLANATRACKER_API_KEY });
+const token = await data.getTokenInformation('Mint...');
+const chart = await data.getWalletChart('Wallet...');
+const risk  = await data.getTokenRiskScores('Mint...');
+```
+
+### High-signal helpers
+
+| Helper | Notes |
+| --- | --- |
+| `getTokenInformation` / `getTokenByPoolAddress` | direct token lookups. |
+| `getTokenHoldersTop100`, `getLatestTokens`, `getMultipleTokens` | supply discovery feeds. |
+| `getTrendingTokens`, `getTokensByVolumeWithTimeframe`, `getTokenOverview` | curated discovery endpoints. |
+| `getTokenPrice`, `getMultipleTokenPrices` | wrap `/price` + `/price/multi` with retries. |
+| `getWalletTokens`, `getBasicWalletInformation` | wallet state snapshots. |
+| `getWalletTrades` | paginated harvest with optional `startTime` / `endTime` filtering and cursor handling. |
+| `getWalletChart` | portfolio curve, aliased as `getWalletPortfolioChart` for CLI consistency. |
+| `getTokenOhlcvData`, `getTokenPoolOhlcvData` | Chart/OHLCV endpoints for tokens or token/pool pairs. |
+| `getWalletPnl` | full-wallet pnl, optional `showHistoricPnl`, `holdingCheck`, `hideDetails`. |
+| `getTopTradersForToken` | top 100 profitable traders for a mint. |
+| `getTokenEvents` | decodes binary event streams into JSON. |
+| `getTokenRiskScores` | wraps `/risk/:mint`, normalizes `score`, `rating`, and per-factor severities (see docs/risk section). |
+| `searchTokens` | flexible search builder; arrays become comma lists, objects auto-JSON encode. |
+| `getTokenSnapshotAt`, `getTokenSnapshotNow` | composite helpers combining price + metadata. |
+| `healthCheck` | lightweight readiness probe used by dossier + CLI smoke tests. |
+
+All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
+
+Special endpoints:
+- **Risk** (`getTokenRiskScores`) returns `{ token, score, rating, factors, raw }`. Each factor carries `{ name, score, severity }` so downstream risk caps can stay deterministic.
+- **Search** (`searchTokens`) accepts advanced filters (arrays, nested objects) and translates them into the query-string the API expects. Empty filters throw immediately so we never spam the API with no-ops.
+
+See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tests under `__tests__/solanaTrackerData/methods/*.test.js`, and `docs/solanaTrackerData.md` for signature details plus risk/search notes.
+
+---
+
 ## Commands
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.

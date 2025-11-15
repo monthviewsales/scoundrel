@@ -191,7 +191,7 @@ function renderWalletSection(w) {
   const colSym = 'Sym'.padEnd(6, ' ');
   const colMint = 'Mint'.padEnd(15, ' ');
   const colBal = 'Balance'.padEnd(14, ' ');
-  const colDelta = 'Δ since open'.padEnd(14, ' ');
+  const colDelta = 'Delta since open'.padEnd(14, ' ');
   const colUsd = 'Est. USD'.padEnd(10, ' ');
 
   const colsHeader = `│ ${colSym}│ ${colMint}│ ${colBal}│ ${colDelta}│ ${colUsd}│`;
@@ -216,21 +216,23 @@ function renderWalletSection(w) {
       }
     }
 
-    const makeRow = (t) => {
+    const makeRow = (t, isStable) => {
       const sym = (t.symbol || '').slice(0, 6).padEnd(6, ' ');
       const mint = shortenPubkey(t.mint || '').slice(0, 15).padEnd(15, ' ');
-      const bal = fmtNum(t.balance, 2).padStart(14, ' ');
+      const rawBal = fmtNum(t.balance, 2);
+      const bal = (isStable ? `$${rawBal}` : rawBal).padStart(14, ' ');
       const delta = fmtNum(t.deltaSinceOpen, 2).padStart(14, ' ');
       const usd = t.usdEstimate == null
         ? '-'.padStart(10, ' ')
         : (`$${fmtNum(t.usdEstimate, 2)}`).padStart(10, ' ');
 
-      return `│ ${sym}│ ${mint}│ ${bal}│ ${delta}│ ${usd}│`;
+      const row = `│ ${sym}│ ${mint}│ ${bal}│ ${delta}│ ${usd}│`;
+      return isStable ? chalk.green(row) : row;
     };
 
     if (stableTokens.length > 0) {
       for (const t of stableTokens) {
-        rows.push(makeRow(t));
+        rows.push(makeRow(t, true));
       }
       if (otherTokens.length > 0) {
         // visual divider between stables and the rest
@@ -239,7 +241,7 @@ function renderWalletSection(w) {
     }
 
     for (const t of otherTokens) {
-      rows.push(makeRow(t));
+      rows.push(makeRow(t, false));
     }
   }
 
@@ -247,7 +249,7 @@ function renderWalletSection(w) {
     borderTop,
     headerLine,
     borderMid,
-    `│ Sym   │ Mint          │ Balance      │ Δ since open │ Est. USD │`,
+    colsHeader,
     sepRow,
     ...rows,
     borderBottom,
