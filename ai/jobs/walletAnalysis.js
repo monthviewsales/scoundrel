@@ -109,9 +109,9 @@ async function analyzeWallet({ merged, model, purpose }) {
   const res = await callResponses({
     system: SYSTEM,
     model,
-    temperature: 0.5,
+    // temperature: 0.5,
     top_p: 0.9,
-    seed: 77,
+    // seed: 77,
     // Provide a minimal JSON schema envelope expected by callResponses (schema mode)
     name: 'dossier_freeform_v1',
     schema: RESPONSE_SCHEMA,
