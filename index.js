@@ -7,6 +7,10 @@ const { join, relative } = require('path');
 const { query, ping, close } = require('./lib/db/mysql');
 const { requestId } = require('./lib/id/issuer');
 const chalk = require('chalk');
+const readline = require('readline/promises');
+const { stdin: input, stdout: output } = require('process');
+const { getAllWallets } = require('./lib/warchest/walletRegistry');
+const { runAutopsy } = require('./lib/autopsy');
 const warchestModule = require('./commands/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
@@ -31,6 +35,18 @@ function loadProcessor(name) {
         console.error(`[scoundrel] Missing ./lib/${name}. Create it and export a function (module.exports = async (args) => { ... }) or a named export.`);
         process.exit(1);
     }
+}
+
+function shortenPubkey(addr) {
+    if (!addr) return '';
+    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+}
+
+function isBase58Mint(v) {
+    if (typeof v !== 'string') return false;
+    const s = v.trim();
+    if (s.length < 32 || s.length > 44) return false;
+    return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
 }
 
 program
@@ -255,6 +271,61 @@ program
         } catch (err) {
             console.error('[scoundrel] ❌ dossier failed:', err?.message || err);
             process.exit(1);
+        }
+    });
+
+program
+    .command('autopsy')
+    .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
+    .addHelpText('after', `\nFlow:\n  • Choose a HUD wallet or enter another address.\n  • Enter the token mint to analyze.\n  • Saves autopsy JSON to ./profiles/autopsy-<wallet>-<symbol>-<ts>.json and prints the AI narrative.\n\nExample:\n  $ scoundrel autopsy\n`)
+    .action(async () => {
+        const rl = readline.createInterface({ input, output });
+        try {
+            const wallets = await getAllWallets();
+            const options = wallets.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
+            options.push(`${wallets.length + 1}) Other (enter address)`);
+
+            console.log('Which wallet?');
+            options.forEach((opt) => console.log(opt));
+            let choice = await rl.question('> ');
+            let walletLabel;
+            let walletAddress;
+
+            const numeric = Number(choice);
+            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= wallets.length) {
+                const selected = wallets[numeric - 1];
+                walletLabel = selected.alias;
+                walletAddress = selected.pubkey;
+            } else {
+                if (!walletAddress) {
+                    walletAddress = choice && choice.trim() ? choice.trim() : null;
+                }
+                if (!walletAddress) {
+                    walletAddress = await rl.question('Enter wallet address:\n> ');
+                }
+                walletLabel = 'other';
+            }
+
+            let mint = await rl.question('Enter mint to trace:\n> ');
+            mint = mint.trim();
+            if (!mint) {
+                throw new Error('mint is required');
+            }
+            if (!isBase58Mint(mint)) {
+                console.warn('[scoundrel] mint does not look like base58; continuing anyway');
+            }
+
+            const result = await runAutopsy({ walletLabel, walletAddress, mint });
+            if (!result) {
+                process.exit(0);
+            }
+            process.exit(0);
+        } catch (err) {
+            console.error('[scoundrel] ❌ autopsy failed:', err?.message || err);
+            process.exit(1);
+        } finally {
+            rl.close();
+            try { await close(); } catch (_) {}
         }
     });
 

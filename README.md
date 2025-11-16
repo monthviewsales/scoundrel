@@ -158,6 +158,13 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ### `dossier <WALLET>`
 Harvests wallet trades + chart, merges a unified JSON payload, and sends it to the OpenAI Responses API to generate a CT/CIA‑style operator report.
 
+### `autopsy`
+Interactive command that walks you through selecting a HUD wallet (or entering any address) and a token mint, then:
+- harvests all trades for that wallet/mint pair,
+- pulls price range, PnL, ATH, and OHLCV context from SolanaTracker,
+- calls the `tradeAutopsy` AI job for a structured post‑mortem,
+- saves the artifact to `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`, and prints the AI JSON to the terminal.
+
 - Writes `./profiles/<alias>.json`
 - Writes merged file to `./data/<alias>-merged-*.json`
 - Prints the report to the console
