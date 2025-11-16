@@ -24,6 +24,7 @@
   "homepage": "https://github.com/monthviewsales/scoundrel#readme",
   "dependencies": {
     "@solana-tracker/data-api": "^0.1.5",
+    "@solana/kit": "^5.0.0",
     "chalk": "^4.1.2",
     "commander": "^14.0.2",
     "dotenv": "^17.2.3",
@@ -35,6 +36,6 @@
     "scoundrel": "./index.js"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.2.0"
   }
 }
