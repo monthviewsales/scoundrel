@@ -33,6 +33,19 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 - A MySQL database
 - Node.js 22 LTS and npm.
 
+## Database Access (BootyBox)
+
+All MySQL interactions now flow through **BootyBox** (`lib/db/BootyBox.mysql.js`).  
+BootyBox owns the shared pool (via `lib/db/mysql.js`), creates the trading tables on start, and exposes domain helpers for every `sc_*` table plus the warchest registry. Highlights:
+
+- `init()` bootstraps the shared pool + schema and must run before calling other helpers.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power both the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
+- Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
+- Higher-level modules (`ask`, `tuneStrategy`, `dossier`, `autopsy`, dossier CLI, profile persistence, etc.) simply call these helpers—no SQL lives outside BootyBox anymore.
+- Unit tests cover the shared helpers under `__tests__/lib/db/BootyBox.scTables.test.js`.
+
+If you add a new table or CLI persistence path, implement it inside BootyBox and reuse the pool it manages.
+
 ---
 
 ## What’s new (Nov 2025)

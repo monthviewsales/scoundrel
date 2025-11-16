@@ -2,7 +2,7 @@
 
 const readline = require('readline');
 const chalk = require('chalk');
-const db = require('../lib/db/mysql');
+const walletRegistry = require('../lib/warchest/walletRegistry');
 
 const COLOR_PALETTE = ['green', 'cyan', 'magenta', 'yellow', 'blue'];
 
@@ -85,112 +85,6 @@ function pickNextColor(wallets) {
 }
 
 /**
- * Get all wallets from the database.
- * @returns {Promise<WalletRecord[]>}
- */
-async function getAllWallets() {
-  const { rows } = await db.query(
-    `SELECT
-       wallet_id       AS walletId,
-       alias,
-       pubkey,
-       color,
-       has_private_key AS hasPrivateKey,
-       key_source      AS keySource,
-       key_ref         AS keyRef,
-       created_at      AS createdAt,
-       updated_at      AS updatedAt
-     FROM sc_wallets
-     ORDER BY alias ASC`
-  );
-
-  return rows || [];
-}
-
-/**
- * Get a wallet by alias.
- * @param {string} alias
- * @returns {Promise<WalletRecord|null>}
- */
-async function getWalletByAlias(alias) {
-  const { rows } = await db.query(
-    `SELECT
-       wallet_id       AS walletId,
-       alias,
-       pubkey,
-       color,
-       has_private_key AS hasPrivateKey,
-       key_source      AS keySource,
-       key_ref         AS keyRef,
-       created_at      AS createdAt,
-       updated_at      AS updatedAt
-     FROM sc_wallets
-     WHERE alias = ?
-     LIMIT 1`,
-    [alias]
-  );
-
-  if (!rows || rows.length === 0) return null;
-  return rows[0];
-}
-
-/**
- * Add a wallet to the database.
- * @param {Object} wallet
- * @param {string} wallet.alias
- * @param {string} wallet.pubkey
- * @param {string|null} wallet.color
- * @param {boolean} wallet.hasPrivateKey
- * @param {string} wallet.keySource
- * @param {string|null} wallet.keyRef
- * @returns {Promise<WalletRecord>}
- */
-async function addWallet(wallet) {
-  await db.query(
-    `INSERT INTO sc_wallets (alias, pubkey, color, has_private_key, key_source, key_ref)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      wallet.alias,
-      wallet.pubkey,
-      wallet.color,
-      wallet.hasPrivateKey ? 1 : 0,
-      wallet.keySource,
-      wallet.keyRef,
-    ]
-  );
-  return getWalletByAlias(wallet.alias);
-}
-
-/**
- * Delete a wallet by alias.
- * @param {string} alias
- * @returns {Promise<boolean>} True if deleted, false if not found.
- */
-async function deleteWallet(alias) {
-  const { rows } = await db.query(
-    `DELETE FROM sc_wallets WHERE alias = ?`,
-    [alias]
-  );
-
-  return !!(rows && rows.affectedRows > 0);
-}
-
-/**
- * Update wallet color by alias.
- * @param {string} alias
- * @param {string|null} color
- * @returns {Promise<boolean>} True if updated, false if not found.
- */
-async function updateWalletColor(alias, color) {
-  const { rows } = await db.query(
-    `UPDATE sc_wallets SET color = ? WHERE alias = ?`,
-    [color, alias]
-  );
-
-  return !!(rows && rows.affectedRows > 0);
-}
-
-/**
  * Handle `scoundrel warchest add`.
  * Interactive flow to add a wallet to the registry.
  */
@@ -216,10 +110,10 @@ async function handleAdd() {
       return;
     }
 
-    const existing = await getAllWallets();
+    const existing = await walletRegistry.getAllWallets();
     const color = pickNextColor(existing);
 
-    const wallet = await addWallet({
+    const wallet = await walletRegistry.addWallet({
       alias,
       pubkey,
       color,
@@ -250,7 +144,7 @@ async function handleAdd() {
  */
 async function handleList() {
   try {
-    const wallets = await getAllWallets();
+    const wallets = await walletRegistry.getAllWallets();
 
     if (!wallets || wallets.length === 0) {
       console.log(chalk.yellow('No wallets in your warchest yet.'));
@@ -298,7 +192,7 @@ async function handleRemove(aliasArg) {
       return;
     }
 
-    const ok = await deleteWallet(alias);
+    const ok = await walletRegistry.deleteWallet(alias);
     if (!ok) {
       console.error(
         chalk.yellow('No wallet found with alias:'),
@@ -347,7 +241,7 @@ async function handleSetColor(aliasArg, colorArg) {
       return;
     }
 
-    const ok = await updateWalletColor(alias, normalized);
+    const ok = await walletRegistry.updateWalletColor(alias, normalized);
     if (!ok) {
       console.error(
         chalk.yellow('No wallet found with alias:'),
@@ -380,7 +274,7 @@ async function handleSolo() {
   const rl = createInterface();
 
   try {
-    const wallets = await getAllWallets();
+    const wallets = await walletRegistry.getAllWallets();
     if (!wallets || wallets.length === 0) {
       console.log(chalk.yellow('No wallets in your warchest yet.'));
       console.log('Use', chalk.cyan('scoundrel warchest add'), 'to add one.');
@@ -474,9 +368,9 @@ async function run(argv) {
 
 module.exports = {
   run,
-  getAllWallets,
-  getWalletByAlias,
-  addWallet,
-  deleteWallet,
-  updateWalletColor,
+  getAllWallets: walletRegistry.getAllWallets,
+  getWalletByAlias: walletRegistry.getWalletByAlias,
+  addWallet: walletRegistry.addWallet,
+  deleteWallet: walletRegistry.deleteWallet,
+  updateWalletColor: walletRegistry.updateWalletColor,
 };
