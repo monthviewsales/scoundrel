@@ -33,7 +33,7 @@ jest.mock('../ai/jobs/tradeAutopsy', () => ({
 }));
 
 jest.mock('../lib/db/mysql', () => ({
-  query: jest.fn().mockResolvedValue([[]]),
+  query: jest.fn().mockResolvedValue({ rows: [] }),
 }));
 
 jest.mock('../lib/id/issuer', () => ({
