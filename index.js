@@ -4,8 +4,20 @@ require('dotenv').config();
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
 const { join, relative } = require('path');
-const { query, ping } = require('./lib/db/mysql');
+const BootyBox = require('./lib/db/BootyBox.mysql');
 const { requestId } = require('./lib/id/issuer');
+const chalk = require('chalk');
+const util = require('util');
+const readline = require('readline/promises');
+const { stdin: input, stdout: output } = require('process');
+const { getAllWallets } = require('./lib/warchest/walletRegistry');
+const { runAutopsy } = require('./lib/autopsy');
+const warchestModule = require('./commands/warchest');
+const warchestRun = typeof warchestModule === 'function'
+    ? warchestModule
+    : warchestModule && typeof warchestModule.run === 'function'
+        ? warchestModule.run
+        : null;
 
 function loadHarvest() {
     try {
@@ -23,6 +35,63 @@ function loadProcessor(name) {
     } catch (e) {
         console.error(`[scoundrel] Missing ./lib/${name}. Create it and export a function (module.exports = async (args) => { ... }) or a named export.`);
         process.exit(1);
+    }
+}
+
+function shortenPubkey(addr) {
+    if (!addr) return '';
+    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+}
+
+async function persistProfileSnapshot({ wallet, traderName, profile, source }) {
+    if (!wallet || !profile) return;
+    try {
+        await BootyBox.init();
+        const profileIdRaw = await requestId({ prefix: 'profile' });
+        const profileId = String(profileIdRaw).slice(-26);
+        await BootyBox.upsertProfileSnapshot({
+            profileId,
+            name: traderName || wallet,
+            wallet,
+            profile,
+            source,
+        });
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`[scoundrel] upserted profile in DB as ${profileId}`);
+        }
+    } catch (dbErr) {
+        console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
+    }
+}
+
+function isBase58Mint(v) {
+    if (typeof v !== 'string') return false;
+    const s = v.trim();
+    if (s.length < 32 || s.length > 44) return false;
+    return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
+}
+
+function logAutopsyError(err) {
+    const message = err?.message || err;
+    console.error('[scoundrel] ❌ autopsy failed:', message);
+
+    if (err?.response) {
+        const { status, statusText, data } = err.response;
+        const statusLine = [status, statusText].filter(Boolean).join(' ');
+        if (statusLine) {
+            console.error('[scoundrel] HTTP response:', statusLine);
+        }
+        if (data) {
+            console.error('[scoundrel] Response body:', util.inspect(data, { depth: 4, breakLength: 120 }));
+        }
+    }
+
+    if (err?.cause) {
+        console.error('[scoundrel] cause:', err.cause?.message || err.cause);
+    }
+
+    if (err?.stack) {
+        console.error(err.stack);
     }
 }
 
@@ -150,34 +219,12 @@ program
                 console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);
 
                 // Persist to DB (sc_profiles), mirroring the normal path
-                try {
-                    const profileIdRaw = await requestId({ prefix: 'profile' });
-                    const profileId = String(profileIdRaw).slice(-26);
-                    await query(
-                        `INSERT INTO sc_profiles (
-                            profile_id, name, wallet, profile, source
-                        ) VALUES (
-                            :profile_id, :name, :wallet, CAST(:profile AS JSON), :source
-                        )
-                        ON DUPLICATE KEY UPDATE
-                            name = VALUES(name),
-                            wallet = VALUES(wallet),
-                            profile = VALUES(profile),
-                            source = VALUES(source)`,
-                        {
-                            profile_id: profileId,
-                            name: traderName || walletId,
-                            wallet: walletId,
-                            profile: JSON.stringify(openAiResult),
-                            source: 'dossier-resend',
-                        }
-                    );
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log(`[scoundrel] upserted profile in DB as ${profileId}`);
-                    }
-                } catch (dbErr) {
-                    console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
-                }
+                await persistProfileSnapshot({
+                    wallet: walletId,
+                    traderName,
+                    profile: openAiResult,
+                    source: 'dossier-resend',
+                });
 
                 // Print brief console output if markdown present
                 if (openAiResult && openAiResult.markdown) {
@@ -208,34 +255,12 @@ program
             console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);
 
             // Persist to DB (sc_profiles), mirroring the previous build-profile upsert
-            try {
-                const profileIdRaw = await requestId({ prefix: 'profile' });
-                const profileId = String(profileIdRaw).slice(-26);
-                await query(
-                    `INSERT INTO sc_profiles (
-                        profile_id, name, wallet, profile, source
-                    ) VALUES (
-                        :profile_id, :name, :wallet, CAST(:profile AS JSON), :source
-                    )
-                    ON DUPLICATE KEY UPDATE
-                        name = VALUES(name),
-                        wallet = VALUES(wallet),
-                        profile = VALUES(profile),
-                        source = VALUES(source)`,
-                    {
-                        profile_id: profileId,
-                        name: traderName || walletId,
-                        wallet: walletId,
-                        profile: JSON.stringify(result.openAiResult),
-                        source: 'dossier',
-                    }
-                );
-                if (process.env.NODE_ENV === 'development') {
-                    console.log(`[scoundrel] upserted profile in DB as ${profileId}`);
-                }
-            } catch (dbErr) {
-                console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
-            }
+            await persistProfileSnapshot({
+                wallet: walletId,
+                traderName,
+                profile: result.openAiResult,
+                source: 'dossier',
+            });
 
             // Normal send: print the dossier to console (same as --resend), then exit
             if (result.openAiResult && result.openAiResult.markdown) {
@@ -248,6 +273,61 @@ program
         } catch (err) {
             console.error('[scoundrel] ❌ dossier failed:', err?.message || err);
             process.exit(1);
+        }
+    });
+
+program
+    .command('autopsy')
+    .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
+    .addHelpText('after', `\nFlow:\n  • Choose a HUD wallet or enter another address.\n  • Enter the token mint to analyze.\n  • Saves autopsy JSON to ./profiles/autopsy-<wallet>-<symbol>-<ts>.json and prints the AI narrative.\n\nExample:\n  $ scoundrel autopsy\n`)
+    .action(async () => {
+        const rl = readline.createInterface({ input, output });
+        try {
+            const wallets = await getAllWallets();
+            const options = wallets.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
+            options.push(`${wallets.length + 1}) Other (enter address)`);
+
+            console.log('Which wallet?');
+            options.forEach((opt) => console.log(opt));
+            let choice = await rl.question('> ');
+            let walletLabel;
+            let walletAddress;
+
+            const numeric = Number(choice);
+            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= wallets.length) {
+                const selected = wallets[numeric - 1];
+                walletLabel = selected.alias;
+                walletAddress = selected.pubkey;
+            } else {
+                if (!walletAddress) {
+                    walletAddress = choice && choice.trim() ? choice.trim() : null;
+                }
+                if (!walletAddress) {
+                    walletAddress = await rl.question('Enter wallet address:\n> ');
+                }
+                walletLabel = 'other';
+            }
+
+            let mint = await rl.question('Enter mint to trace:\n> ');
+            mint = mint.trim();
+            if (!mint) {
+                throw new Error('mint is required');
+            }
+            if (!isBase58Mint(mint)) {
+                console.warn('[scoundrel] mint does not look like base58; continuing anyway');
+            }
+
+            const result = await runAutopsy({ walletLabel, walletAddress, mint });
+            if (!result) {
+                process.exit(0);
+            }
+            process.exit(0);
+        } catch (err) {
+            logAutopsyError(err);
+            process.exit(1);
+        } finally {
+            rl.close();
+            try { await BootyBox.close(); } catch (_) {}
         }
     });
 
@@ -292,7 +372,56 @@ program
         }
     });
     
-progam
+program
+    .command('warchest')
+    .description('Manage your Scoundrel warchest wallet registry')
+    .argument('[subcommand]', 'add|list|remove|set-color')
+    .argument('[arg1]', 'First argument for subcommand (e.g., alias)')
+    .argument('[arg2]', 'Second argument for subcommand (e.g., color)')
+    .option('-s, --solo', 'Select a single wallet interactively (registry-only for now)')
+    .addHelpText('after', `
+Examples:
+  $ scoundrel warchest add
+  $ scoundrel warchest list
+  $ scoundrel warchest remove warlord
+  $ scoundrel warchest set-color warlord cyan
+  $ scoundrel warchest -solo
+`)
+    .action(async (subcommand, arg1, arg2, cmd) => {
+        const args = [];
+
+        const opts = cmd.opts ? cmd.opts() : {};
+        if (opts.solo) {
+            // warchest CLI expects "-solo" or "--solo" in argv
+            args.push('-solo');
+        }
+
+        if (subcommand) args.push(subcommand);
+        if (arg1) args.push(arg1);
+        if (arg2) args.push(arg2);
+
+        try {
+            if (!warchestRun) {
+                throw new Error('warchest command module does not export a runnable function');
+            }
+            await warchestRun(args);
+        } catch (err) {
+            console.error('[scoundrel] ❌ warchest command failed:', err?.message || err);
+            process.exitCode = 1;
+        } finally {
+            try {
+                await BootyBox.close();
+            } catch (e) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('[scoundrel] warning: failed to close DB pool:', e?.message || e);
+                }
+            }
+            // Ensure the CLI returns control to the shell after warchest completes
+            process.exit(typeof process.exitCode === 'number' ? process.exitCode : 0);
+        }
+    });
+
+program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
     .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
@@ -334,7 +463,7 @@ progam
         console.log(`  Pool     : ${DB_POOL_LIMIT}`);
 
         try {
-            await ping();
+            await BootyBox.ping();
             console.log('[db] ✅ connected');
         } catch (e) {
             console.log('[db] ❌ connection failed:', e?.message || e);

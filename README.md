@@ -33,6 +33,19 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 - A MySQL database
 - Node.js 22 LTS and npm.
 
+## Database Access (BootyBox)
+
+All MySQL interactions now flow through **BootyBox** (`lib/db/BootyBox.mysql.js`).  
+BootyBox owns the shared pool (via `lib/db/mysql.js`), creates the trading tables on start, and exposes domain helpers for every `sc_*` table plus the warchest registry. Highlights:
+
+- `init()` bootstraps the shared pool + schema and must run before calling other helpers.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power both the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
+- Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
+- Higher-level modules (`ask`, `tuneStrategy`, `dossier`, `autopsy`, dossier CLI, profile persistence, etc.) simply call these helpers—no SQL lives outside BootyBox anymore.
+- Unit tests cover the shared helpers under `__tests__/lib/db/BootyBox.scTables.test.js`.
+
+If you add a new table or CLI persistence path, implement it inside BootyBox and reuse the pool it manages.
+
 ---
 
 ## What’s new (Nov 2025)
@@ -70,22 +83,118 @@ CLI commands ───────────▶ /lib/*.js processors
 
 ---
 
+## Solana RPC methods library
+
+Scoundrel now ships a dedicated SolanaTracker RPC façade at `lib/solana/rpcMethods/`. Think of it as the VAULT77 relay tower: it binds the low-level Kit client to a clean, human-scale API.
+
+```js
+const { createSolanaTrackerRPCClient } = require('./lib/solanaTrackerRPCClient');
+const { createRpcMethods } = require('./lib/solana/rpcMethods');
+
+const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
+const rpcMethods = createRpcMethods(rpc, rpcSubs);
+
+const balance = await rpcMethods.getSolBalance('walletPubkey');
+```
+
+### HTTP helpers (all return Promises)
+
+| Helper | Signature | Notes |
+| --- | --- | --- |
+| `getSolBalance` | `(pubkey: string) => Promise<number>` | Converts lamports → SOL.
+| `getTokenAccountsByOwner` | `(owner: string, opts?) => Promise<{ owner, accounts, raw }>` | Normalized SPL positions.
+| `getTokenAccountsByOwnerV2` | `(owner: string, opts?) => Promise<{ owner, accounts, hasMore, nextCursor, totalCount, raw }>` | Cursor + pagination metadata.
+| `getMultipleAccounts` | `(pubkeys: string[], opts?) => Promise<{ accounts, raw }>` | Batched account infos.
+| `getFirstAvailableBlock` | `() => Promise<number>` | Earliest slot SolanaTracker serves.
+| `getTransaction` | `(signature: string, opts?) => Promise<{ signature, slot, blockTime, transaction, meta, raw } | null>` | Returns `null` when the signature is unknown.
+
+### WebSocket helpers
+
+Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and honors SolanaTracker options (plus optional `onError`).
+
+- `subscribeAccount(pubkey, onUpdate, opts?)`
+- `subscribeBlock(onUpdate, opts?)`
+- `subscribeSlot(onUpdate, opts?)`
+- `subscribeSlotsUpdates(onUpdate, opts?)`
+
+The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+
+---
+
+## SolanaTracker Data API library
+
+`lib/solanaTrackerDataClient.js` follows the same pattern: a thin factory binds the official `@solana-tracker/data-api` SDK to a folder of focused helpers under `lib/solanaTrackerData/methods/`. Every helper lives in its own module, carries unit tests under `__tests__/solanaTrackerData/methods/`, and runs through a shared retry/logger wrapper.
+
+```js
+const { SolanaTrackerDataClient } = require('./lib/solanaTrackerDataClient');
+
+const data = new SolanaTrackerDataClient({ apiKey: process.env.SOLANATRACKER_API_KEY });
+const token = await data.getTokenInformation('Mint...');
+const chart = await data.getWalletChart('Wallet...');
+const risk  = await data.getTokenRiskScores('Mint...');
+```
+
+### High-signal helpers
+
+| Helper | Notes |
+| --- | --- |
+| `getTokenInformation` / `getTokenByPoolAddress` | direct token lookups. |
+| `getTokenHoldersTop100`, `getLatestTokens`, `getMultipleTokens` | supply discovery feeds. |
+| `getTrendingTokens`, `getTokensByVolumeWithTimeframe`, `getTokenOverview` | curated discovery endpoints. |
+| `getTokenPrice`, `getMultipleTokenPrices` | wrap `/price` + `/price/multi` with retries. |
+| `getWalletTokens`, `getBasicWalletInformation` | wallet state snapshots. |
+| `getWalletTrades` | paginated harvest with optional `startTime` / `endTime` filtering and cursor handling. |
+| `getWalletChart` | portfolio curve, aliased as `getWalletPortfolioChart` for CLI consistency. |
+| `getTokenOhlcvData`, `getTokenPoolOhlcvData` | Chart/OHLCV endpoints for tokens or token/pool pairs. |
+| `getWalletPnl` | full-wallet pnl, optional `showHistoricPnl`, `holdingCheck`, `hideDetails`. |
+| `getTopTradersForToken` | top 100 profitable traders for a mint. |
+| `getTokenEvents` | decodes binary event streams into JSON. |
+| `getTokenRiskScores` | wraps `/risk/:mint`, normalizes `score`, `rating`, and per-factor severities (see docs/risk section). |
+| `searchTokens` | flexible search builder; arrays become comma lists, objects auto-JSON encode. |
+| `getTokenSnapshotAt`, `getTokenSnapshotNow` | composite helpers combining price + metadata. |
+| `healthCheck` | lightweight readiness probe used by dossier + CLI smoke tests. |
+
+All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
+
+Special endpoints:
+- **Risk** (`getTokenRiskScores`) returns `{ token, score, rating, factors, raw }`. Each factor carries `{ name, score, severity }` so downstream risk caps can stay deterministic.
+- **Search** (`searchTokens`) accepts advanced filters (arrays, nested objects) and translates them into the query-string the API expects. Empty filters throw immediately so we never spam the API with no-ops.
+
+See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tests under `__tests__/solanaTrackerData/methods/*.test.js`, and `docs/solanaTrackerData.md` for signature details plus risk/search notes.
+
+---
+
 ## Commands
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
 
 ### `dossier <WALLET>`
+
+**Operator Dossier**  
+Scoundrel harvests all trades, chart history, and on‑chain features for the selected wallet and generates a full CT/CIA‑style behavioral profile using the Responses API.  
+
 Harvests wallet trades + chart, merges a unified JSON payload, and sends it to the OpenAI Responses API to generate a CT/CIA‑style operator report.
 
-- Writes `./profiles/<alias>.json`
-- Writes merged file to `./data/<alias>-merged-*.json`
-- Prints the report to the console
-- Use `-r` / `--resend` to re-run AI on the latest merged file without re-harvesting
+### `autopsy`
+Interactive post‑trade analysis. Prompts you to select a tracked HUD wallet (or enter any Solana address) and a token mint, then builds a **single‑campaign trade autopsy** using enriched SolanaTracker data.
 
-Flags:
-- `-n, --name`       Human trader name (spaces allowed)
-- `-r, --resend`     Reuse latest merged file for given -n alias
-- `-l, --limit`      Max trades to fetch (default HARVEST_LIMIT)
+The autopsy engine pulls:
+- user‑specific token trades  
+- token metadata + price range  
+- OHLCV window (5m before → last sell → 5m after)  
+- PnL (realized + residual)  
+- ATH context  
+
+And generates:
+- structured JSON coaching analysis (`tradeAutopsy` job)  
+- entry/exit evaluation  
+- risk assessment and sizing feedback  
+- rules + corrections for future trades  
+
+Outputs:
+- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`  
+- Saves raw/parsed/enriched artifacts under `./autopsy/<wallet>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true  
+- Prints AI JSON into the terminal in a clean, sectioned layout  
 
 ### `ask`  
 Ask a question about a trader using their saved profile (Responses API).

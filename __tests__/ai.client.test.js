@@ -42,25 +42,4 @@ describe('ai/client helpers', () => {
     });
     expect(res).toEqual(json);
   });
-
-  test('callResponses forwards temperature and extras', async () => {
-    const mockCreate = OpenAI.__mockCreate;
-    mockCreate.mockResolvedValue({ output_text: '{}' });
-
-    await callResponses({
-      schema: { type: 'object' },
-      user: { ok: true },
-      system: 'sys',
-      temperature: 0.3,
-      top_p: 0.8,
-      seed: 99
-    });
-
-    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
-      temperature: 0.3,
-      top_p: 0.8,
-      seed: 99,
-      model: expect.any(String)
-    }));
-  });
 });

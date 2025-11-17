@@ -50,6 +50,15 @@ Follow these rules for **all new and modified code**:
   - Prefer small, single-responsibility modules.
   - Keep side effects at the edges (CLI entrypoints, process integration, network calls).
 
+### SolanaTracker clients
+
+- **RPC** helpers live in `lib/solana/rpcMethods/`; **Data API** helpers live in `lib/solanaTrackerData/methods/`.
+- Every Data API method belongs in its own file + Jest test (`__tests__/solanaTrackerData/methods/<name>.test.js`) and is bound via `lib/solanaTrackerDataClient.js`.
+- All helpers must go through the shared retry/logger context (`createDataClientContext`) and expose meaningful errors (`DataApiError`).
+- **Risk** (`getTokenRiskScores`) must continue returning `{ token, score, rating, factors, raw }` and keep factor/severity parsing in sync with docs.
+- **Search** (`searchTokens`) must support arrays → comma lists and nested objects → JSON strings while rejecting empty filter sets.
+- Datastream/WebSocket access is off limits; stick to HTTP endpoints only.
+
 ---
 
 ## Testing (Jest Requirements)
@@ -136,4 +145,3 @@ Do **not**:
 - Add excessive logging.
 - Create breaking CLI changes.
 - Silence errors without context.
-
