@@ -1,0 +1,42 @@
+
+
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "answer": { "type": "string" },
+    "bullets": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "changes": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Partial JSON object containing only fields that should change."
+    },
+    "patch": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "op": { "type": "string", "enum": ["add", "remove", "replace"] },
+          "path": { "type": "string" },
+          "value": { "type": ["string", "number", "boolean", "null", "object", "array"] }
+        },
+        "required": ["op", "path"]
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rationale": { "type": "string" }
+  },
+  "required": ["answer", "bullets", "actions", "changes", "patch", "risks", "rationale"]
+}
