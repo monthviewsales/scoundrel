@@ -169,24 +169,32 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
 
 ### `dossier <WALLET>`
+
+**Operator Dossier**  
+Scoundrel harvests all trades, chart history, and on‑chain features for the selected wallet and generates a full CT/CIA‑style behavioral profile using the Responses API.  
+
 Harvests wallet trades + chart, merges a unified JSON payload, and sends it to the OpenAI Responses API to generate a CT/CIA‑style operator report.
 
 ### `autopsy`
-Interactive command that walks you through selecting a HUD wallet (or entering any address) and a token mint, then:
-- harvests all trades for that wallet/mint pair,
-- pulls price range, PnL, ATH, and OHLCV context from SolanaTracker,
-- calls the `tradeAutopsy` AI job for a structured post‑mortem,
-- saves the artifact to `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`, and prints the AI JSON to the terminal.
+Interactive post‑trade analysis. Prompts you to select a tracked HUD wallet (or enter any Solana address) and a token mint, then builds a **single‑campaign trade autopsy** using enriched SolanaTracker data.
 
-- Writes `./profiles/<alias>.json`
-- Writes merged file to `./data/<alias>-merged-*.json`
-- Prints the report to the console
-- Use `-r` / `--resend` to re-run AI on the latest merged file without re-harvesting
+The autopsy engine pulls:
+- user‑specific token trades  
+- token metadata + price range  
+- OHLCV window (5m before → last sell → 5m after)  
+- PnL (realized + residual)  
+- ATH context  
 
-Flags:
-- `-n, --name`       Human trader name (spaces allowed)
-- `-r, --resend`     Reuse latest merged file for given -n alias
-- `-l, --limit`      Max trades to fetch (default HARVEST_LIMIT)
+And generates:
+- structured JSON coaching analysis (`tradeAutopsy` job)  
+- entry/exit evaluation  
+- risk assessment and sizing feedback  
+- rules + corrections for future trades  
+
+Outputs:
+- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`  
+- Saves raw/parsed/enriched artifacts under `./autopsy/<wallet>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true  
+- Prints AI JSON into the terminal in a clean, sectioned layout  
 
 ### `ask`  
 Ask a question about a trader using their saved profile (Responses API).
