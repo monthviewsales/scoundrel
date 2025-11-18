@@ -64,12 +64,14 @@ const mockBootInit = jest.fn().mockResolvedValue();
 const mockGetCoin = jest.fn().mockResolvedValue(null);
 const mockAddCoin = jest.fn().mockResolvedValue();
 const mockUpsertProfile = jest.fn().mockResolvedValue();
+const mockRecordAutopsy = jest.fn().mockResolvedValue();
 
 jest.mock('../lib/db/BootyBox.mysql', () => ({
   init: mockBootInit,
   getCoinByMint: mockGetCoin,
   addOrUpdateCoin: mockAddCoin,
   upsertProfileSnapshot: mockUpsertProfile,
+  recordTradeAutopsy: mockRecordAutopsy,
 }));
 
 jest.mock('../lib/id/issuer', () => ({
@@ -93,6 +95,12 @@ describe('runAutopsy', () => {
     expect(result.ai.grade).toBe('B');
     expect(fs.writeFileSync).toHaveBeenCalled();
     expect(path.basename(result.artifactPath)).toMatch(/^autopsy-/);
+    expect(mockRecordAutopsy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        wallet: mockRunData.walletAddress,
+        mint: mockRunData.mint,
+      }),
+    );
   });
 
   test('logs context when coin persistence fails', async () => {

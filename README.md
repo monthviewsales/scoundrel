@@ -192,9 +192,9 @@ And generates:
 - rules + corrections for future trades  
 
 Outputs:
-- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`  
-- Saves raw/parsed/enriched artifacts under `./autopsy/<wallet>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true  
-- Prints AI JSON into the terminal in a clean, sectioned layout  
+- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`
+- Saves raw/parsed/enriched artifacts under `./data/autopsy/<wallet>/<mint>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true
+- Prints AI JSON into the terminal in a clean, sectioned layout
 
 ### `ask`  
 Ask a question about a trader using their saved profile (Responses API).
@@ -231,7 +231,7 @@ node index.js test
 ## Data artifacts
 
 - `./profiles/<alias>.json` — final dossier with markdown + operator_summary
-- `./data/<alias>-merged-*.json` — full merged payload (used for resend mode)
+- `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 
 ---
 
