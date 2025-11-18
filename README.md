@@ -28,10 +28,15 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Requirements
 
-- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).  
-- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.  
+- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
+- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
 - A MySQL database
 - Node.js 22 LTS and npm.
+
+## Testing
+
+- Run the full suite with `npm test`.
+- There is no dedicated `lib/dossier.test.js` path; dossier artifact handling is exercised through `__tests__/persist/jsonArtifacts.test.js`.
 
 ## Database Access (BootyBox)
 
@@ -192,9 +197,9 @@ And generates:
 - rules + corrections for future trades  
 
 Outputs:
-- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`  
-- Saves raw/parsed/enriched artifacts under `./autopsy/<wallet>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true  
-- Prints AI JSON into the terminal in a clean, sectioned layout  
+- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`
+- Saves raw/parsed/enriched artifacts under `./data/autopsy/<wallet>/<mint>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true
+- Prints AI JSON into the terminal in a clean, sectioned layout
 
 ### `ask`  
 Ask a question about a trader using their saved profile (Responses API).
@@ -231,7 +236,7 @@ node index.js test
 ## Data artifacts
 
 - `./profiles/<alias>.json` — final dossier with markdown + operator_summary
-- `./data/<alias>-merged-*.json` — full merged payload (used for resend mode)
+- `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 
 ---
 
