@@ -28,10 +28,15 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Requirements
 
-- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).  
-- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.  
+- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
+- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
 - A MySQL database
 - Node.js 22 LTS and npm.
+
+## Testing
+
+- Run the full suite with `npm test`.
+- There is no dedicated `lib/dossier.test.js` path; dossier artifact handling is exercised through `__tests__/persist/jsonArtifacts.test.js`.
 
 ## Database Access (BootyBox)
 
