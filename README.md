@@ -28,10 +28,15 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Requirements
 
-- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).  
-- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.  
+- A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
+- An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
 - A MySQL database
 - Node.js 22 LTS and npm.
+
+## Testing
+
+- Run the full suite with `npm test`.
+- Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
 
 ## Database Access (BootyBox)
 
@@ -46,6 +51,8 @@ BootyBox owns the shared pool (via `lib/db/mysql.js`), creates the trading table
 
 If you add a new table or CLI persistence path, implement it inside BootyBox and reuse the pool it manages.
 
+- Token metadata caching now flows through `/lib/services/tokenInfoService.js`, which safely merges SolanaTracker metadata with cached DB rows without overwriting good data during API outages.
+
 ---
 
 ## What’s new (Nov 2025)
@@ -59,9 +66,10 @@ Scoundrel has been refactored to a **Responses‑first** architecture. No Assist
   - `dossier.js` → harvests wallet trades + chart, merges into unified JSON, and calls AI job.
   - `ask.js` → Q&A over a saved profile.
   - `tune.js` → strategy tuning proposals.
-- Deterministic outputs via **JSON Schema (strict)**.
+- Full migration from legacy REST `userTokenTradesByWallet` to the official SolanaTracker Data API SDK (`getUserTokenTrades`), including dossier + autopsy.
 - Quiet, predictable logging (`NODE_ENV=production` by default).
 - `dossier -r` flag to re-run AI on latest merged file without re-harvesting.
+- Token metadata caching now flows through `/lib/services/tokenInfoService.js`, which safely merges SolanaTracker metadata with cached DB rows without overwriting good data during API outages.
 
 ---
 
@@ -153,8 +161,11 @@ const risk  = await data.getTokenRiskScores('Mint...');
 | `searchTokens` | flexible search builder; arrays become comma lists, objects auto-JSON encode. |
 | `getTokenSnapshotAt`, `getTokenSnapshotNow` | composite helpers combining price + metadata. |
 | `healthCheck` | lightweight readiness probe used by dossier + CLI smoke tests. |
+| `getUserTokenTrades` | wallet + mint–specific trades, replaces legacy REST integration. |
 
 All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
+
+Token metadata caching is now handled by `/lib/services/tokenInfoService.js`, ensuring dossier, autopsy, and future processors all use a unified, hardened metadata pipeline.
 
 Special endpoints:
 - **Risk** (`getTokenRiskScores`) returns `{ token, score, rating, factors, raw }`. Each factor carries `{ name, score, severity }` so downstream risk caps can stay deterministic.
@@ -192,9 +203,9 @@ And generates:
 - rules + corrections for future trades  
 
 Outputs:
-- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`  
-- Saves raw/parsed/enriched artifacts under `./autopsy/<wallet>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true  
-- Prints AI JSON into the terminal in a clean, sectioned layout  
+- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`
+- Saves raw/parsed/enriched artifacts under `./data/autopsy/<wallet>/<mint>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true
+- Prints AI JSON into the terminal in a clean, sectioned layout
 
 ### `ask`  
 Ask a question about a trader using their saved profile (Responses API).
@@ -231,7 +242,7 @@ node index.js test
 ## Data artifacts
 
 - `./profiles/<alias>.json` — final dossier with markdown + operator_summary
-- `./data/<alias>-merged-*.json` — full merged payload (used for resend mode)
+- `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 
 ---
 
@@ -275,6 +286,13 @@ All AI jobs enforce **strict JSON Schema**. The wallet profile currently include
 
 ---
 
+## Maintenance Notes
+
+- The legacy HTTP integration under `integrations/solanatracker/userTokenTrades.js` is now fully deprecated.
+  All callers use the official SDK `getUserTokenTrades` method.  
+  The file remains only for historical reference and may be removed in a future development cycle.
+
+---
 
 ## Roadmap to Success
 
