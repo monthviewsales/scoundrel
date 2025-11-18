@@ -11,6 +11,8 @@ jobs:
     strategy:
       matrix:
         node-version: [20.x]
+    env:
+        SOLANATRACKER_API_KEY: ${{ secrets.SOLANATRACKER_API_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
