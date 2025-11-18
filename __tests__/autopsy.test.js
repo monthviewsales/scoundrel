@@ -4,8 +4,8 @@ const path = require('path');
 
 const mockRunData = {
   walletLabel: 'warlord',
-  walletAddress: 'Wallet111',
-  mint: 'Mint111',
+  walletAddress: 'DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR',
+  mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump',
 };
 
 jest.mock('fs', () => ({
@@ -16,16 +16,37 @@ jest.mock('fs', () => ({
 
 jest.mock('../lib/solanaTrackerDataClient', () => ({
   createSolanaTrackerDataClient: jest.fn(() => ({
-    getTokenInformation: jest.fn().mockResolvedValue({ symbol: 'TEST', name: 'Token', decimals: 9 }),
+    getTokenInformation: jest.fn().mockResolvedValue({ symbol: 'CHILLHOUSE', name: 'Chillhouse', decimals: 9 }),
     getWalletTrades: jest.fn().mockResolvedValue([
-      { mint: 'Mint111', side: 'buy', amount: 2, price: { sol: 1 }, timestamp: 10 },
-      { mint: 'Mint111', side: 'sell', amount: 1, price: { sol: 2 }, timestamp: 20 },
+      { mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump', side: 'buy', amount: 2, price: { sol: 1 }, timestamp: 10 },
+      { mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump', side: 'sell', amount: 1, price: { sol: 2 }, timestamp: 20 },
     ]),
     getPriceRange: jest.fn().mockResolvedValue({ low: 1, high: 2 }),
     getTokenPnL: jest.fn().mockResolvedValue({ pnl: 1 }),
     getAthPrice: jest.fn().mockResolvedValue({ ath: 3 }),
     getTokenOhlcvData: jest.fn().mockResolvedValue({ candles: [{ t: 5, o: 1, h: 2, l: 1, c: 2, v: 10 }] }),
   })),
+}));
+
+jest.mock('../integrations/solanatracker/userTokenTrades', () => ({
+  getUserTokenTradesByWallet: jest.fn().mockResolvedValue([
+    {
+      txId: 'fake-tx-id-1',
+      mint: mockRunData.mint,
+      side: 'buy',
+      amount: 2,
+      price: { sol: 1 },
+      timestamp: 10,
+    },
+    {
+      txId: 'fake-tx-id-2',
+      mint: mockRunData.mint,
+      side: 'sell',
+      amount: 1,
+      price: { sol: 2 },
+      timestamp: 20,
+    },
+  ]),
 }));
 
 jest.mock('../ai/jobs/tradeAutopsy', () => ({
@@ -90,7 +111,7 @@ describe('runAutopsy', () => {
     expect(log.warn).toHaveBeenCalledWith(
       expect.stringContaining('[autopsy] failed to persist token info'),
       expect.objectContaining({
-        mint: 'Mint111',
+        mint: mockRunData.mint,
         code: 'ER_BAD_FIELD_ERROR',
         errno: 1054,
         sqlState: '42S22',
