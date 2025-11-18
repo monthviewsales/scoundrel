@@ -132,7 +132,7 @@ describe('runAutopsy', () => {
     await runAutopsy(mockRunData);
 
     expect(log.warn).toHaveBeenCalledWith(
-      expect.stringContaining('[autopsy] failed to persist token info'),
+      expect.stringContaining('[tokenInfoService.ensureTokenInfo] failed to persist token info'),
       expect.objectContaining({
         mint: mockRunData.mint,
         code: 'ER_BAD_FIELD_ERROR',
