@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "trade_autopsy_v2_1",
+  "description": "Structured output schema for WarlordAI trade autopsy responses.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "grade": {
+      "type": "string",
+      "description": "Letter grade for the overall campaign performance (e.g. A, B-, C+, D, F)."
+    },
+    "summary": {
+      "type": "string",
+      "description": "High-level summary of how the campaign was traded and the main outcome."
+    },
+    "entryAnalysis": {
+      "type": "string",
+      "description": "Analysis of entries: timing, sizing, context, and patterns in entry behavior."
+    },
+    "exitAnalysis": {
+      "type": "string",
+      "description": "Analysis of exits: timing, sizing, context, and patterns in exit behavior."
+    },
+    "riskManagement": {
+      "type": "string",
+      "description": "Discussion of risk management: position sizing, cutting losers, managing winners, and exposure."
+    },
+    "profitability": {
+      "type": "string",
+      "description": "Discussion of realized PnL, EV, and whether the outcome was good given the opportunity."
+    },
+    "lessons": {
+      "type": "array",
+      "description": "Concrete lessons the trader should take away from this campaign.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "description": "Short tags categorizing this campaign (e.g. 'chased', 'paperHands', 'overexposed').",
+      "items": {
+        "type": "string"
+      }
+    },
+    "idealReplay": {
+      "type": "object",
+      "description": "Alternative, more profitable way WarlordAI would have traded this campaign with the same capital and time window.",
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Short summary of the ideal replay strategy."
+        },
+        "startingCapitalUsd": {
+          "type": "number",
+          "description": "Maximum capital (in USD) available for this simulated strategy, aligned with the user's maximum deployed capital."
+        },
+        "projectedProfitUsd": {
+          "type": "number",
+          "description": "Net profit (in USD) for the simulated strategy."
+        },
+        "projectedProfitPercent": {
+          "type": "number",
+          "description": "Projected profit percentage for the simulated strategy."
+        },
+        "keyTechniques": {
+          "type": "array",
+          "description": "List of key techniques used in the ideal replay.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "simulatedTrades": {
+          "type": "array",
+          "description": "Simulated trades for the ideal replay.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "timestamp": {
+                "type": "integer",
+                "description": "Timestamp in milliseconds since epoch, within the campaign window."
+              },
+              "side": {
+                "type": "string",
+                "enum": ["buy", "sell"],
+                "description": "Trade direction: buy or sell."
+              },
+              "amountSol": {
+                "type": "number",
+                "description": "Size of the trade in SOL (not including fees)."
+              },
+              "amountToken": {
+                "type": "number",
+                "description": "Size of the trade in token units."
+              },
+              "priceUsd": {
+                "type": "number",
+                "description": "Approximate execution price in USD."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Short explanation of why this trade is taken at this time and price."
+              }
+            },
+            "required": [
+              "timestamp",
+              "side",
+              "amountSol",
+              "amountToken",
+              "priceUsd",
+              "reason"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes explaining the ideal replay strategy."
+        }
+      },
+      "required": [
+        "summary",
+        "startingCapitalUsd",
+        "projectedProfitUsd",
+        "projectedProfitPercent",
+        "keyTechniques",
+        "simulatedTrades",
+        "notes"
+      ]
+    }
+  },
+  "required": [
+    "grade",
+    "summary",
+    "entryAnalysis",
+    "exitAnalysis",
+    "riskManagement",
+    "profitability",
+    "lessons",
+    "tags",
+    "idealReplay"
+  ]
+}
