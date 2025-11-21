@@ -40,7 +40,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Database Access (BootyBox)
 
-All MySQL interactions now flow through **BootyBox** (`lib/db/BootyBox.mysql.js`).  
+All MySQL interactions now flow through **BootyBox** (`packages/bootybox.js` a git submodule shared with other VAULT77 relics).  
 BootyBox owns the shared pool (via `lib/db/mysql.js`), creates the trading tables on start, and exposes domain helpers for every `sc_*` table plus the warchest registry. Highlights:
 
 - `init()` bootstraps the shared pool + schema and must run before calling other helpers.

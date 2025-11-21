@@ -4,7 +4,7 @@ require('dotenv').config();
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./lib/db/BootyBox.mysql');
+const BootyBox = require('./lib/packages/bootybox');
 const { requestId } = require('./lib/id/issuer');
 const chalk = require('chalk');
 const util = require('util');
