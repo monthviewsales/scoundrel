@@ -10,6 +10,7 @@ const {
   formatRunId,
   getArtifactConfig,
   loadLatestJson,
+  normalizeTraderAlias,
   readJsonArtifact,
   removeArtifacts,
   sanitizeSegment,
@@ -31,6 +32,11 @@ describe('jsonArtifacts helpers', () => {
     expect(sanitizeSegment('Foo Bar!')).toBe('foo-bar');
     expect(sanitizeSegment('___Alpha__Beta___')).toBe('___alpha__beta___');
     expect(sanitizeSegment('', 'fallback')).toBe('fallback');
+  });
+
+  test('normalizeTraderAlias mirrors dossier harvest behavior', () => {
+    expect(normalizeTraderAlias('Trader One', 'Wallet123')).toBe('trader_one');
+    expect(normalizeTraderAlias(null, 'Wallet:123')).toBe('wallet_123');
   });
 
   test('write/read/load helpers manage JSON artifacts', () => {

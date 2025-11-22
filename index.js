@@ -15,7 +15,7 @@ const { runAutopsy } = require('./lib/autopsy');
 const {
     dossierBaseDir,
     loadLatestJson,
-    sanitizeSegment,
+    normalizeTraderAlias,
 } = require('./lib/persist/jsonArtifacts');
 const warchestModule = require('./commands/warchest');
 const warchestRun = typeof warchestModule === 'function'
@@ -182,7 +182,7 @@ program
         const traderName = opts.name || process.env.TEST_TRADER || null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
-        const alias = sanitizeSegment(traderName || walletId);
+        const alias = normalizeTraderAlias(traderName, walletId);
 
         console.log(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {

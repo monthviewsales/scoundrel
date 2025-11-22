@@ -24,6 +24,7 @@ jest.mock('../lib/solanaTrackerDataClient', () => ({
 const mockWriteJsonArtifact = jest.fn(() => path.join('/tmp/dossier', 'dummy.json'));
 
 jest.mock('../lib/persist/jsonArtifacts', () => ({
+  ...jest.requireActual('../lib/persist/jsonArtifacts'),
   dossierBaseDir: jest.fn(() => '/tmp/dossier'),
   formatRunId: jest.fn(() => 'test-run-id'),
   getArtifactConfig: jest.fn(() => ({
@@ -64,17 +65,25 @@ jest.mock('../lib/packages/bootybox', () => ({
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
+const originalOpenAiKey = process.env.OPENAI_API_KEY;
+const originalOpenAiModel = process.env.OPENAI_RESPONSES_MODEL;
 
 beforeAll(() => {
   console.log = jest.fn();
   console.warn = jest.fn();
   console.error = jest.fn();
+
+  process.env.OPENAI_API_KEY = originalOpenAiKey || 'test-openai-key';
+  process.env.OPENAI_RESPONSES_MODEL = originalOpenAiModel || 'gpt-4o-mini';
 });
 
 afterAll(() => {
   console.log = originalConsoleLog;
   console.warn = originalConsoleWarn;
   console.error = originalConsoleError;
+
+  process.env.OPENAI_API_KEY = originalOpenAiKey;
+  process.env.OPENAI_RESPONSES_MODEL = originalOpenAiModel;
 });
 
 describe('harvestWallet (dossier)', () => {
