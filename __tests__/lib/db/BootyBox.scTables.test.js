@@ -27,7 +27,7 @@ describe('BootyBox sc_* helpers', () => {
 
   const loadBootyBox = async () => {
     jest.resetModules();
-    BootyBox = require('../../../lib/db/BootyBox.mysql');
+    BootyBox = require('../../../lib/packages/bootybox');
     mockQuery.mockResolvedValue([[], []]);
     await BootyBox.init();
     mockQuery.mockClear();
