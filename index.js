@@ -4,7 +4,7 @@ require('dotenv').config();
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./lib/db/BootyBox.mysql');
+const BootyBox = require('./lib/packages/bootybox');
 const { requestId } = require('./lib/id/issuer');
 const chalk = require('chalk');
 const util = require('util');
@@ -12,6 +12,11 @@ const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
 const { getAllWallets } = require('./lib/warchest/walletRegistry');
 const { runAutopsy } = require('./lib/autopsy');
+const {
+    dossierBaseDir,
+    loadLatestJson,
+    normalizeTraderAlias,
+} = require('./lib/persist/jsonArtifacts');
 const warchestModule = require('./commands/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
@@ -177,35 +182,21 @@ program
         const traderName = opts.name || process.env.TEST_TRADER || null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
+        const alias = normalizeTraderAlias(traderName, walletId);
 
         console.log(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
             // ----- RESEND MODE: reuse latest merged payload and skip harvesting -----
             if (opts.resend) {
-                const alias = (traderName || walletId).replace(/[^a-z0-9_-]/gi, '_');
-                const dataDir = join(process.cwd(), 'data');
-                if (!existsSync(dataDir)) {
-                    console.error('[scoundrel] Data directory not found:', dataDir);
+                const baseDir = dossierBaseDir(alias);
+                const latest = loadLatestJson(baseDir, ['merged'], 'merged-');
+                if (!latest || latest.data == null) {
+                    console.error(`[scoundrel] No merged files found for "${alias}" in ${baseDir}. Run without --resend first.`);
                     process.exit(1);
                 }
-                const prefix = `${alias}-merged-`;
-                const candidates = readdirSync(dataDir)
-                    .filter(f => f.startsWith(prefix) && f.endsWith('.json'))
-                    .sort();
-                if (candidates.length === 0) {
-                    console.error(`[scoundrel] No merged files found for "${alias}" in ${dataDir}. Run without --resend first.`);
-                    process.exit(1);
-                }
-                const latestFile = candidates[candidates.length - 1];
-                const latestPath = join(dataDir, latestFile);
-                console.log(`[scoundrel] Reusing merged payload: ${latestFile}`);
-                let merged;
-                try {
-                    merged = JSON.parse(readFileSync(latestPath, 'utf8'));
-                } catch (e) {
-                    console.error('[scoundrel] Failed to read/parse merged JSON:', latestPath, e?.message || e);
-                    process.exit(1);
-                }
+                const latestPath = latest.path;
+                console.log(`[scoundrel] Reusing merged payload: ${latestPath}`);
+                const merged = latest.data;
                 const { analyzeWallet } = require('./ai/jobs/walletAnalysis');
                 const aiOut = await analyzeWallet({ merged });
                 const openAiResult = aiOut && aiOut.version ? aiOut : { version: 'dossier.freeform.v1', markdown: String(aiOut || '') };
@@ -249,7 +240,7 @@ program
             // Write profile JSON under ./profiles
             const dir = join(process.cwd(), 'profiles');
             if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-            const fname = `${(traderName || walletId).replace(/[^a-z0-9_-]/gi, '_')}.json`;
+            const fname = `${alias}.json`;
             const outPath = join(dir, fname);
             writeFileSync(outPath, JSON.stringify(result.openAiResult, null, 2));
             console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);

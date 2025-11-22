@@ -16,37 +16,52 @@ jest.mock('fs', () => ({
 
 jest.mock('../lib/solanaTrackerDataClient', () => ({
   createSolanaTrackerDataClient: jest.fn(() => ({
-    getTokenInformation: jest.fn().mockResolvedValue({ symbol: 'CHILLHOUSE', name: 'Chillhouse', decimals: 9 }),
+    getTokenInformation: jest.fn().mockResolvedValue({
+      symbol: 'CHILLHOUSE',
+      name: 'Chillhouse',
+      decimals: 9,
+    }),
     getWalletTrades: jest.fn().mockResolvedValue([
-      { mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump', side: 'buy', amount: 2, price: { sol: 1 }, timestamp: 10 },
-      { mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump', side: 'sell', amount: 1, price: { sol: 2 }, timestamp: 20 },
+      {
+        mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump',
+        side: 'buy',
+        amount: 2,
+        price: { sol: 1 },
+        timestamp: 10,
+      },
+      {
+        mint: 'GkyPYa7NnCFbduLknCfBfP7p8564X1VZhwZYJ6CZpump',
+        side: 'sell',
+        amount: 1,
+        price: { sol: 2 },
+        timestamp: 20,
+      },
+    ]),
+    getUserTokenTrades: jest.fn().mockResolvedValue([
+      {
+        txId: 'fake-tx-id-1',
+        mint: mockRunData.mint,
+        side: 'buy',
+        amount: 2,
+        price: { sol: 1 },
+        timestamp: 10,
+      },
+      {
+        txId: 'fake-tx-id-2',
+        mint: mockRunData.mint,
+        side: 'sell',
+        amount: 1,
+        price: { sol: 2 },
+        timestamp: 20,
+      },
     ]),
     getPriceRange: jest.fn().mockResolvedValue({ low: 1, high: 2 }),
     getTokenPnL: jest.fn().mockResolvedValue({ pnl: 1 }),
     getAthPrice: jest.fn().mockResolvedValue({ ath: 3 }),
-    getTokenOhlcvData: jest.fn().mockResolvedValue({ candles: [{ t: 5, o: 1, h: 2, l: 1, c: 2, v: 10 }] }),
+    getTokenOhlcvData: jest
+      .fn()
+      .mockResolvedValue({ candles: [{ t: 5, o: 1, h: 2, l: 1, c: 2, v: 10 }] }),
   })),
-}));
-
-jest.mock('../integrations/solanatracker/userTokenTrades', () => ({
-  getUserTokenTradesByWallet: jest.fn().mockResolvedValue([
-    {
-      txId: 'fake-tx-id-1',
-      mint: mockRunData.mint,
-      side: 'buy',
-      amount: 2,
-      price: { sol: 1 },
-      timestamp: 10,
-    },
-    {
-      txId: 'fake-tx-id-2',
-      mint: mockRunData.mint,
-      side: 'sell',
-      amount: 1,
-      price: { sol: 2 },
-      timestamp: 20,
-    },
-  ]),
 }));
 
 jest.mock('../ai/jobs/tradeAutopsy', () => ({
@@ -64,12 +79,14 @@ const mockBootInit = jest.fn().mockResolvedValue();
 const mockGetCoin = jest.fn().mockResolvedValue(null);
 const mockAddCoin = jest.fn().mockResolvedValue();
 const mockUpsertProfile = jest.fn().mockResolvedValue();
+const mockRecordAutopsy = jest.fn().mockResolvedValue();
 
-jest.mock('../lib/db/BootyBox.mysql', () => ({
+jest.mock('../lib/packages/bootybox', () => ({
   init: mockBootInit,
   getCoinByMint: mockGetCoin,
   addOrUpdateCoin: mockAddCoin,
   upsertProfileSnapshot: mockUpsertProfile,
+  recordTradeAutopsy: mockRecordAutopsy,
 }));
 
 jest.mock('../lib/id/issuer', () => ({
@@ -93,6 +110,12 @@ describe('runAutopsy', () => {
     expect(result.ai.grade).toBe('B');
     expect(fs.writeFileSync).toHaveBeenCalled();
     expect(path.basename(result.artifactPath)).toMatch(/^autopsy-/);
+    expect(mockRecordAutopsy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        wallet: mockRunData.walletAddress,
+        mint: mockRunData.mint,
+      }),
+    );
   });
 
   test('logs context when coin persistence fails', async () => {
@@ -109,7 +132,7 @@ describe('runAutopsy', () => {
     await runAutopsy(mockRunData);
 
     expect(log.warn).toHaveBeenCalledWith(
-      expect.stringContaining('[autopsy] failed to persist token info'),
+      expect.stringContaining('[tokenInfoService.ensureTokenInfo] failed to persist token info'),
       expect.objectContaining({
         mint: mockRunData.mint,
         code: 'ER_BAD_FIELD_ERROR',
