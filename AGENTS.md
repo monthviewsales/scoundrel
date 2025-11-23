@@ -49,9 +49,11 @@ Follow these rules for **all new and modified code**:
 - **Patterns**
   - Prefer small, single-responsibility modules.
   - Keep side effects at the edges (CLI entrypoints, process integration, network calls).
+  - Larger services factories should be in /services and imported as needed.
 
 ### SolanaTracker clients
 
+- docs/solanaTrackerData.md contains additional technical info about the SolanaTracker clients.
 - **RPC** helpers live in `lib/solana/rpcMethods/`; **Data API** helpers live in `lib/solanaTrackerData/methods/`.
 - Every Data API method belongs in its own file + Jest test (`__tests__/solanaTrackerData/methods/<name>.test.js`) and is bound via `lib/solanaTrackerDataClient.js`.
 - All helpers must go through the shared retry/logger context (`createDataClientContext`) and expose meaningful errors (`DataApiError`).
@@ -133,7 +135,9 @@ Rules for AI coding agents:
 - Keep changes small and focused.
 - Match surrounding style.
 - Prefer updating this file over divergent behavior.
-- Never introduce new dependencies without explicit instruction.
+- Never introduce new dependencies without explicit instruction or permission.
+- Unit testing must pass before the end of your turn.
+- After changes review & update the README.md for accuracy.  Its goal is to be an overview and getting started guide for humans and AI agents.
 
 ---
 
