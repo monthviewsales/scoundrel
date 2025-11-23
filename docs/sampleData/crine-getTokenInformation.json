@@ -1,0 +1,193 @@
+{
+	"token": {
+		"name": "Im Crine",
+		"symbol": "Crine",
+		"mint": "CRKxwe6m8xpDa3WmjB3PMKNBzK4WesSYxkyFoNQBpump",
+		"decimals": 6,
+		"uri": "https://ipfs.io/ipfs/bafkreifvpwhk45ksdjm3q5oyhuxyjx5rrnstskgwy2hx5w5p3lhm4kdox4",
+		"hasFileMetaData": true,
+		"description": "",
+		"image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreigs7ec7gdn6jreqjhygnngpkf55n3bnfuddl6mt7ggb5tlblf7tze",
+		"showName": true,
+		"createdOn": "https://pump.fun",
+		"twitter": "https://x.com/i/communities/1992368253885108244",
+		"website": "https://knowyourmeme.com/memes/im-crine",
+		"strictSocials": {
+			"twitter": "https://x.com/i/communities/1992368253885108244",
+			"website": "https://knowyourmeme.com/memes/im-crine"
+		},
+		"creation": {
+			"creator": "993axERwzoqJSHqavL18cY4WZieafWHeU9X7nbuW1cPL",
+			"created_tx": "3VLQFWRuMS313CAbSTUnLDFhoBTPZCsBHuyJaSfYhK9NH1F8dXXt4SYJMNVWH3kKxHNHnoSR8rkVwiP1qHFVKodS",
+			"created_time": 1763853609
+		}
+	},
+	"pools": [
+		{
+			"poolId": "CRKxwe6m8xpDa3WmjB3PMKNBzK4WesSYxkyFoNQBpump",
+			"liquidity": {
+				"quote": 163.54196229,
+				"usd": 21256.351250537537
+			},
+			"price": {
+				"quote": 2.0771958139902475e-07,
+				"usd": 2.6998333161753175e-05
+			},
+			"tokenSupply": 1000000000,
+			"lpBurn": 100,
+			"tokenAddress": "CRKxwe6m8xpDa3WmjB3PMKNBzK4WesSYxkyFoNQBpump",
+			"marketCap": {
+				"quote": 207.71958139902475,
+				"usd": 26998.333161753173
+			},
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"market": "pumpfun",
+			"deployer": "993axERwzoqJSHqavL18cY4WZieafWHeU9X7nbuW1cPL",
+			"pumpfun": {
+				"isMayhemMode": false,
+				"tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+			},
+			"curvePercentage": 85.65623038736376,
+			"curve": "2sfHiF1SKcxHqdb8iUU4r9WPUUUG8Ho4gmud4bXEP6zb",
+			"lastUpdated": 1763865142036,
+			"createdAt": 1763853609491,
+			"txns": {
+				"buys": 732,
+				"sells": 466,
+				"total": 1198,
+				"volume": 58274,
+				"volume24h": 58274
+			}
+		}
+	],
+	"events": {
+		"1m": {
+			"priceChangePercentage": -7.2580051499228
+		},
+		"5m": {
+			"priceChangePercentage": -7.0121084326641
+		},
+		"15m": {
+			"priceChangePercentage": 0.8108138800443
+		},
+		"30m": {
+			"priceChangePercentage": -17.392881743197
+		},
+		"1h": {
+			"priceChangePercentage": 50.987188396496
+		},
+		"2h": {
+			"priceChangePercentage": 314.31473946406
+		},
+		"3h": {
+			"priceChangePercentage": 283.23331032537
+		},
+		"4h": {
+			"priceChangePercentage": 614.66594510135
+		},
+		"5h": {
+			"priceChangePercentage": 614.66594510135
+		},
+		"6h": {
+			"priceChangePercentage": 614.66594510135
+		},
+		"12h": {
+			"priceChangePercentage": 614.66594510135
+		},
+		"24h": {
+			"priceChangePercentage": 614.66594510135
+		}
+	},
+	"risk": {
+		"snipers": {
+			"count": 6,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": [
+				{
+					"wallet": "8uCXyaaKsPbNr2LnGZFavBkm2SZ6mDzKFyTsYNfN1uyr",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "993axERwzoqJSHqavL18cY4WZieafWHeU9X7nbuW1cPL",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "7YApzZL5GXJBoA2sJANXArP1P4qonKeqmMWCnGqDpVHP",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "HaYR6Ugbm8nEvjE6cn29kU89U9bMgi8WexehyGhNyk4e",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "H5DPyfskwt1rFcF87fMgS6MQvbeu78VrpV63UHBeWzSF",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "GW4oDYDVYA4kaH8gzSicdjHXHNj5Ru3WWcW7gWQbWegg",
+					"balance": 0,
+					"percentage": 0
+				}
+			]
+		},
+		"insiders": {
+			"count": 0,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": []
+		},
+		"top10": 25.881900000000005,
+		"dev": {
+			"percentage": 0,
+			"amount": 0
+		},
+		"fees": {
+			"axiom": 1.498285792,
+			"network": 0.555023952,
+			"0slot": 0.03,
+			"jito": 0.019400351,
+			"bloom": 0.002,
+			"bullx": 0.028448369,
+			"padre": 0.177582003,
+			"maestro": 0.005753138,
+			"trojan": 0.022200044,
+			"helius-sender": 0.0012,
+			"photon": 0.023635252,
+			"totalTrading": 1.7579045979999999,
+			"totalTips": 0.605624303,
+			"total": 2.363528900999999
+		},
+		"rugged": false,
+		"risks": [
+			{
+				"name": "Bonding curve not complete",
+				"description": "No Pumpswap liquidity pool, bonding curve not complete",
+				"level": "warning",
+				"score": 4000
+			},
+			{
+				"name": "Top 10 Holders",
+				"description": "Top 10 holders own more than 25.88% of the total supply.",
+				"value": "25.88%",
+				"level": "danger",
+				"score": 5000
+			}
+		],
+		"score": 6
+	},
+	"buys": 211,
+	"sells": 100,
+	"txns": 311,
+	"holders": 116
+}
