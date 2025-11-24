@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // index.js — Scoundrel CLI
-require('dotenv').config();
+require("dotenv").config({ quiet: true });
+const logger = require('./lib/logger');
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
 const { join, relative } = require('path');
@@ -29,7 +30,7 @@ function loadHarvest() {
         // Lazy-load to keep startup fast and allow running without Solana deps during setup
         return require('./lib/dossier').harvestWallet;
     } catch (e) {
-        console.error('[scoundrel] Missing ./lib/dossier. Create a stub that exports { harvestWallet }.');
+        logger.error('[scoundrel] Missing ./lib/dossier. Create a stub that exports { harvestWallet }.');
         process.exit(1);
     }
 }
@@ -38,7 +39,7 @@ function loadProcessor(name) {
     try {
         return require(`./lib/${name}`);
     } catch (e) {
-        console.error(`[scoundrel] Missing ./lib/${name}. Create it and export a function (module.exports = async (args) => { ... }) or a named export.`);
+        logger.error(`[scoundrel] Missing ./lib/${name}. Create it and export a function (module.exports = async (args) => { ... }) or a named export.`);
         process.exit(1);
     }
 }
@@ -62,10 +63,10 @@ async function persistProfileSnapshot({ wallet, traderName, profile, source }) {
             source,
         });
         if (process.env.NODE_ENV === 'development') {
-            console.log(`[scoundrel] upserted profile in DB as ${profileId}`);
+            logger.info(`[scoundrel] upserted profile in DB as ${profileId}`);
         }
     } catch (dbErr) {
-        console.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
+        logger.warn('[scoundrel] warning: failed to upsert profile to DB:', dbErr?.message || dbErr);
     }
 }
 
@@ -78,25 +79,25 @@ function isBase58Mint(v) {
 
 function logAutopsyError(err) {
     const message = err?.message || err;
-    console.error('[scoundrel] ❌ autopsy failed:', message);
+    logger.error('[scoundrel] ❌ autopsy failed:', message);
 
     if (err?.response) {
         const { status, statusText, data } = err.response;
         const statusLine = [status, statusText].filter(Boolean).join(' ');
         if (statusLine) {
-            console.error('[scoundrel] HTTP response:', statusLine);
+            logger.error('[scoundrel] HTTP response:', statusLine);
         }
         if (data) {
-            console.error('[scoundrel] Response body:', util.inspect(data, { depth: 4, breakLength: 120 }));
+            logger.error('[scoundrel] Response body:', util.inspect(data, { depth: 4, breakLength: 120 }));
         }
     }
 
     if (err?.cause) {
-        console.error('[scoundrel] cause:', err.cause?.message || err.cause);
+        logger.error('[scoundrel] cause:', err.cause?.message || err.cause);
     }
 
     if (err?.stack) {
-        console.error(err.stack);
+        logger.error(err.stack);
     }
 }
 
@@ -126,7 +127,7 @@ program
             if (/^\d+$/.test(v)) return Number(v);
             const d = new Date(v);
             if (isNaN(d.getTime())) {
-                console.error('[scoundrel] Invalid time:', v);
+                logger.error('[scoundrel] Invalid time:', v);
                 process.exit(1);
             }
             return Math.floor(d.getTime() / 1000);
@@ -137,14 +138,14 @@ program
         const traderName = opts.name || process.env.TEST_TRADER || null;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
 
-        console.log(`[scoundrel] Research starting for wallet ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
+        logger.info(`[scoundrel] Research starting for wallet ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
             const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, featureMintCount });
             const count = (result && typeof result.count === 'number') ? result.count : 0;
-            console.log(`[scoundrel] ✅ harvested ${count} trades from ${walletId}`);
+            logger.info(`[scoundrel] ✅ harvested ${count} trades from ${walletId}`);
             process.exit(0);
         } catch (err) {
-            console.error('[scoundrel] ❌ error during harvest:', err?.message || err);
+            logger.error('[scoundrel] ❌ error during harvest:', err?.message || err);
             process.exit(1);
         }
     });
@@ -171,7 +172,7 @@ program
             if (/^\d+$/.test(v)) return Number(v);
             const d = new Date(v);
             if (isNaN(d.getTime())) {
-                console.error('[scoundrel] Invalid time:', v);
+                logger.error('[scoundrel] Invalid time:', v);
                 process.exit(1);
             }
             return Math.floor(d.getTime() / 1000);
@@ -184,18 +185,18 @@ program
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
         const alias = normalizeTraderAlias(traderName, walletId);
 
-        console.log(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
+        logger.info(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
             // ----- RESEND MODE: reuse latest merged payload and skip harvesting -----
             if (opts.resend) {
                 const baseDir = dossierBaseDir(alias);
                 const latest = loadLatestJson(baseDir, ['merged'], 'merged-');
                 if (!latest || latest.data == null) {
-                    console.error(`[scoundrel] No merged files found for "${alias}" in ${baseDir}. Run without --resend first.`);
+                    logger.error(`[scoundrel] No merged files found for "${alias}" in ${baseDir}. Run without --resend first.`);
                     process.exit(1);
                 }
                 const latestPath = latest.path;
-                console.log(`[scoundrel] Reusing merged payload: ${latestPath}`);
+                logger.info(`[scoundrel] Reusing merged payload: ${latestPath}`);
                 const merged = latest.data;
                 const { analyzeWallet } = require('./ai/jobs/walletAnalysis');
                 const aiOut = await analyzeWallet({ merged });
@@ -207,7 +208,7 @@ program
                 const fname = `${alias}.json`;
                 const outPath = join(dir, fname);
                 writeFileSync(outPath, JSON.stringify(openAiResult, null, 2));
-                console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);
+                logger.info(`[scoundrel] ✅ wrote profile to ${outPath}`);
 
                 // Persist to DB (sc_profiles), mirroring the normal path
                 await persistProfileSnapshot({
@@ -219,11 +220,11 @@ program
 
                 // Print brief console output if markdown present
                 if (openAiResult && openAiResult.markdown) {
-                    console.log('\n=== Dossier (resend) ===\n');
-                    console.log(openAiResult.markdown);
+                    logger.info('\n=== Dossier (resend) ===\n');
+                    logger.info(openAiResult.markdown);
                 }
 
-                console.log(`[scoundrel] ✅ dossier (resend) complete for ${walletId}`);
+                logger.info(`[scoundrel] ✅ dossier (resend) complete for ${walletId}`);
                 process.exit(0);
             }
             // ----- END RESEND MODE -----
@@ -233,7 +234,7 @@ program
 
             // Expect Responses output from harvest step
             if (!result || !result.openAiResult) {
-                console.error('[scoundrel] No Responses output (openAiResult) returned by harvestWallet.');
+                logger.error('[scoundrel] No Responses output (openAiResult) returned by harvestWallet.');
                 process.exit(1);
             }
 
@@ -243,7 +244,7 @@ program
             const fname = `${alias}.json`;
             const outPath = join(dir, fname);
             writeFileSync(outPath, JSON.stringify(result.openAiResult, null, 2));
-            console.log(`[scoundrel] ✅ wrote profile to ${outPath}`);
+            logger.info(`[scoundrel] ✅ wrote profile to ${outPath}`);
 
             // Persist to DB (sc_profiles), mirroring the previous build-profile upsert
             await persistProfileSnapshot({
@@ -255,14 +256,14 @@ program
 
             // Normal send: print the dossier to console (same as --resend), then exit
             if (result.openAiResult && result.openAiResult.markdown) {
-                console.log('\n=== Dossier ===\n');
-                console.log(result.openAiResult.markdown);
+                logger.info('\n=== Dossier ===\n');
+                logger.info(result.openAiResult.markdown);
             } else {
-                console.log('[scoundrel] (no markdown field in openAiResult)');
+                logger.info('[scoundrel] (no markdown field in openAiResult)');
             }
             process.exit(0);
         } catch (err) {
-            console.error('[scoundrel] ❌ dossier failed:', err?.message || err);
+            logger.error('[scoundrel] ❌ dossier failed:', err?.message || err);
             process.exit(1);
         }
     });
@@ -278,8 +279,8 @@ program
             const options = wallets.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
             options.push(`${wallets.length + 1}) Other (enter address)`);
 
-            console.log('Which wallet?');
-            options.forEach((opt) => console.log(opt));
+            logger.info('Which wallet?');
+            options.forEach((opt) => logger.info(opt));
             let choice = await rl.question('> ');
             let walletLabel;
             let walletAddress;
@@ -305,7 +306,7 @@ program
                 throw new Error('mint is required');
             }
             if (!isBase58Mint(mint)) {
-                console.warn('[scoundrel] mint does not look like base58; continuing anyway');
+                logger.warn('[scoundrel] mint does not look like base58; continuing anyway');
             }
 
             const result = await runAutopsy({ walletLabel, walletAddress, mint });
@@ -333,7 +334,7 @@ program
         const alias = opts.name ? opts.name.replace(/[^a-z0-9_-]/gi, '_') : 'default';
         const profilePath = join(process.cwd(), 'profiles', `${alias}.json`);
         if (!existsSync(profilePath)) {
-            console.error(`[scoundrel] profile not found: ${profilePath}`);
+            logger.error(`[scoundrel] profile not found: ${profilePath}`);
             process.exit(1);
         }
         const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
@@ -353,12 +354,12 @@ program
 
         try {
             const runner = (typeof askProcessor === 'function') ? askProcessor : (askProcessor && askProcessor.ask);
-            if (!runner) { console.error('[scoundrel] ./lib/ask must export a default function or { ask }'); process.exit(1); }
+            if (!runner) { logger.error('[scoundrel] ./lib/ask must export a default function or { ask }'); process.exit(1); }
             const ans = await runner({ profile, question: opts.question, rows: rows.slice(0, 200) });
-            console.log(ans);
+            logger.info(ans);
             process.exit(0);
         } catch (err) {
-            console.error('[scoundrel] ❌ ask failed:', err?.message || err);
+            logger.error('[scoundrel] ❌ ask failed:', err?.message || err);
             process.exit(1);
         }
     });
@@ -397,14 +398,14 @@ Examples:
             }
             await warchestRun(args);
         } catch (err) {
-            console.error('[scoundrel] ❌ warchest command failed:', err?.message || err);
+            logger.error('[scoundrel] ❌ warchest command failed:', err?.message || err);
             process.exitCode = 1;
         } finally {
             try {
                 await BootyBox.close();
             } catch (e) {
                 if (process.env.NODE_ENV === 'development') {
-                    console.warn('[scoundrel] warning: failed to close DB pool:', e?.message || e);
+                    logger.warn('[scoundrel] warning: failed to close DB pool:', e?.message || e);
                 }
             }
             // Ensure the CLI returns control to the shell after warchest completes
@@ -417,11 +418,12 @@ program
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
     .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
     .action(async () => {
-        const hasKey = !!process.env.OPENAI_API_KEY;
-        console.log('[scoundrel] environment check:');
-        console.log(`  OPENAI_API_KEY: ${hasKey ? 'present' : 'MISSING'}`);
-        console.log('  Working directory:', process.cwd());
-        console.log('  Node version:', process.version);
+    console.log('[test] starting test action');
+    const hasKey = !!process.env.OPENAI_API_KEY;
+    logger.info('[scoundrel] environment check:');
+        logger.info(`  OPENAI_API_KEY: ${hasKey ? 'present' : 'MISSING'}`);
+        logger.info('  Working directory:', process.cwd());
+        logger.info('  Node version:', process.version);
 
         // Check presence of core modules in the new pipeline
         const pathsToCheck = [
@@ -430,10 +432,10 @@ program
             join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
             join(__dirname, 'lib', 'ask.js'),
         ];
-        console.log('\n[scoundrel] core files:');
+        logger.info('\n[scoundrel] core files:');
         pathsToCheck.forEach(p => {
             const ok = existsSync(p);
-            console.log(`  ${relative(process.cwd(), p)}: ${ok ? 'present' : 'missing'}`);
+            logger.info(`  ${relative(process.cwd(), p)}: ${ok ? 'present' : 'missing'}`);
         });
 
         // DB diagnostics
@@ -446,25 +448,25 @@ program
             DB_POOL_LIMIT = '30',
         } = process.env;
 
-        console.log('\n[db] configuration:');
-        console.log(`  Engine   : ${DB_ENGINE}`);
-        console.log(`  Host     : ${DB_HOST}:${DB_PORT}`);
-        console.log(`  Database : ${DB_NAME}`);
-        console.log(`  User     : ${DB_USER}`);
-        console.log(`  Pool     : ${DB_POOL_LIMIT}`);
+        logger.info('\n[db] configuration:');
+        logger.info(`  Engine   : ${DB_ENGINE}`);
+        logger.info(`  Host     : ${DB_HOST}:${DB_PORT}`);
+        logger.info(`  Database : ${DB_NAME}`);
+        logger.info(`  User     : ${DB_USER}`);
+        logger.info(`  Pool     : ${DB_POOL_LIMIT}`);
 
         try {
             await BootyBox.ping();
-            console.log('[db] ✅ connected');
+            logger.info('[db] ✅ connected');
         } catch (e) {
-            console.log('[db] ❌ connection failed:', e?.message || e);
+            logger.info('[db] ❌ connection failed:', e?.message || e);
         }
 
         if (!hasKey) {
-            console.log('\nTip: add OPENAI_API_KEY to your .env file.');
+            logger.info('\nTip: add OPENAI_API_KEY to your .env file.');
             process.exit(1);
         } else {
-            console.log('\n[scoundrel] ✅ basic checks passed.');
+            logger.info('\n[scoundrel] ✅ basic checks passed.');
             process.exit(0);
         }
     });

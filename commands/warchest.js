@@ -3,6 +3,7 @@
 const readline = require('readline');
 const chalk = require('chalk');
 const walletRegistry = require('../lib/warchest/walletRegistry');
+const logger = require('../lib/logger');
 
 const COLOR_PALETTE = ['green', 'cyan', 'magenta', 'yellow', 'blue'];
 
@@ -94,7 +95,7 @@ async function handleAdd() {
   try {
     const pubkey = await ask(rl, 'Enter wallet public key: ');
     if (!pubkey) {
-      console.error(chalk.red('Public key is required. Aborting.'));
+      logger.error(chalk.red('Public key is required. Aborting.'));
       return;
     }
 
@@ -106,7 +107,7 @@ async function handleAdd() {
 
     const alias = await ask(rl, 'Enter alias for this wallet (e.g. warlord): ');
     if (!alias) {
-      console.error(chalk.red('Alias is required. Aborting.'));
+      logger.error(chalk.red('Alias is required. Aborting.'));
       return;
     }
 
@@ -127,13 +128,14 @@ async function handleAdd() {
       ? chalk.bold.green('[SIGNING]')
       : chalk.bold.yellow('[WATCH]');
 
-    console.log(
+    logger.info(
       chalk.green('Added wallet to warchest:'),
       c(wallet.alias),
       typeLabel
     );
   } catch (err) {
-    console.error(chalk.red('Failed to add wallet:'), err.message || err);
+    const msg = err && err.message ? err.message : String(err);
+    logger.error(chalk.red(`Failed to add wallet: ${msg}`));
   } finally {
     rl.close();
   }
@@ -147,12 +149,12 @@ async function handleList() {
     const wallets = await walletRegistry.getAllWallets();
 
     if (!wallets || wallets.length === 0) {
-      console.log(chalk.yellow('No wallets in your warchest yet.'));
-      console.log('Use', chalk.cyan('scoundrel warchest add'), 'to add one.');
+      logger.info(chalk.yellow('No wallets in your warchest yet.'));
+      logger.info('Use', chalk.cyan('scoundrel warchest add'), 'to add one.');
       return;
     }
 
-    console.log(chalk.bold('\nYour Warchest Wallets:\n'));
+    logger.info(chalk.bold('\nYour Warchest Wallets:\n'));
 
     for (const w of wallets) {
       const c = colorizer(w.color);
@@ -160,21 +162,17 @@ async function handleList() {
         ? chalk.bold.green('[SIGNING]')
         : chalk.bold.yellow('[WATCH]');
 
-      console.log(
-        ' -',
-        c(w.alias),
-        typeLabel,
-        '\n    pubkey:',
-        w.pubkey,
-        '\n    color :',
-        w.color || 'default',
-        '\n    source:',
-        w.keySource,
-        '\n'
-      );
+      const line =
+        ` - ${c(w.alias)} ${typeLabel}\n` +
+        `    pubkey: ${w.pubkey}\n` +
+        `    color : ${w.color || 'default'}\n` +
+        `    source: ${w.keySource}\n`;
+
+      logger.info(line);
     }
   } catch (err) {
-    console.error(chalk.red('Failed to list wallets:'), err.message || err);
+    const msg = err && err.message ? err.message : String(err);
+    logger.error(chalk.red(`Failed to list wallets: ${msg}`));
   }
 }
 
@@ -188,22 +186,23 @@ async function handleRemove(aliasArg) {
   try {
     const alias = aliasArg || (await ask(rl, 'Enter alias to remove: '));
     if (!alias) {
-      console.error(chalk.red('Alias is required to remove a wallet.'));
+      logger.error(chalk.red('Alias is required to remove a wallet.'));
       return;
     }
 
     const ok = await walletRegistry.deleteWallet(alias);
     if (!ok) {
-      console.error(
+      logger.error(
         chalk.yellow('No wallet found with alias:'),
         chalk.cyan(alias)
       );
       return;
     }
 
-    console.log(chalk.green('Removed wallet:'), chalk.cyan(alias));
+    logger.info(chalk.green('Removed wallet:'), chalk.cyan(alias));
   } catch (err) {
-    console.error(chalk.red('Failed to remove wallet:'), err.message || err);
+    const msg = err && err.message ? err.message : String(err);
+    logger.error(chalk.red(`Failed to remove wallet: ${msg}`));
   } finally {
     if (rl) rl.close();
   }
@@ -221,7 +220,7 @@ async function handleSetColor(aliasArg, colorArg) {
     const alias =
       aliasArg || (await ask(rl, 'Enter alias of the wallet to recolor: '));
     if (!alias) {
-      console.error(chalk.red('Alias is required.'));
+      logger.error(chalk.red('Alias is required.'));
       return;
     }
 
@@ -234,7 +233,7 @@ async function handleSetColor(aliasArg, colorArg) {
 
     const normalized = color ? color.toLowerCase() : null;
     if (normalized && !COLOR_PALETTE.includes(normalized)) {
-      console.error(
+      logger.error(
         chalk.red('Invalid color. Must be one of:'),
         COLOR_PALETTE.join(', ')
       );
@@ -243,21 +242,22 @@ async function handleSetColor(aliasArg, colorArg) {
 
     const ok = await walletRegistry.updateWalletColor(alias, normalized);
     if (!ok) {
-      console.error(
+      logger.error(
         chalk.yellow('No wallet found with alias:'),
         chalk.cyan(alias)
       );
       return;
     }
 
-    console.log(
+    logger.info(
       chalk.green('Updated color for'),
       chalk.cyan(alias),
       'to',
       normalized || 'default'
     );
   } catch (err) {
-    console.error(chalk.red('Failed to set color:'), err.message || err);
+    const msg = err && err.message ? err.message : String(err);
+    logger.error(chalk.red(`Failed to set color: ${msg}`));
   } finally {
     if (rl) rl.close();
   }
@@ -276,28 +276,28 @@ async function handleSolo() {
   try {
     const wallets = await walletRegistry.getAllWallets();
     if (!wallets || wallets.length === 0) {
-      console.log(chalk.yellow('No wallets in your warchest yet.'));
-      console.log('Use', chalk.cyan('scoundrel warchest add'), 'to add one.');
+      logger.info(chalk.yellow('No wallets in your warchest yet.'));
+      logger.info('Use', chalk.cyan('scoundrel warchest add'), 'to add one.');
       return;
     }
 
-    console.log(chalk.bold('\nSelect a wallet:\n'));
+    logger.info(chalk.bold('\nSelect a wallet:\n'));
     wallets.forEach((w, idx) => {
       const c = colorizer(w.color);
-      console.log(`${idx + 1}) ${c(w.alias)} (${w.pubkey})`);
+      logger.info(`${idx + 1}) ${c(w.alias)} (${w.pubkey})`);
     });
-    console.log(`${wallets.length + 1}) OTHER (add a new wallet)`);
+    logger.info(`${wallets.length + 1}) OTHER (add a new wallet)`);
 
     const choiceRaw = await ask(rl, '\nEnter choice number: ');
     const choice = parseInt(choiceRaw, 10);
 
     if (Number.isNaN(choice) || choice < 1 || choice > wallets.length + 1) {
-      console.error(chalk.red('Invalid choice.'));
+      logger.error(chalk.red('Invalid choice.'));
       return;
     }
 
     if (choice === wallets.length + 1) {
-      console.log(
+      logger.log(
         chalk.yellow(
           'Use `scoundrel warchest add` to register a new wallet for now.'
         )
@@ -311,14 +311,15 @@ async function handleSolo() {
       ? chalk.bold.green('[SIGNING]')
       : chalk.bold.yellow('[WATCH]');
 
-    console.log('\n');
-    console.log(chalk.bold('Selected wallet:'));
-    console.log('  alias :', c(w.alias), typeLabel);
-    console.log('  pubkey:', w.pubkey);
-    console.log('  color :', w.color || 'default');
-    console.log('  source:', w.keySource);
+    logger.info('\n');
+    logger.info(chalk.bold('Selected wallet:'));
+    logger.info('  alias :', c(w.alias), typeLabel);
+    logger.info('  pubkey:', w.pubkey);
+    logger.info('  color :', w.color || 'default');
+    logger.info('  source:', w.keySource);
   } catch (err) {
-    console.error(chalk.red('Failed to select wallet:'), err.message || err);
+    const msg = err && err.message ? err.message : String(err);
+    logger.error(chalk.red(`Failed to select wallet: ${msg}`));
   } finally {
     rl.close();
   }
@@ -333,8 +334,8 @@ async function handleSolo() {
 async function run(argv) {
   const args = argv.slice();
 
-  // Support `scoundrel warchest -solo` for a registry-only selection flow.
-  if (args.includes('-solo') || args.includes('--solo')) {
+  // Support `scoundrel warchest --solo` or `-s` for a registry-only selection flow.
+  if (args.includes('-s') || args.includes('--solo') || args.includes('-solo')) {
     await handleSolo();
     return;
   }
@@ -357,12 +358,12 @@ async function run(argv) {
       await handleSetColor(args[1], args[2]);
       break;
     default:
-      console.log(chalk.bold('Usage:'));
-      console.log('  scoundrel warchest add');
-      console.log('  scoundrel warchest list');
-      console.log('  scoundrel warchest remove <alias>');
-      console.log('  scoundrel warchest set-color <alias> <color>');
-      console.log('  scoundrel warchest --solo   # or: -s');
+      logger.info(chalk.bold('Usage:'));
+      logger.info('  scoundrel warchest add');
+      logger.info('  scoundrel warchest list');
+      logger.info('  scoundrel warchest remove <alias>');
+      logger.info('  scoundrel warchest set-color <alias> <color>');
+      logger.info('  scoundrel warchest --solo   # or: -s');
   }
 }
 

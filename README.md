@@ -3,6 +3,8 @@
 > *Unearthed from VAULT77, Scoundrel is a relic software tool built for trench operators.  
 > It harvests and analyzes the trading patterns of top wallets, relays strategies, and keeps the link open to save our futures.*
 
+Docs: For a high-level repo overview (LLM-friendly), see `docs/scoundrel-overview.md`.
+
 ## 📡 Connect with VAULT77
 
 - **VAULT77 Community**: [Join on X](https://x.com/i/communities/1962257350309650488)  
@@ -125,7 +127,9 @@ Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpda
 - `subscribeSlot(onUpdate, opts?)`
 - `subscribeSlotsUpdates(onUpdate, opts?)`
 
+
 The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+- The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
 
 ---
 
@@ -150,6 +154,8 @@ const risk  = await data.getTokenRiskScores('Mint...');
 | `getTokenHoldersTop100`, `getLatestTokens`, `getMultipleTokens` | supply discovery feeds. |
 | `getTrendingTokens`, `getTokensByVolumeWithTimeframe`, `getTokenOverview` | curated discovery endpoints. |
 | `getTokenPrice`, `getMultipleTokenPrices` | wrap `/price` + `/price/multi` with retries. |
+
+These price endpoints are now used by the HUD worker to display live USD estimates for SOL and each token in the warchest.
 | `getWalletTokens`, `getBasicWalletInformation` | wallet state snapshots. |
 | `getWalletTrades` | paginated harvest with optional `startTime` / `endTime` filtering and cursor handling. |
 | `getWalletChart` | portfolio curve, aliased as `getWalletPortfolioChart` for CLI consistency. |
@@ -178,6 +184,10 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ## Commands
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
+
+**Warchest HUD (scripts/warchestHudWorker.js)**  
+A real-time wallet monitor that displays SOL balance, session deltas, token balances, and live USD prices using SolanaTracker RPC + Data APIs.  
+Useful during active trading sessions.
 
 ### `dossier <WALLET>`
 

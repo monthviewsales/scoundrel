@@ -1,0 +1,1 @@
+The /ai directory contains modules used to interact with online or cloud AI agents. The 'client.js' file is our OpenAI client.  The /schemas directory contains the versioned JSON schemas of our files and the expected responses.  If you make any chnges to the JSON our AI uses make sure to update the version number.  The /jobs directory contains the individual AI API calls.
