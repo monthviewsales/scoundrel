@@ -1,0 +1,290 @@
+{
+	"token": {
+		"name": "crimebase",
+		"symbol": "crimebase",
+		"mint": "3CNQ7uuUCFRcKU7PdD6hS3JYKcQYu5vaokVMVFekutv2",
+		"uri": "https://metadata.j7tracker.com/metadata/0e6a17734aae43dc.json",
+		"decimals": 6,
+		"isMutable": false,
+		"description": "Deployed using https://j7tracker.com",
+		"image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fpbs.twimg.com%2Fmedia%2FG6iC7rHXwAM7KEB.jpg",
+		"createdOn": "pump.fun",
+		"twitter": "https://x.com/aeyakovenko/status/1992988240476070344",
+		"website": "",
+		"hasFileMetaData": true,
+		"strictSocials": {
+			"twitter": "https://x.com/aeyakovenko/status/1992988240476070344",
+			"website": "https://j7tracker.com"
+		},
+		"creation": {
+			"creator": "2VBfdrJVJEwbWaJWVpVCAtRxJtprdCmDjCaMeHbBrYuH",
+			"created_tx": "4aubXM3et936BjwdiTAPhVamYqBBsgZfAtwXHX4R4XmvxeS82MacNZQmggbhMRMuvdoiRd7423drkfgsbaGpEy7x",
+			"created_time": 1764000406
+		}
+	},
+	"pools": [
+		{
+			"poolId": "3CNQ7uuUCFRcKU7PdD6hS3JYKcQYu5vaokVMVFekutv2",
+			"liquidity": {
+				"quote": 101.732468476,
+				"usd": 13635.16170171726
+			},
+			"price": {
+				"quote": 8.037818452580221e-08,
+				"usd": 1.077305564013061e-05
+			},
+			"tokenSupply": 1000000000,
+			"lpBurn": 100,
+			"tokenAddress": "3CNQ7uuUCFRcKU7PdD6hS3JYKcQYu5vaokVMVFekutv2",
+			"marketCap": {
+				"quote": 80.37818452580221,
+				"usd": 10773.05564013061
+			},
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"market": "pumpfun",
+			"deployer": "2VBfdrJVJEwbWaJWVpVCAtRxJtprdCmDjCaMeHbBrYuH",
+			"pumpfun": {
+				"isMayhemMode": false,
+				"tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+			},
+			"curvePercentage": 55.4991404998424,
+			"curve": "FkpYamGoh74sz112Tjyq1gNTTDXrvFn1yrzDiGqW5XVY",
+			"lastUpdated": 1764003881085,
+			"createdAt": 1764000405504,
+			"txns": {
+				"buys": 1334,
+				"sells": 649,
+				"total": 1983,
+				"volume": 82314,
+				"volume24h": 82314
+			}
+		}
+	],
+	"events": {
+		"1m": {
+			"priceChangePercentage": -0.90855866282473
+		},
+		"5m": {
+			"priceChangePercentage": -32.248209919199
+		},
+		"15m": {
+			"priceChangePercentage": -21.029681286315
+		},
+		"30m": {
+			"priceChangePercentage": -1.7120062643558
+		},
+		"1h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"2h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"3h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"4h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"5h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"6h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"12h": {
+			"priceChangePercentage": -4.7671085039058
+		},
+		"24h": {
+			"priceChangePercentage": -4.7671085039058
+		}
+	},
+	"risk": {
+		"snipers": {
+			"count": 25,
+			"totalBalance": 6201460.092148,
+			"totalPercentage": 0.6201,
+			"wallets": [
+				{
+					"wallet": "56S29mZ3wqvw8hATuUUFqKhGcSGYFASRRFNT38W8q7G3",
+					"balance": 2956381.958803,
+					"percentage": 0.29564
+				},
+				{
+					"wallet": "2YqTcTMDFD2vvVHcc8Wd61zwLiWaDZvAKrzXFW1adZ3K",
+					"balance": 2246993.133345,
+					"percentage": 0.2247
+				},
+				{
+					"wallet": "Tj5tkBr7GkLLLDexHaktGZAoLYqGKLujnioX4WCKMDm",
+					"balance": 998085,
+					"percentage": 0.09981
+				},
+				{
+					"wallet": "85D8pi8Pyth8ekYAKaUoYh5i54nLUUfV9hJKK82fekdo",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "2VBfdrJVJEwbWaJWVpVCAtRxJtprdCmDjCaMeHbBrYuH",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "Aemby6yXpjA8CzFoq7cDbgPah5iuTgdnmLt8rFHBTUi8",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "9hEAezafuMtXa6HVVUKaxQN29xjEEm6eYBLTHy2A2HqJ",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "39Zmj5dsSbJzLeeJnaTpukh6rzLZ9hLnH4eGPpSY5dwb",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "FFdBLYqL9rs5fUT38ArE8GV2L3BziEgG5LJUu6sshfkF",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "G7c65icc4wG6wEvxDBGThWwkTAbm7yK9eVafim3Jzp8B",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "Cvnk6o8QEBceac3ARf5Wdjj6n9RDuZ1bCDx7gRC4hHWt",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "4G3oBF2Pt9veSaVthrQyYZhZ4gh4PyMHJ9MatYa76iuj",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "HVRhvBZj6Gwms6dekghL9rxfb4uoKtaShibY2MnDW4Gu",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "372KvQXfpxdpH8x2TH8ZskdP9WMXbnEn4GZJgqzePnmk",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "3hrYmGuSV9J3p1hrQDwgsW6Ln3LfhPoizRBispNYtvr3",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "suckiGC5gQKfGtQe5HR5f3L34gaw4XmzwsucvCoALUo",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "Ev8NjFSUahiyPjXH5zNLiUctGLZoBpSCWmbbQFXy3u3M",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "5GM2ASgabYBVX5Ratk474ovcdUNhTSMTGpkNJTKiSoT8",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "7JULSQyxhhTBzKjbAuDuxYYvcM4QgbkxErTRA5oz6pVg",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "richb5CkVbs5kX1MNneB93TcJLfN3AiABMGYz5hEzTz",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "C76k2LMNEBobnS9yhoUqiyBykJuEzMR6NdSm7eLPHy3o",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "28C84xV5HyC9wN2As17ZDa2K2ybfX7WNkABaKb66Rjxy",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "fqZc4DfeYqg7n7j6XhzanTxxGPATBwu2Hc5fDxGqMBi",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "z2K4jS1KgVJ7RkG71z8GvVBXoQg4njZXBs536zUZyg2",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "EBy7Lm6vLEpnSF1WRxQLBNKWmiznJEQNH1N2QHvxaXDE",
+					"balance": 0,
+					"percentage": 0
+				}
+			]
+		},
+		"insiders": {
+			"count": 0,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": []
+		},
+		"top10": 23.2495,
+		"dev": {
+			"percentage": 0,
+			"amount": 0
+		},
+		"fees": {
+			"axiom": 2.490766512,
+			"network": 1.020920862,
+			"jito": 0.111204301,
+			"bloom": 0.184421256,
+			"0slot": 0.107475576,
+			"padre": 0.180312893,
+			"bullx": 0.178875908,
+			"trojan": 0.166392518,
+			"helius-sender": 0.007,
+			"maestro": 0.105749528,
+			"photon": 0.016902143,
+			"soltradingbot": 0.023583496,
+			"nextblock": 0.003,
+			"totalTrading": 3.347004254,
+			"totalTips": 1.2496007389999997,
+			"total": 4.596604993
+		},
+		"rugged": false,
+		"risks": [
+			{
+				"name": "Bonding curve not complete",
+				"description": "No Pumpswap liquidity pool, bonding curve not complete",
+				"level": "warning",
+				"score": 4000
+			},
+			{
+				"name": "Top 10 Holders",
+				"description": "Top 10 holders own more than 23.25% of the total supply.",
+				"value": "23.25%",
+				"level": "danger",
+				"score": 5000
+			}
+		],
+		"score": 6
+	},
+	"buys": 604,
+	"sells": 330,
+	"txns": 934,
+	"holders": 95
+}

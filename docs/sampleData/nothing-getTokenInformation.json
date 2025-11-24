@@ -1,0 +1,412 @@
+{
+	"token": {
+		"name": "You’ll own nothing & be happy",
+		"symbol": "NOTHING",
+		"mint": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+		"uri": "https://ipfs-forward.solanatracker.io/ipfs/Qma1MQ4J2RjKxGkGj9SfzfAMoeDqQXcMemXmbjPy3o2rdN",
+		"decimals": 6,
+		"isMutable": false,
+		"description": "You will own nothing and be happy",
+		"showName": "true",
+		"image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2FQmUrePFqpeW7AXZhFhexoCMFRcmyP3z5rrBF9RXGu32rFw",
+		"createdOn": "https://pump.fun",
+		"twitter": "https://x.com/runupbands/status/1988330601297199265?s=46",
+		"hasFileMetaData": true,
+		"strictSocials": {
+			"twitter": "https://x.com/runupbands/status/1988330601297199265?s=46"
+		},
+		"creation": {
+			"creator": "GHgSVNjsWXyTc3ZNEEaEowF5xMT4wptUKFcerKSgSVtB",
+			"created_tx": "4CuNBh7eRTe6rNFZTxMXTnRAjjTuZhJ9tH3YN1KwbsUDV23QyzpGSfUfuwBad63NJFhUgVHe3Qgw5YDmpgkuKTPm",
+			"created_time": 1762891634
+		}
+	},
+	"pools": [
+		{
+			"poolId": "2pA1GMh9WbPtURmr6Rt5oxNs6RdpLzxJphSJQcdyaNFq",
+			"liquidity": {
+				"quote": 870.040756492,
+				"usd": 239064.33207317255
+			},
+			"price": {
+				"quote": 2.129413083915205e-05,
+				"usd": 0.002925533733997804
+			},
+			"tokenSupply": 999942008.446489,
+			"lpBurn": 99,
+			"tokenAddress": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+			"marketCap": {
+				"quote": 21292.89595942402,
+				"usd": 2925364.0777517203
+			},
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"market": "pumpfun-amm",
+			"pumpfun-amm": {
+				"isMayhemMode": false,
+				"tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+			},
+			"lastUpdated": 1764007573913,
+			"createdAt": 1762893904232,
+			"deployer": "5PATR3Q7mNivbgsBft4KGeFXtJL1Aj6rsJeve8PHA4V8",
+			"txns": {
+				"buys": 87922,
+				"sells": 73042,
+				"total": 160964,
+				"volume": 23461997,
+				"volume24h": 887210
+			},
+			"bundleId": "6c0e743ecb661b1c6ae315ab6beb75d18e2d370657e3f84f4cd56330575b9cee"
+		},
+		{
+			"poolId": "3KmbWT4y3RcU6sLjjiykrZdA9tbLUNSLvE2P2W4QqFEt",
+			"liquidity": {
+				"quote": 797.614529359,
+				"usd": 128487.49448045445
+			},
+			"price": {
+				"quote": 2.126318638762947e-05,
+				"usd": 0.00292128237302453
+			},
+			"tokenSupply": 999942008.446489,
+			"lpBurn": 0,
+			"tokenAddress": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+			"marketCap": {
+				"quote": 21261.95330241826,
+				"usd": 2921112.963321474
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"lastUpdated": 1764007573918,
+			"createdAt": 1762907084544,
+			"deployer": "3h26R2ViPHivkmHaMkysvvZw4VFEyGsBtD5pyhanRBNX",
+			"txns": {
+				"buys": 12604,
+				"sells": 11871,
+				"total": 24475,
+				"volume": 6884732,
+				"volume24h": 595662
+			},
+			"bundleId": "6c0e743ecb661b1c6ae315ab6beb75d18e2d370657e3f84f4cd56330575b9cee"
+		},
+		{
+			"poolId": "ExbLfRuFBT3csRZj2pkEhbV7VGTZ2MN729NPGRpjf52k",
+			"liquidity": {
+				"quote": 301.938505889,
+				"usd": 43084.124100160436
+			},
+			"price": {
+				"quote": 2.1308996158966252e-05,
+				"usd": 0.0029275760335831505
+			},
+			"tokenSupply": 999942008.446489,
+			"lpBurn": 0,
+			"tokenAddress": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+			"marketCap": {
+				"quote": 21307.760417175232,
+				"usd": 2927406.2589009413
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"lastUpdated": 1764007573908,
+			"createdAt": 1762972654262,
+			"deployer": "7B9rFuYcExZAzuyCdeTihYGCZTrF9mWJwPD3FvUFaFdy",
+			"txns": {
+				"buys": 3246,
+				"sells": 3892,
+				"total": 7138,
+				"volume": 2830837,
+				"volume24h": 444436
+			},
+			"bundleId": "6c0e743ecb661b1c6ae315ab6beb75d18e2d370657e3f84f4cd56330575b9cee"
+		},
+		{
+			"poolId": "DhFJHdrtHksdLgMhY8LQawXiHNr1Sv3G7UpgkKTUjXMj",
+			"liquidity": {
+				"quote": 0.6823765925606401,
+				"usd": 93.13230602028592
+			},
+			"price": {
+				"quote": 2.110624e-05,
+				"usd": 0.002880627536242633
+			},
+			"tokenSupply": 999942008.446489,
+			"lpBurn": 0,
+			"tokenAddress": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+			"marketCap": {
+				"quote": 21105.016016353624,
+				"usd": 2880460.4841767196
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 7663.936,
+					"usd": 22.07694507760122
+				},
+				"quoteLiquidity": {
+					"quote": 0.52061972,
+					"usd": 71.0553609426847
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "GarQSmv9B3LVjAsV4y4v4nPeHmU1sai4nxyAyt8PfSGW",
+			"lastUpdated": 1764006826522,
+			"createdAt": 1763006599743
+		},
+		{
+			"poolId": "5H6D2tCxEH8uRn4RFEeaEopgHobgCJoSCpixFy6bfbFa",
+			"liquidity": {
+				"quote": 0.01193088612589892,
+				"usd": 1.8624837166716555
+			},
+			"price": {
+				"quote": 1.1785846e-05,
+				"usd": 0.0018398420729663861
+			},
+			"tokenSupply": 999978365.855191,
+			"lpBurn": 0,
+			"tokenAddress": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+			"marketCap": {
+				"quote": 11785.59102330094,
+				"usd": 1839802.2695565538
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 449.81702,
+					"usd": 0.8275922785323624
+				},
+				"quoteLiquidity": {
+					"quote": 0.006629412,
+					"usd": 1.034891438139293
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "47y8iGg61eUU4kERZ3zRQW4Zk5mMFap2WxXcC53fsD3m",
+			"lastUpdated": 1763034040649,
+			"createdAt": 1762919231892
+		},
+		{
+			"poolId": "ChuMf6JUW2qRaiqjQRwVyj9FeYiX6dU2YMjUsqtg1yLa",
+			"liquidity": {
+				"quote": 1.002235929e-09,
+				"usd": 1.5620753431641908e-07
+			},
+			"price": {
+				"quote": 2.235929e-06,
+				"usd": 0.0003484897576412635
+			},
+			"tokenSupply": 999998960.993986,
+			"lpBurn": 0,
+			"tokenAddress": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+			"marketCap": {
+				"quote": 2235.926676856322,
+				"usd": 348489.3955583095
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 1e-06,
+					"usd": 3.4848975764126343e-10
+				},
+				"quoteLiquidity": {
+					"quote": 1e-09,
+					"usd": 1.558590445587778e-07
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "5tnydcUMvUuc3a9UqmUHdyiiHN6u6EQynsK5M76zVfHo",
+			"lastUpdated": 1762897813876,
+			"createdAt": 1762897265956
+		}
+	],
+	"events": {
+		"1m": {
+			"priceChangePercentage": 0.41983423348141
+		},
+		"5m": {
+			"priceChangePercentage": -0.045184547983438
+		},
+		"15m": {
+			"priceChangePercentage": -0.056256389978784
+		},
+		"30m": {
+			"priceChangePercentage": -2.8311622488412
+		},
+		"1h": {
+			"priceChangePercentage": -1.8579201698254
+		},
+		"2h": {
+			"priceChangePercentage": 7.0127841293033
+		},
+		"3h": {
+			"priceChangePercentage": 33.281478929473
+		},
+		"4h": {
+			"priceChangePercentage": 17.756680671453
+		},
+		"5h": {
+			"priceChangePercentage": 41.051969214306
+		},
+		"6h": {
+			"priceChangePercentage": 19.034572343637
+		},
+		"12h": {
+			"priceChangePercentage": 51.636467535456
+		},
+		"24h": {
+			"priceChangePercentage": -0.74952472466823
+		}
+	},
+	"risk": {
+		"snipers": {
+			"count": 15,
+			"totalBalance": 23763141.791854,
+			"totalPercentage": 2.3764,
+			"wallets": [
+				{
+					"wallet": "GHgSVNjsWXyTc3ZNEEaEowF5xMT4wptUKFcerKSgSVtB",
+					"balance": 21676599.775122,
+					"percentage": 2.167785690772087
+				},
+				{
+					"wallet": "9CWpeEXQTTMkjgx2AwG8eVC2fEYyVjMFvPYd2D2i8fTt",
+					"balance": 1007945.541458,
+					"percentage": 0.1008
+				},
+				{
+					"wallet": "vcx3QFzhJxMLMpCUNvKGEfvWe1MuFr8Ae1yPDDQWQPR",
+					"balance": 1000988.345914,
+					"percentage": 0.1001
+				},
+				{
+					"wallet": "4ULNiirzogCXR8hsHJSUpYHRMcufjhMvMPy4fab5hHVA",
+					"balance": 77608.12936,
+					"percentage": 0.00776
+				},
+				{
+					"wallet": "JSPpg9V6yZBBXzwShyihRD57fjJeBHwG3EL2nVRZYT9",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "D5dtjfGj9PhWsqKjepxFSAnRMrADrYfGPWjVwZSoapKe",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "6LY5i8hXeywq5zAoXfgHRTQRDaNn2KqmnahLNoSwAQo4",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "97jv9pjCf5D7VUZEyj6XnXBC5JF23Vsagc3bvSF6GRmL",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "98isGT2N9GHeLsptdL4zxwrhLhFVdrFzHU7E9bv8c8au",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "A12UgqYw5LytAZQT5kT8RXZrj2HxsgGNuFBfWX4RSmWe",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "CZnKVdYV8m7s2XrDCCCfDDDq33JTtUHEuzAV2xnxvjiW",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "8bsL5aLY9aXgXsm6iDyDJnzEDkBRgEGvRoiexEGT9VUp",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "9GJFoxB6tAXtZYEPJnKyTkz3k3vdX2Ft94psAVKDKXC4",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "qtMPaTvJrfU8yeg8TBSiDq7svPQJMcWJouXEzyhCiCR",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "FaMuZUr4RMghKthNugoCkZSyHNZGVB1rkaL7hgaMqGV7",
+					"balance": 0,
+					"percentage": 0
+				}
+			]
+		},
+		"insiders": {
+			"count": 0,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": []
+		},
+		"top10": 18.9277,
+		"dev": {
+			"percentage": 2.1678,
+			"amount": 21676599.775122
+		},
+		"fees": {
+			"jito": 5.868393835,
+			"network": 52.669711337,
+			"axiom": 246.962566363,
+			"nextblock": 1.316764588,
+			"0slot": 9.83511402,
+			"trojan": 35.696947322,
+			"helius-sender": 1.095617027,
+			"bullx": 8.223366362,
+			"bloom": 8.963667315,
+			"padre": 77.538479647,
+			"maestro": 5.908243221,
+			"photon": 52.712795558,
+			"vector": 3.048184771,
+			"soltradingbot": 3.782630827,
+			"totalTrading": 442.83688138599996,
+			"totalTips": 70.78560080700001,
+			"total": 513.622482193
+		},
+		"rugged": false,
+		"risks": [],
+		"score": 0,
+		"jupiterVerified": true
+	},
+	"buys": 144,
+	"sells": 113,
+	"txns": 257,
+	"holders": 4970
+}
