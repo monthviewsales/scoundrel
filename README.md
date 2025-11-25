@@ -222,6 +222,7 @@ Ask a question about a trader using their saved profile (Responses API).
 
 - Reads `./profiles/<name>.json` for context.
 - Returns a concise answer; may include bullets and suggested actions.
+- When dossier enrichment is saved, pulls the latest snapshot from `./data/dossier/<alias>/enriched/` for extra context.
 
 Examples:
 ```bash
