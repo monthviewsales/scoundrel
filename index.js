@@ -5,7 +5,7 @@ const logger = require('./lib/logger');
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./lib/packages/bootybox');
+const BootyBox = require('./packages/bootybox');
 const { requestId } = require('./lib/id/issuer');
 const chalk = require('chalk');
 const util = require('util');
@@ -364,6 +364,41 @@ program
             process.exit(0);
         } catch (err) {
             logger.error('[scoundrel] ❌ ask failed:', err?.message || err);
+            process.exit(1);
+        }
+    });
+
+program
+    .command('addcoin')
+    .argument('<mint>', 'Token mint address to add to the Scoundrel DB')
+    .description('Fetch token metadata via SolanaTracker SDK and persist it through tokenInfoService')
+    .addHelpText('after', `
+Examples:
+  $ scoundrel addcoin <MINT>
+  $ scoundrel addcoin 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump
+
+Notes:
+  • Uses the SolanaTracker Data API SDK to fetch token metadata for the given mint.
+  • Delegates persistence to lib/tokenInfoService.js (e.g., addOrUpdateCoin).
+`)
+    .action(async (mint) => {
+        const addcoinProcessor = loadProcessor('addcoin');
+
+        const runner = (typeof addcoinProcessor === 'function')
+            ? addcoinProcessor
+            : (addcoinProcessor && addcoinProcessor.run);
+
+        if (!runner) {
+            logger.error('[scoundrel] ./lib/addcoin must export a default function or { run }');
+            process.exit(1);
+        }
+
+        try {
+            await runner({ mint });
+            logger.info(`[scoundrel] ✅ addcoin completed for mint ${mint}`);
+            process.exit(0);
+        } catch (err) {
+            logger.error('[scoundrel] ❌ addcoin failed:', err?.message || err);
             process.exit(1);
         }
     });

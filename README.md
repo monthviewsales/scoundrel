@@ -42,16 +42,14 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Database Access (BootyBox)
 
-All MySQL interactions now flow through **BootyBox** (`packages/bootybox.js` a git submodule shared with other VAULT77 relics).  
-BootyBox owns the shared pool (via `lib/db/mysql.js`), creates the trading tables on start, and exposes domain helpers for every `sc_*` table plus the warchest registry. Highlights:
+BootyBox lives in the `packages/bootybox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/bootybox')` from application modules and tests.
 
-- `init()` bootstraps the shared pool + schema and must run before calling other helpers.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power both the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
+- `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
-- Higher-level modules (`ask`, `tuneStrategy`, `dossier`, `autopsy`, dossier CLI, profile persistence, etc.) simply call these helpers—no SQL lives outside BootyBox anymore.
-- Unit tests cover the shared helpers under `__tests__/lib/db/BootyBox.scTables.test.js`.
+- Loader coverage lives in `__tests__/lib/db/BootyBox.*.test.js`.
 
-If you add a new table or CLI persistence path, implement it inside BootyBox and reuse the pool it manages.
+If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.
 
 - Token metadata caching now flows through `/lib/services/tokenInfoService.js`, which safely merges SolanaTracker metadata with cached DB rows without overwriting good data during API outages.
 
