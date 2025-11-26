@@ -96,6 +96,7 @@ This project is a **CLI tool** (Scoundrel). All CLI work must follow these rules
     - Briefly describe the command.
     - List required/optional arguments.
     - Show at least one usage example when appropriate.
+  - **Commander v14 note:** `.action()` receives `(arg1, arg2, options, command)` — the **second parameter is the parsed options object**, not the Command instance.
 
 - **Man pages / usage docs**
   - Commands must have corresponding **man-style** or dedicated help/usage documentation.

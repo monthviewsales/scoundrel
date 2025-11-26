@@ -372,6 +372,7 @@ program
     .command('addcoin')
     .argument('<mint>', 'Token mint address to add to the Scoundrel DB')
     .description('Fetch token metadata via SolanaTracker SDK and persist it through tokenInfoService')
+    .option('-f, --force', 'Force refresh from API and skip cached DB metadata', false)
     .addHelpText('after', `
 Examples:
   $ scoundrel addcoin <MINT>
@@ -381,7 +382,8 @@ Notes:
   • Uses the SolanaTracker Data API SDK to fetch token metadata for the given mint.
   • Delegates persistence to lib/tokenInfoService.js (e.g., addOrUpdateCoin).
 `)
-    .action(async (mint) => {
+    .action(async (mint, opts, cmd) => {
+        const forceRefresh = !!opts.force;
         const addcoinProcessor = loadProcessor('addcoin');
 
         const runner = (typeof addcoinProcessor === 'function')
@@ -394,7 +396,11 @@ Notes:
         }
 
         try {
-            await runner({ mint });
+            const opts = (cmd && typeof cmd.opts === 'function') ? cmd.opts() : {};
+            const forceRefresh = !!opts.force;
+            logger.debug('[scoundrel] addcoin CLI opts', opts);
+            logger.debug('[scoundrel] addcoin CLI forceRefresh computed', { forceRefresh });
+            await runner({ mint, forceRefresh });
             logger.info(`[scoundrel] ✅ addcoin completed for mint ${mint}`);
             process.exit(0);
         } catch (err) {
