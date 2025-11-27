@@ -125,6 +125,9 @@ Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpda
 - `subscribeSlot(onUpdate, opts?)`
 - `subscribeSlotsUpdates(onUpdate, opts?)`
 
+WebSocket calls honor `HTTPS_PROXY` / `HTTP_PROXY` env vars (plus `NO_PROXY`) so subscription traffic can traverse locked-down networks.
+Use `scripts/testRpcSubs.js` to verify both HTTP + WS access with your SolanaTracker credentials.
+
 
 The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
 - The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
