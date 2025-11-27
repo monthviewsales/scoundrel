@@ -49,6 +49,13 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 // Last known SOL price in USD (shared across wallets for HUD header).
 let lastSolPriceUsd = null;
 
+// Simple rolling RPC/Data API timing stats for HUD display.
+const rpcStats = {
+  lastSolMs: null,
+  lastTokenMs: null,
+  lastDataApiMs: null,
+};
+
 // Shared SolanaTracker Data API client for token metadata lookups.
 const dataClient = createSolanaTrackerDataClient();
 
@@ -131,6 +138,7 @@ function parseArgs(argv) {
  * @property {Object<string, number>} startTokenBalances
  * @property {TokenRow[]} tokens
  * @property {boolean|null} hasToken22
+ * @property {{ts:number,summary:string}[]} recentEvents
  */
 
 /**
@@ -155,6 +163,7 @@ function buildInitialState(walletSpecs) {
       startTokenBalances: {},
       tokens: [],
       hasToken22: null,
+      recentEvents: [],
     };
   }
   return state;
@@ -176,6 +185,15 @@ function fmtNum(value, decimals = 3) {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+}
+
+// Helper to push recent activity events for a wallet.
+function pushRecentEvent(wallet, summary) {
+  if (!wallet.recentEvents) wallet.recentEvents = [];
+  wallet.recentEvents.unshift({ ts: Date.now(), summary });
+  if (wallet.recentEvents.length > 5) {
+    wallet.recentEvents.length = 5;
+  }
 }
 
 /**
@@ -292,8 +310,21 @@ function renderWalletSection(w) {
     colsHeader,
     sepRow,
     ...rows,
-    borderBottom,
   ];
+
+  if (w.recentEvents && w.recentEvents.length > 0) {
+    lines.push(borderMid);
+    const activityHeader = 'Recent activity:';
+    lines.push(`│ ${activityHeader.padEnd(headerWidth - 1, ' ')}│`);
+
+    const maxEvents = Math.min(w.recentEvents.length, 5);
+    for (let i = 0; i < maxEvents; i += 1) {
+      const summary = w.recentEvents[i].summary || '';
+      lines.push(`│ ${summary.slice(0, headerWidth - 1).padEnd(headerWidth - 1, ' ')}│`);
+    }
+  }
+
+  lines.push(borderBottom);
 
   return lines.join('\n');
 }
@@ -325,6 +356,20 @@ function renderHud(state) {
     chainLine = `Chain: slot ${chain.slot} (${rootStr}), last update ${ageStr}`;
   }
 
+  const wsStatus = (() => {
+    if (!chain || chain.slot == null || !chain.lastSlotAt) return 'WS: idle';
+    const ageMs = now - chain.lastSlotAt;
+    if (ageMs < 2000) return `WS: OK (${ageMs}ms)`;
+    if (ageMs < 10000) return `WS: stale (${ageMs}ms)`;
+    return `WS: lagging (${ageMs}ms)`;
+  })();
+
+  const rpcParts = [];
+  if (typeof rpcStats.lastSolMs === 'number') rpcParts.push(`SOL RPC: ${rpcStats.lastSolMs}ms`);
+  if (typeof rpcStats.lastTokenMs === 'number') rpcParts.push(`Tokens RPC: ${rpcStats.lastTokenMs}ms`);
+  if (typeof rpcStats.lastDataApiMs === 'number') rpcParts.push(`Data API: ${rpcStats.lastDataApiMs}ms`);
+  const rpcLine = rpcParts.length ? rpcParts.join('  |  ') : 'RPC: (no recent calls)';
+
   const sections = aliases.map((alias) => renderWalletSection(state[alias]));
   const combined = sections.join('\n\n');
 
@@ -332,6 +377,8 @@ function renderHud(state) {
 
   // eslint-disable-next-line no-console
   console.log(chainLine);
+  // eslint-disable-next-line no-console
+  console.log(`${wsStatus}  |  ${rpcLine}`);
   // eslint-disable-next-line no-console
   console.log('');
   // eslint-disable-next-line no-console
@@ -370,6 +417,7 @@ async function refreshAllSolBalances(rpcMethods, state) {
   if (!rpcMethods || aliases.length === 0) return;
 
   const now = Date.now();
+  const start = Date.now();
 
   await Promise.all(
     aliases.map(async (alias) => {
@@ -392,6 +440,7 @@ async function refreshAllSolBalances(rpcMethods, state) {
       w.lastActivityTs = now;
     })
   );
+  rpcStats.lastSolMs = Date.now() - start;
 }
 
 /**
@@ -408,6 +457,7 @@ async function refreshAllTokenBalances(rpcMethods, state) {
   }
 
   const now = Date.now();
+  const tokenStart = Date.now();
   const tokenInfoCache = new Map(); // mint -> tokenInfo or null
 
   await Promise.all(
@@ -475,9 +525,11 @@ async function refreshAllTokenBalances(rpcMethods, state) {
         ) {
           try {
             // API expects an array of mints.
+            const priceStart = Date.now();
             const resp = await dataClient.getMultipleTokenPrices({
               mints,
             });
+            rpcStats.lastDataApiMs = Date.now() - priceStart;
 
             if (resp && typeof resp === 'object') {
               for (const [mintKey, info] of Object.entries(resp)) {
@@ -580,6 +632,7 @@ async function refreshAllTokenBalances(rpcMethods, state) {
       }
     })
   );
+  rpcStats.lastTokenMs = Date.now() - tokenStart;
 }
 
 // ---------- main loop ----------
@@ -601,6 +654,49 @@ async function main() {
 
   let slotSub = null;
   const accountSubs = [];
+  const logsSubs = [];
+  // Recent activity via logsSubscribe (best-effort, may not be supported on all endpoints).
+  if (rpcSubs && rpcMethods && typeof rpcMethods.subscribeLogs === 'function') {
+    const aliasesForLogs = Object.keys(state);
+
+    for (const alias of aliasesForLogs) {
+      const wallet = state[alias];
+      try {
+        logger.info(`[HUD] Subscribing to logs for ${wallet.alias} (${wallet.pubkey}).`);
+        const sub = await rpcMethods.subscribeLogs(
+          { mentions: [wallet.pubkey] },
+          (ev) => {
+            try {
+              const value = ev && (ev.value || ev.result || ev);
+              if (!value) return;
+
+              const logs = Array.isArray(value.logs) ? value.logs : [];
+              const signature = typeof value.signature === 'string' ? value.signature : null;
+              const firstLog = logs[0] || '';
+              const shortSig = signature
+                ? `${signature.slice(0, 4)}...${signature.slice(-4)}`
+                : 'unknown sig';
+              const msg = firstLog ? firstLog.slice(0, 60) : 'log event';
+              const summary = `${new Date().toLocaleTimeString()} ${shortSig} ${msg}`;
+              pushRecentEvent(wallet, summary);
+            } catch (logErr) {
+              const msg = logErr && logErr.message ? logErr.message : logErr;
+              logger.warn(`[HUD] Error processing logs event for ${wallet.alias}: ${msg}`);
+            }
+          }
+        );
+
+        logsSubs.push(sub);
+      } catch (err) {
+        const msg = err && err.message ? err.message : err;
+        logger.warn(`[HUD] Failed to subscribe to logs for ${wallet.alias} (${wallet.pubkey}): ${msg}`);
+      }
+    }
+  } else if (!rpcSubs) {
+    logger.warn('[HUD] Logs subscriptions skipped: rpcSubs not available.');
+  } else {
+    logger.warn('[HUD] Logs subscriptions skipped: rpcMethods.subscribeLogs is not available.');
+  }
 
   // WebSocket RPC is used for a chain heartbeat (slotSubscribe) and, where
   // available, live SOL balance updates via accountSubscribe. Tokens remain
@@ -732,6 +828,17 @@ async function main() {
         } catch (err) {
           const msg = err && err.message ? err.message : err;
           logger.warn(`[HUD] Error during SOL account subscriptions unsubscribe: ${msg}`);
+        }
+
+        try {
+          for (const sub of logsSubs) {
+            if (sub && typeof sub.unsubscribe === 'function') {
+              await sub.unsubscribe();
+            }
+          }
+        } catch (err) {
+          const msg = err && err.message ? err.message : err;
+          logger.warn(`[HUD] Error during logs subscriptions unsubscribe: ${msg}`);
         }
 
         return close();
