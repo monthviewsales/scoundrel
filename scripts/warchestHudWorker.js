@@ -17,6 +17,7 @@ const { createSolanaTrackerDataClient } = require('../lib/solanaTrackerDataClien
 const { ensureTokenInfo } = require('../lib/services/tokenInfoService');
 const logger = require('../lib/logger');
 const { updateFromSlotEvent, getChainState } = require('../lib/solana/rpcMethods/internal/chainSTate');
+const { updateSol, getWalletState } = require('../lib/solana/rpcMethods/internal/walletState');
 
 // ---------- env helpers ----------
 function intFromEnv(name, fallback) {
@@ -192,12 +193,26 @@ function renderWalletSection(w) {
   const borderBottom = `└${'─'.repeat(headerWidth)}┘`;
 
   const shortPk = shortenPubkey(w.pubkey);
-  const solStr = `SOL: ${fmtNum(w.solBalance, 3)}`;
-  let deltaStr = '';
 
-  if (w.solSessionDelta !== 0) {
-    const deltaRaw = `${w.solSessionDelta > 0 ? '+' : ''}${fmtNum(w.solSessionDelta, 3)}`;
-    const deltaColored = w.solSessionDelta > 0 ? chalk.green(deltaRaw) : chalk.red(deltaRaw);
+  // Prefer live WS-driven SOL balance from walletState when available.
+  let effectiveSolBalance = w.solBalance;
+  const wsWallet = getWalletState(w.pubkey);
+  if (wsWallet && typeof wsWallet.solLamports === 'number' && Number.isFinite(wsWallet.solLamports)) {
+    effectiveSolBalance = wsWallet.solLamports / 1_000_000_000;
+  }
+
+  const solStr = `SOL: ${fmtNum(effectiveSolBalance, 3)}`;
+
+  // Recompute session delta from the effective balance when we have a baseline.
+  let sessionDelta = w.solSessionDelta;
+  if (w.startSolBalance != null && effectiveSolBalance != null && Number.isFinite(effectiveSolBalance)) {
+    sessionDelta = effectiveSolBalance - w.startSolBalance;
+  }
+
+  let deltaStr = '';
+  if (sessionDelta !== 0) {
+    const deltaRaw = `${sessionDelta > 0 ? '+' : ''}${fmtNum(sessionDelta, 3)}`;
+    const deltaColored = sessionDelta > 0 ? chalk.green(deltaRaw) : chalk.red(deltaRaw);
     deltaStr = ` (${deltaColored})`;
   }
 
@@ -361,6 +376,10 @@ async function refreshAllSolBalances(rpcMethods, state) {
       const w = state[alias];
       const bal = await fetchSolBalance(rpcMethods, w.pubkey);
       if (bal == null) return;
+
+      // Keep the shared walletState in sync (approximate lamports from SOL).
+      const lamportsApprox = Math.round(bal * 1_000_000_000);
+      updateSol(w.pubkey, lamportsApprox);
 
       if (w.startSolBalance == null) {
         w.startSolBalance = bal;
@@ -581,13 +600,11 @@ async function main() {
   const rpcMethods = createRpcMethods(rpc, rpcSubs);
 
   let slotSub = null;
+  const accountSubs = [];
 
-  // TODO (later): wire up actual subscriptions:
-  // - account notifications for SOL
-  // - token account notifications
-  // - signature notifications (to trigger on-demand price refresh)
-  //
-  // For now, we just log that we created the client so we know WS is live.
+  // WebSocket RPC is used for a chain heartbeat (slotSubscribe) and, where
+  // available, live SOL balance updates via accountSubscribe. Tokens remain
+  // on HTTP polling for now.
   logger.info('[HUD] SolanaTracker RPC client initialized.');
   if (!rpcSubs) {
     // eslint-disable-next-line no-console
@@ -608,6 +625,62 @@ async function main() {
     logger.warn('[HUD] Slot subscription skipped: rpcSubs not available.');
   } else {
     logger.warn('[HUD] Slot subscription skipped: rpcMethods.subscribeSlot is not available.');
+  }
+
+  // Live SOL balance updates via accountSubscribe (best-effort).
+  if (rpcSubs && rpcMethods && typeof rpcMethods.subscribeAccount === 'function') {
+    const aliases = Object.keys(state);
+
+    for (const alias of aliases) {
+      const wallet = state[alias];
+      try {
+        logger.info(`[HUD] Subscribing to SOL account for ${wallet.alias} (${wallet.pubkey}).`);
+
+          const sub = await rpcMethods.subscribeAccount(wallet.pubkey, (ev) => {
+          try {
+            const value = ev && (ev.value || ev.account || ev);
+            if (!value) return;
+
+            let lamports = null;
+            if (typeof value.lamports === 'number') {
+              lamports = value.lamports;
+            } else if (value.lamports != null) {
+              lamports = Number(value.lamports);
+            }
+
+            if (!Number.isFinite(lamports)) return;
+
+            // Update shared wallet state (lamports) so any consumer can see live SOL.
+            updateSol(wallet.pubkey, lamports);
+
+            const now = Date.now();
+            const sol = lamports / 1_000_000_000;
+
+            if (wallet.startSolBalance == null) {
+              wallet.startSolBalance = sol;
+              wallet.solSessionDelta = 0;
+            } else {
+              wallet.solSessionDelta = sol - wallet.startSolBalance;
+            }
+
+            wallet.solBalance = sol;
+            wallet.lastActivityTs = now;
+          } catch (updateErr) {
+            const msg = updateErr && updateErr.message ? updateErr.message : updateErr;
+            logger.warn(`[HUD] Error processing SOL account update for ${wallet.alias}: ${msg}`);
+          }
+        });
+
+        accountSubs.push(sub);
+      } catch (err) {
+        const msg = err && err.message ? err.message : err;
+        logger.warn(`[HUD] Failed to subscribe to SOL account for ${wallet.alias} (${wallet.pubkey}): ${msg}`);
+      }
+    }
+  } else if (!rpcSubs) {
+    logger.warn('[HUD] SOL account subscriptions skipped: rpcSubs not available.');
+  } else {
+    logger.warn('[HUD] SOL account subscriptions skipped: rpcMethods.subscribeAccount is not available.');
   }
 
   // Initial SOL balance fetch
@@ -648,6 +721,17 @@ async function main() {
         } catch (err) {
           const msg = err && err.message ? err.message : err;
           logger.warn(`[HUD] Error during slot subscription unsubscribe: ${msg}`);
+        }
+
+        try {
+          for (const sub of accountSubs) {
+            if (sub && typeof sub.unsubscribe === 'function') {
+              await sub.unsubscribe();
+            }
+          }
+        } catch (err) {
+          const msg = err && err.message ? err.message : err;
+          logger.warn(`[HUD] Error during SOL account subscriptions unsubscribe: ${msg}`);
         }
 
         return close();
