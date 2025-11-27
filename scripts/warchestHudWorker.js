@@ -16,6 +16,7 @@ const { createRpcMethods } = require('../lib/solana/rpcMethods');
 const { createSolanaTrackerDataClient } = require('../lib/solanaTrackerDataClient');
 const { ensureTokenInfo } = require('../lib/services/tokenInfoService');
 const logger = require('../lib/logger');
+const { updateFromSlotEvent, getChainState } = require('../lib/solana/rpcMethods/internal/chainSTate');
 
 // ---------- env helpers ----------
 function intFromEnv(name, fallback) {
@@ -299,11 +300,25 @@ function renderHud(state) {
   }
 
   const now = Date.now();
+  const chain = getChainState();
+  let chainLine = 'Chain: slot N/A (WS idle)';
+
+  if (chain && chain.slot != null) {
+    const ageMs = chain.lastSlotAt ? now - chain.lastSlotAt : null;
+    const ageStr = ageMs != null ? `${Math.round(ageMs)}ms ago` : 'just now';
+    const rootStr = chain.root != null ? `root ${chain.root}` : 'root N/A';
+    chainLine = `Chain: slot ${chain.slot} (${rootStr}), last update ${ageStr}`;
+  }
+
   const sections = aliases.map((alias) => renderWalletSection(state[alias]));
   const combined = sections.join('\n\n');
 
   const footer = `Last redraw: ${new Date(now).toLocaleTimeString()}  |  Wallets: ${aliases.length}  |  Ctrl-C to exit`;
 
+  // eslint-disable-next-line no-console
+  console.log(chainLine);
+  // eslint-disable-next-line no-console
+  console.log('');
   // eslint-disable-next-line no-console
   console.log(combined);
   // eslint-disable-next-line no-console
@@ -565,6 +580,8 @@ async function main() {
   const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
   const rpcMethods = createRpcMethods(rpc, rpcSubs);
 
+  let slotSub = null;
+
   // TODO (later): wire up actual subscriptions:
   // - account notifications for SOL
   // - token account notifications
@@ -575,6 +592,22 @@ async function main() {
   if (!rpcSubs) {
     // eslint-disable-next-line no-console
     logger.warn('[HUD] rpcSubs is null; WS subscriptions are disabled (no SOLANATRACKER_RPC_WS_URL?).');
+  }
+
+  if (rpcSubs && rpcMethods && typeof rpcMethods.subscribeSlot === 'function') {
+    try {
+      logger.info('[HUD] Subscribing to slot updates for chain heartbeat.');
+      slotSub = await rpcMethods.subscribeSlot((ev) => {
+        updateFromSlotEvent(ev);
+      });
+    } catch (err) {
+      const msg = err && err.message ? err.message : err;
+      logger.error(`[HUD] Failed to subscribe to slot updates: ${msg}`);
+    }
+  } else if (!rpcSubs) {
+    logger.warn('[HUD] Slot subscription skipped: rpcSubs not available.');
+  } else {
+    logger.warn('[HUD] Slot subscription skipped: rpcMethods.subscribeSlot is not available.');
   }
 
   // Initial SOL balance fetch
@@ -607,8 +640,22 @@ async function main() {
     clearInterval(tokenTimer);
     clearInterval(renderTimer);
     Promise.resolve()
-      .then(() => close())
-      .catch(() => {})
+      .then(async () => {
+        try {
+          if (slotSub && typeof slotSub.unsubscribe === 'function') {
+            await slotSub.unsubscribe();
+          }
+        } catch (err) {
+          const msg = err && err.message ? err.message : err;
+          logger.warn(`[HUD] Error during slot subscription unsubscribe: ${msg}`);
+        }
+
+        return close();
+      })
+      .catch((err) => {
+        const msg = err && err.message ? err.message : err;
+        logger.warn(`[HUD] Error during RPC client close: ${msg}`);
+      })
       .finally(() => {
         process.exit(0);
       });
