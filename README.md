@@ -118,7 +118,7 @@ const balance = await rpcMethods.getSolBalance('walletPubkey');
 
 ### WebSocket helpers
 
-Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and honors SolanaTracker options (plus optional `onError`).
+Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and (where supported by SolanaTracker) honors options plus an optional `onError` handler. Note that `slotSubscribe` on the current SolanaTracker RPC endpoint does **not** accept any parameters.
 
 - `subscribeAccount(pubkey, onUpdate, opts?)`
 - `subscribeBlock(onUpdate, opts?)`
@@ -127,6 +127,27 @@ Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpda
 
 WebSocket calls honor `HTTPS_PROXY` / `HTTP_PROXY` env vars (plus `NO_PROXY`) so subscription traffic can traverse locked-down networks.
 Use `scripts/testRpcSubs.js` to verify both HTTP + WS access with your SolanaTracker credentials.
+
+#### WebSocket notes (SolanaTracker)
+
+Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC cluster.
+
+- **Connection pattern**
+  - Always build the client and helper surface via:
+    ```js
+    const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
+    const rpcMethods = createRpcMethods(rpc, rpcSubs);
+    ```
+- **Supported WS flows today**
+  - `subscribeSlot` – live slot heartbeat; no parameters are allowed on this endpoint.
+  - `subscribeAccount` – per-account updates (ideal for wallet SOL/token balances).
+  - `subscribeLogs` – program / wallet logs for higher-level activity.
+- **Not supported on this endpoint**
+  - `blockSubscribe` currently returns a JSON-RPC `Method not found` error on SolanaTracker’s mainnet RPC and should be treated as unavailable.
+- **Testing your setup**
+  - Use `npm run test:ws` (runs `scripts/testRpcSubs.js`) to verify that your HTTP + WebSocket credentials, proxy settings, and network allow `slotSubscribe` to receive events.
+
+For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
 
 The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
