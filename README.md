@@ -114,7 +114,7 @@ const balance = await rpcMethods.getSolBalance('walletPubkey');
 | `getTokenAccountsByOwnerV2` | `(owner: string, opts?) => Promise<{ owner, accounts, hasMore, nextCursor, totalCount, raw }>` | Cursor + pagination metadata.
 | `getMultipleAccounts` | `(pubkeys: string[], opts?) => Promise<{ accounts, raw }>` | Batched account infos.
 | `getFirstAvailableBlock` | `() => Promise<number>` | Earliest slot SolanaTracker serves.
-| `getTransaction` | `(signature: string, opts?) => Promise<{ signature, slot, blockTime, transaction, meta, raw } | null>` | Returns `null` when the signature is unknown.
+| `getTransaction` | `(signatureOrSignatures: string \| string[], opts?) => Promise<tx \| tx[] \| null>` | Accepts a single signature or an array. Returns `null` (or `null` entries in the array) when a signature is unknown. Each tx includes `{ signature, slot, blockTime, transaction, meta, err, status, raw }`. |
 
 ### WebSocket helpers
 
@@ -124,6 +124,7 @@ Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpda
 - `subscribeBlock(onUpdate, opts?)`
 - `subscribeSlot(onUpdate, opts?)`
 - `subscribeSlotsUpdates(onUpdate, opts?)`
+- `subscribeLogs(filter, onUpdate, opts?)`
 
 WebSocket calls honor `HTTPS_PROXY` / `HTTP_PROXY` env vars (plus `NO_PROXY`) so subscription traffic can traverse locked-down networks.
 Use `scripts/testRpcSubs.js` to verify both HTTP + WS access with your SolanaTracker credentials.
@@ -210,6 +211,25 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 **Warchest HUD (scripts/warchestHudWorker.js)**  
 A real-time wallet monitor that displays SOL balance, session deltas, token balances, and live USD prices using SolanaTracker RPC + Data APIs.  
 Useful during active trading sessions.
+
+### `tx <SIGNATURE>`
+
+Inspect a Solana transaction using SolanaTracker RPC and Scoundrel's TxInspector.
+
+- Fetches the transaction via `rpcMethods.getTransaction()` and normalizes it.
+- Shows status (`ok` / `err` / `unknown`), network fee (lamports + SOL), and per-account SOL balance changes.
+- Useful for verifying swap costs (network fee, Jito tips, protocol fees) and sanity-checking wallet activity.
+
+Examples:
+```bash
+# Inspect a single transaction
+scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ
+
+# Inspect multiple transactions in one run
+scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ \
+  --sig ANOTHER_SIG \
+  --sig THIRD_SIG
+```
 
 ### `dossier <WALLET>`
 
