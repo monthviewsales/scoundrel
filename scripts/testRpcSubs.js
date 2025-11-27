@@ -34,6 +34,12 @@ async function main() {
     clearTimeout(timer);
     if (typeof iterable.return === 'function') await iterable.return();
     await close();
+
+    // Ensure the process terminates once the test is complete when run as a script.
+    if (require.main === module) {
+      // eslint-disable-next-line no-process-exit
+      process.exit(0);
+    }
   }
 }
 
