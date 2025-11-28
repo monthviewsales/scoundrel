@@ -93,24 +93,27 @@ function colorizer(color) {
 function parseArgs(argv) {
   const wallets = [];
   const args = argv.slice(2);
+  let mode = 'daemon'; // default: headless daemon mode
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
+
     if (arg === '--wallet') {
       const spec = args[i + 1];
       i += 1;
       if (!spec) continue;
       const [alias, pubkey, color] = spec.split(':');
       if (!alias || !pubkey) {
-        // eslint-disable-next-line no-console
         logger.warn('[HUD] ignoring malformed --wallet spec:', spec);
         continue;
       }
       wallets.push({ alias, pubkey, color: color || null });
+    } else if (arg === '-hud' || arg === '--hud') {
+      mode = 'hud';
     }
   }
 
-  return { wallets };
+  return { wallets, mode };
 }
 
 // ---------- HUD state ----------
@@ -638,13 +641,14 @@ async function refreshAllTokenBalances(rpcMethods, state) {
 // ---------- main loop ----------
 
 async function main() {
-  const { wallets } = parseArgs(process.argv);
+  const { wallets, mode } = parseArgs(process.argv);
 
   if (!wallets || wallets.length === 0) {
-    // eslint-disable-next-line no-console
     logger.error('[HUD] No wallets provided. Use --wallet alias:pubkey:color');
     process.exit(1);
   }
+
+  logger.info(`[HUD] Starting warchest HUD worker in ${mode} mode.`);
 
   const state = buildInitialState(wallets);
 
@@ -786,28 +790,31 @@ async function main() {
   // Periodic SOL refresh using HTTP RPC
   const solTimer = setInterval(() => {
     refreshAllSolBalances(rpcMethods, state).catch((err) => {
-      // eslint-disable-next-line no-console
       logger.error('[HUD] Error refreshing SOL balances:', err.message || err);
     });
   }, HUD_SOL_REFRESH_SEC * 1000);
 
   const tokenTimer = setInterval(() => {
     refreshAllTokenBalances(rpcMethods, state).catch((err) => {
-      // eslint-disable-next-line no-console
       logger.error('[HUD] Error refreshing token balances:', err.message || err);
     });
   }, HUD_TOKENS_REFRESH_SEC * 1000);
 
-  // Render loop
-  const renderTimer = setInterval(() => {
-    renderHud(state);
-  }, HUD_RENDER_INTERVAL_MS);
+  // Render loop (only in HUD mode)
+  let renderTimer = null;
+  if (mode === 'hud') {
+    renderTimer = setInterval(() => {
+      renderHud(state);
+    }, HUD_RENDER_INTERVAL_MS);
+  }
 
   // Graceful shutdown
   function shutdown() {
     clearInterval(solTimer);
     clearInterval(tokenTimer);
-    clearInterval(renderTimer);
+    if (renderTimer) {
+      clearInterval(renderTimer);
+    }
     Promise.resolve()
       .then(async () => {
         try {
@@ -855,8 +862,10 @@ async function main() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  // Initial render
-  renderHud(state);
+  // Initial render only in HUD mode
+  if (mode === 'hud') {
+    renderHud(state);
+  }
 }
 
 // Run if invoked directly
