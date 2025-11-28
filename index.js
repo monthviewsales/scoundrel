@@ -49,68 +49,6 @@ function shortenPubkey(addr) {
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
 
-function renderTxSummary(summary) {
-    if (!summary) {
-        // eslint-disable-next-line no-console
-        console.log('Transaction not found or expired.');
-        return;
-    }
-
-    const s = summary;
-
-    // eslint-disable-next-line no-console
-    console.log(`Signature:      ${s.signature}`);
-    // eslint-disable-next-line no-console
-    console.log(`Status:         ${s.status}`);
-    if (s.err) {
-        // eslint-disable-next-line no-console
-        console.log(`  Error:        ${JSON.stringify(s.err)}`);
-    }
-
-    // eslint-disable-next-line no-console
-    console.log(`Slot:           ${s.slot}`);
-
-    let blockTimeStr = 'N/A';
-    if (s.blockTime != null) {
-        try {
-            const bt = typeof s.blockTime === 'bigint' ? Number(s.blockTime) : Number(s.blockTime);
-            if (Number.isFinite(bt) && bt > 0) {
-                blockTimeStr = new Date(bt * 1000).toISOString();
-            }
-        } catch (_) {
-            blockTimeStr = String(s.blockTime);
-        }
-    }
-    // eslint-disable-next-line no-console
-    console.log(`Block Time:     ${blockTimeStr}`);
-
-    // Network fee
-    // eslint-disable-next-line no-console
-    console.log('');
-    // eslint-disable-next-line no-console
-    console.log('Network Fee:');
-    // eslint-disable-next-line no-console
-    console.log(`  Lamports:     ${s.networkFeeLamports ?? 'N/A'}`);
-    // eslint-disable-next-line no-console
-    console.log(`  SOL:          ${s.networkFeeSol ?? 'N/A'}`);
-
-    // SOL balance changes
-    // eslint-disable-next-line no-console
-    console.log('');
-    // eslint-disable-next-line no-console
-    console.log('SOL Balance Changes:');
-    if (!s.solChanges || s.solChanges.length === 0) {
-        // eslint-disable-next-line no-console
-        console.log('  (none)');
-    } else {
-        s.solChanges.forEach((c) => {
-            // eslint-disable-next-line no-console
-            console.log(
-                `  ${c.owner}  Δ=${c.deltaLamports} lamports (${c.deltaSol} SOL)`
-            );
-        });
-    }
-}
 
 async function persistProfileSnapshot({ wallet, traderName, profile, source }) {
     if (!wallet || !profile) return;
@@ -394,47 +332,28 @@ program
         if (!previous) return [value];
         return previous.concat(value);
     })
-    .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n`)
-    .action(async (signature, opts) => {
-        const signatures = [signature];
-        if (opts.sig) {
-            if (Array.isArray(opts.sig)) {
-                signatures.push(...opts.sig);
-            } else {
-                signatures.push(opts.sig);
-            }
+    .option('-s, --swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
+    .option('-w, --wallet <pubkey>', 'Wallet address that initiated the swap (focus wallet)')
+    .option('-m, --mint <mint>', 'SPL mint address for the swapped token')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n  • With -s/--swap, also computes token + SOL deltas for the given wallet/mint.\n`)
+    .action(async (signature, cmd) => {
+        const txProcessor = loadProcessor('tx');
+
+        const runner = (typeof txProcessor === 'function')
+            ? txProcessor
+            : (txProcessor && txProcessor.run);
+
+        if (!runner) {
+            logger.error('[scoundrel] ./lib/tx must export a default function or { run }');
+            process.exit(1);
         }
 
-        const { createSolanaTrackerRPCClient } = require('./lib/solanaTrackerRPCClient');
-        const { createRpcMethods } = require('./lib/solana/rpcMethods');
-        const { createInspectTransaction } = require('./lib/txInspector/inspectTransaction');
-
-        const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
-        const rpcMethods = createRpcMethods(rpc, rpcSubs);
-        const inspectTransaction = createInspectTransaction(rpcMethods);
-
         try {
-            const isBatch = signatures.length > 1;
-            const result = await inspectTransaction(isBatch ? signatures : signatures[0], {
-                maxSupportedTransactionVersion: 0,
-            });
-
-            const summaries = Array.isArray(result) ? result : [result];
-
-            summaries.forEach((summary, idx) => {
-                if (idx > 0) {
-                    // eslint-disable-next-line no-console
-                    console.log('\n──────────────────────────────────────────────────────────\n');
-                }
-                renderTxSummary(summary);
-            });
-
+            await runner({ signature, cmd });
             process.exit(0);
         } catch (err) {
             logger.error('[scoundrel] ❌ tx inspection failed:', err?.message || err);
             process.exit(1);
-        } finally {
-            try { await close(); } catch (_) {}
         }
     });
 
