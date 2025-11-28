@@ -29,10 +29,16 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install BootyBox dependencies
+      - name: Install BootyBox dependencies (lowercase path)
+        if: hashFiles('packages/bootybox/package.json') != ''
         working-directory: packages/bootybox
+        run: npm ci
+      - name: Install BootyBox dependencies (legacy path)
+        if: hashFiles('packages/BootyBox/package.json') != ''
+        working-directory: packages/BootyBox
         run: npm ci
       - name: Run tests
         run: |
           npm test -- --runInBand
-          (cd packages/bootybox && npm test -- --runInBand)
+          if [ -f packages/bootybox/package.json ]; then (cd packages/bootybox && npm test -- --runInBand); fi
+          if [ -f packages/BootyBox/package.json ]; then (cd packages/BootyBox && npm test -- --runInBand); fi
