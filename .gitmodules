@@ -1,3 +1,3 @@
-[submodule "packages/BootyBox"]
-	path = packages/BootyBox
-	url = git@github.com:monthviewsales/BootyBox.git
+[submodule "packages/bootybox"]
+	path = packages/bootybox
+	url = https://github.com/monthviewsales/BootyBox.git
