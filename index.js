@@ -3,9 +3,9 @@
 require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
 const { program } = require('commander');
-const { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } = require('fs');
+const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./lib/packages/bootybox');
+const BootyBox = require('./packages/BootyBox/src');
 const { requestId } = require('./lib/id/issuer');
 const chalk = require('chalk');
 const util = require('util');
@@ -48,6 +48,7 @@ function shortenPubkey(addr) {
     if (!addr) return '';
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
+
 
 async function persistProfileSnapshot({ wallet, traderName, profile, source }) {
     if (!wallet || !profile) return;
@@ -117,7 +118,7 @@ program
     .option('-e, --end <isoOrEpoch>', 'End time (ISO or epoch seconds)')
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel research <WALLET>\n  $ scoundrel research <WALLET> -n Gh0stee\n  $ scoundrel research <WALLET> --start 2025-01-01T00:00:00Z --end 2025-01-31T23:59:59Z\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Optional alias to tag harvest artifacts\n  -f, --feature-mint-count <num>  Number of recent mints to summarize for features (default: 8)\n\nNotes:\n  • Writes small samples to ./data/ for inspection in development.\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • The configured feature-mint count is written to the merged meta for traceability.\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel research <WALLET>\n  $ scoundrel research <WALLET> -n Gh0stee\n  $ scoundrel research <WALLET> --start 2025-01-01T00:00:00Z --end 2025-01-31T23:59:59Z\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Optional alias to tag harvest artifacts\n  -f, --feature-mint-count <num>  Number of recent mints to summarize for features (default: 8)\n\nNotes:\n  • Writes small samples to ./data/dossier/<alias>/raw/ for inspection in development.\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • The configured feature-mint count is written to the merged meta for traceability.\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -163,7 +164,7 @@ program
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
     .option('-r, --resend', 'Resend the latest merged file for this trader (-n) to AI without re-harvesting data', false)
-    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -324,11 +325,44 @@ program
     });
 
 program
+    .command('tx')
+    .argument('<signature>', 'Solana transaction signature to inspect')
+    .description('Inspect a Solana transaction via SolanaTracker (status, fees, SOL balance changes)')
+    .option('--sig <signature>', 'Additional transaction signature to inspect (may be repeated)', (value, previous) => {
+        if (!previous) return [value];
+        return previous.concat(value);
+    })
+    .option('-s, --swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
+    .option('-w, --wallet <pubkey>', 'Wallet address that initiated the swap (focus wallet)')
+    .option('-m, --mint <mint>', 'SPL mint address for the swapped token')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n  • With -s/--swap, also computes token + SOL deltas for the given wallet/mint.\n`)
+    .action(async (signature, cmd) => {
+        const txProcessor = loadProcessor('tx');
+
+        const runner = (typeof txProcessor === 'function')
+            ? txProcessor
+            : (txProcessor && txProcessor.run);
+
+        if (!runner) {
+            logger.error('[scoundrel] ./lib/tx must export a default function or { run }');
+            process.exit(1);
+        }
+
+        try {
+            await runner({ signature, cmd });
+            process.exit(0);
+        } catch (err) {
+            logger.error('[scoundrel] ❌ tx inspection failed:', err?.message || err);
+            process.exit(1);
+        }
+    });
+
+program
     .command('ask')
     .description('Ask a question about a trader using their saved profile (Responses API)')
     .option('-n, --name <traderName>', 'Trader alias used when saving the profile (optional, defaults to "default" if omitted)')
     .requiredOption('-q, --question <text>', 'Question to ask')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel ask -n Gh0stee -q "What patterns do you see?"\n  $ scoundrel ask -n Gh0stee -q "List common entry mistakes."\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n  -q, --question <text>     Natural language question\n\nNotes:\n  • Reads ./profiles/<name>.json as context.\n  • May also include recent enriched rows from ./data/ if available.\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel ask -n Gh0stee -q "What patterns do you see?"\n  $ scoundrel ask -n Gh0stee -q "List common entry mistakes."\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n  -q, --question <text>     Natural language question\n\nNotes:\n  • Reads ./profiles/<name>.json as context.\n  • May also include the latest dossier snapshot from ./data/dossier/<alias>/enriched/ when SAVE_ENRICHED is enabled.\n`)
     .action(async (opts) => {
         const askProcessor = loadProcessor('ask');
         const alias = opts.name ? opts.name.replace(/[^a-z0-9_-]/gi, '_') : 'default';
@@ -340,16 +374,20 @@ program
         const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
 
         // Optionally include recent enriched rows if present
+        const artifactAlias = normalizeTraderAlias(opts.name || alias, opts.name || alias || 'default');
         let rows = [];
-        const dataDir = join(process.cwd(), 'data');
-        if (existsSync(dataDir)) {
-            const candidates = readdirSync(dataDir).filter(f => f.endsWith('-enriched.json'));
-            if (candidates.length) {
-                try {
-                    const last = join(dataDir, candidates.sort().pop());
-                    rows = JSON.parse(readFileSync(last, 'utf8'));
-                } catch (_) { }
-            }
+        const latestEnriched = loadLatestJson(dossierBaseDir(artifactAlias), ['enriched'], 'techniqueFeatures-');
+        if (latestEnriched && latestEnriched.data) {
+            const payload = latestEnriched.data;
+            // Prefer the condensed coins array; otherwise wrap the payload so ask() still receives rows[]
+            const arrayPayload = Array.isArray(payload?.coins)
+                ? payload.coins
+                : Array.isArray(payload)
+                    ? payload
+                    : payload
+                        ? [payload]
+                        : [];
+            rows = arrayPayload;
         }
 
         try {
@@ -360,6 +398,47 @@ program
             process.exit(0);
         } catch (err) {
             logger.error('[scoundrel] ❌ ask failed:', err?.message || err);
+            process.exit(1);
+        }
+    });
+
+program
+    .command('addcoin')
+    .argument('<mint>', 'Token mint address to add to the Scoundrel DB')
+    .description('Fetch token metadata via SolanaTracker SDK and persist it through tokenInfoService')
+    .option('-f, --force', 'Force refresh from API and skip cached DB metadata', false)
+    .addHelpText('after', `
+Examples:
+  $ scoundrel addcoin <MINT>
+  $ scoundrel addcoin 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump
+
+Notes:
+  • Uses the SolanaTracker Data API SDK to fetch token metadata for the given mint.
+  • Delegates persistence to lib/tokenInfoService.js (e.g., addOrUpdateCoin).
+`)
+    .action(async (mint, opts, cmd) => {
+        const forceRefresh = !!opts.force;
+        const addcoinProcessor = loadProcessor('addcoin');
+
+        const runner = (typeof addcoinProcessor === 'function')
+            ? addcoinProcessor
+            : (addcoinProcessor && addcoinProcessor.run);
+
+        if (!runner) {
+            logger.error('[scoundrel] ./lib/addcoin must export a default function or { run }');
+            process.exit(1);
+        }
+
+        try {
+            const opts = (cmd && typeof cmd.opts === 'function') ? cmd.opts() : {};
+            const forceRefresh = !!opts.force;
+            logger.debug('[scoundrel] addcoin CLI opts', opts);
+            logger.debug('[scoundrel] addcoin CLI forceRefresh computed', { forceRefresh });
+            await runner({ mint, forceRefresh });
+            logger.info(`[scoundrel] ✅ addcoin completed for mint ${mint}`);
+            process.exit(0);
+        } catch (err) {
+            logger.error('[scoundrel] ❌ addcoin failed:', err?.message || err);
             process.exit(1);
         }
     });

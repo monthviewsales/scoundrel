@@ -5,7 +5,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 ## What it does
 - Harvests trades, charts, and metadata for Solana wallets via the SolanaTracker Data API/SDK.
 - Generates schema-locked JSON + markdown reports with the OpenAI Responses API.
-- Persists artifacts locally (`./profiles`, `./data`) and in MySQL through the shared BootyBox helper.
+- Persists artifacts locally (`./profiles`, `./data/dossier`, `./data/autopsy`) and in MySQL through the shared BootyBox helper.
 - Provides operator tooling: dossier (profile builder), autopsy (single-mint campaign review), Q&A over saved profiles, and a wallet registry.
 
 ## Core commands (index.js)
@@ -18,9 +18,9 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 
 ## Data & AI flow
 1) `lib/solanaTrackerDataClient.js` binds the official `@solana-tracker/data-api` SDK to per-endpoint helpers under `lib/solanaTrackerData/methods/` (each with Jest coverage). RPC helpers live under `lib/solana/rpcMethods/` when raw RPC access is needed.
-2) Harvesters (e.g., `lib/dossier.js`, `lib/autopsy.js`) gather trades, OHLCV, metadata, and assemble merged payloads under `./data/`.
+2) Harvesters (e.g., `lib/dossier.js`, `lib/autopsy.js`) gather trades, OHLCV, metadata, and assemble merged payloads under `./data/dossier/<alias>/` and `./data/autopsy/<wallet>/<mint>/`.
 3) AI jobs in `ai/jobs/*.js` call `ai/client.js` (Responses API) with strict schemas from `ai/schemas/`; parsed output writes to `./profiles/` and, when configured, to MySQL via BootyBox.
-4) DB access is centralized through `lib/packages/bootybox.js` (shared pool + table helpers in `lib/db/mysql.js`); higher-level persistors sit in `lib/persist/`.
+4) DB access is centralized through the `packages/bootybox` submodule (adapter chosen via `DB_ENGINE`, default sqlite); higher-level persistors sit in `lib/persist/`.
 
 ## Key directories
 - `index.js` – CLI wiring + help text; keep new commands here consistent with Commander patterns.

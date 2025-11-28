@@ -29,6 +29,8 @@ describe('createGetTransaction', () => {
       blockTime: 456,
       transaction: { message: { instructions: [] } },
       meta: { err: null },
+      err: null,
+      status: 'ok',
       raw: response.value,
     });
   });
@@ -47,8 +49,7 @@ describe('createGetTransaction', () => {
   });
 
   test('throws when rpc method missing', async () => {
-    const getTransaction = createGetTransaction({});
-    await expect(getTransaction('sig')).rejects.toThrow(/does not provide getTransaction/);
+    expect(() => createGetTransaction({})).toThrow(/does not provide getTransaction/);
   });
 
   test('wraps rpc errors', async () => {
@@ -61,6 +62,8 @@ describe('createGetTransaction', () => {
     };
 
     const getTransaction = createGetTransaction(rpc);
-    await expect(getTransaction('sig')).rejects.toThrow('getTransaction: failed to fetch transaction: rpc broke');
+    await expect(getTransaction('sig')).rejects.toThrow(
+      'getTransaction: failed to fetch transaction for sig: rpc broke'
+    );
   });
 });

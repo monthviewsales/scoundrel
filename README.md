@@ -42,16 +42,14 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Database Access (BootyBox)
 
-All MySQL interactions now flow through **BootyBox** (`packages/bootybox.js` a git submodule shared with other VAULT77 relics).  
-BootyBox owns the shared pool (via `lib/db/mysql.js`), creates the trading tables on start, and exposes domain helpers for every `sc_*` table plus the warchest registry. Highlights:
+BootyBox lives in the `packages/bootybox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/bootybox')` from application modules and tests.
 
-- `init()` bootstraps the shared pool + schema and must run before calling other helpers.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power both the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
+- `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
-- Higher-level modules (`ask`, `tuneStrategy`, `dossier`, `autopsy`, dossier CLI, profile persistence, etc.) simply call these helpers—no SQL lives outside BootyBox anymore.
-- Unit tests cover the shared helpers under `__tests__/lib/db/BootyBox.scTables.test.js`.
+- Loader coverage lives in `__tests__/lib/db/BootyBox.*.test.js`.
 
-If you add a new table or CLI persistence path, implement it inside BootyBox and reuse the pool it manages.
+If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.
 
 - Token metadata caching now flows through `/lib/services/tokenInfoService.js`, which safely merges SolanaTracker metadata with cached DB rows without overwriting good data during API outages.
 
@@ -116,16 +114,41 @@ const balance = await rpcMethods.getSolBalance('walletPubkey');
 | `getTokenAccountsByOwnerV2` | `(owner: string, opts?) => Promise<{ owner, accounts, hasMore, nextCursor, totalCount, raw }>` | Cursor + pagination metadata.
 | `getMultipleAccounts` | `(pubkeys: string[], opts?) => Promise<{ accounts, raw }>` | Batched account infos.
 | `getFirstAvailableBlock` | `() => Promise<number>` | Earliest slot SolanaTracker serves.
-| `getTransaction` | `(signature: string, opts?) => Promise<{ signature, slot, blockTime, transaction, meta, raw } | null>` | Returns `null` when the signature is unknown.
+| `getTransaction` | `(signatureOrSignatures: string \| string[], opts?) => Promise<tx \| tx[] \| null>` | Accepts a single signature or an array. Returns `null` (or `null` entries in the array) when a signature is unknown. Each tx includes `{ signature, slot, blockTime, transaction, meta, err, status, raw }`. |
 
 ### WebSocket helpers
 
-Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and honors SolanaTracker options (plus optional `onError`).
+Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and (where supported by SolanaTracker) honors options plus an optional `onError` handler. Note that `slotSubscribe` on the current SolanaTracker RPC endpoint does **not** accept any parameters.
 
 - `subscribeAccount(pubkey, onUpdate, opts?)`
 - `subscribeBlock(onUpdate, opts?)`
 - `subscribeSlot(onUpdate, opts?)`
 - `subscribeSlotsUpdates(onUpdate, opts?)`
+- `subscribeLogs(filter, onUpdate, opts?)`
+
+WebSocket calls honor `HTTPS_PROXY` / `HTTP_PROXY` env vars (plus `NO_PROXY`) so subscription traffic can traverse locked-down networks.
+Use `scripts/testRpcSubs.js` to verify both HTTP + WS access with your SolanaTracker credentials.
+
+#### WebSocket notes (SolanaTracker)
+
+Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC cluster.
+
+- **Connection pattern**
+  - Always build the client and helper surface via:
+    ```js
+    const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
+    const rpcMethods = createRpcMethods(rpc, rpcSubs);
+    ```
+- **Supported WS flows today**
+  - `subscribeSlot` – live slot heartbeat; no parameters are allowed on this endpoint.
+  - `subscribeAccount` – per-account updates (ideal for wallet SOL/token balances).
+  - `subscribeLogs` – program / wallet logs for higher-level activity.
+- **Not supported on this endpoint**
+  - `blockSubscribe` currently returns a JSON-RPC `Method not found` error on SolanaTracker’s mainnet RPC and should be treated as unavailable.
+- **Testing your setup**
+  - Use `npm run test:ws` (runs `scripts/testRpcSubs.js`) to verify that your HTTP + WebSocket credentials, proxy settings, and network allow `slotSubscribe` to receive events.
+
+For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
 
 The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
@@ -189,6 +212,25 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 A real-time wallet monitor that displays SOL balance, session deltas, token balances, and live USD prices using SolanaTracker RPC + Data APIs.  
 Useful during active trading sessions.
 
+### `tx <SIGNATURE>`
+
+Inspect a Solana transaction using SolanaTracker RPC and Scoundrel's TxInspector.
+
+- Fetches the transaction via `rpcMethods.getTransaction()` and normalizes it.
+- Shows status (`ok` / `err` / `unknown`), network fee (lamports + SOL), and per-account SOL balance changes.
+- Useful for verifying swap costs (network fee, Jito tips, protocol fees) and sanity-checking wallet activity.
+
+Examples:
+```bash
+# Inspect a single transaction
+scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ
+
+# Inspect multiple transactions in one run
+scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ \
+  --sig ANOTHER_SIG \
+  --sig THIRD_SIG
+```
+
 ### `dossier <WALLET>`
 
 **Operator Dossier**  
@@ -222,6 +264,7 @@ Ask a question about a trader using their saved profile (Responses API).
 
 - Reads `./profiles/<name>.json` for context.
 - Returns a concise answer; may include bullets and suggested actions.
+- When dossier enrichment is saved, pulls the latest snapshot from `./data/dossier/<alias>/enriched/` for extra context.
 
 Examples:
 ```bash
