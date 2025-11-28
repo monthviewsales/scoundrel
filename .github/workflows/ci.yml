@@ -29,5 +29,10 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Install BootyBox dependencies
+        working-directory: packages/BootyBox
+        run: npm ci
       - name: Run tests
-        run: npm test -- --runInBand
+        run: |
+          npm test -- --runInBand
+          (cd packages/BootyBox && npm test -- --runInBand)

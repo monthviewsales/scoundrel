@@ -42,7 +42,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Database Access (BootyBox)
 
-BootyBox lives in the `packages/bootybox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/bootybox')` from application modules and tests.
+BootyBox lives in the `packages/BootyBox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/BootyBox')` from application modules and tests.
 
 - `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
 - Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.

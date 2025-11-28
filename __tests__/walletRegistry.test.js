@@ -7,7 +7,7 @@ const mockInsert = jest.fn();
 const mockUpdate = jest.fn();
 const mockDelete = jest.fn();
 
-jest.mock('../packages/bootybox', () => ({
+jest.mock('../packages/BootyBox', () => ({
   init: mockInit,
   listWarchestWallets: mockList,
   getWarchestWalletByAlias: mockGet,
