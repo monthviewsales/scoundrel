@@ -5,20 +5,21 @@ const logger = require('./lib/logger');
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./packages/BootyBox/src');
+const BootyBox = require('./packages/BootyBox');
 const { requestId } = require('./lib/id/issuer');
 const chalk = require('chalk');
 const util = require('util');
 const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
 const { getAllWallets } = require('./lib/warchest/walletRegistry');
-const { runAutopsy } = require('./lib/autopsy');
+const { runAutopsy } = require('./lib/cli/autopsy');
 const {
     dossierBaseDir,
     loadLatestJson,
     normalizeTraderAlias,
 } = require('./lib/persist/jsonArtifacts');
 const warchestModule = require('./commands/warchest');
+const warchestService = require('./lib/cli/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
     : warchestModule && typeof warchestModule.run === 'function'
@@ -28,16 +29,16 @@ const warchestRun = typeof warchestModule === 'function'
 function loadHarvest() {
     try {
         // Lazy-load to keep startup fast and allow running without Solana deps during setup
-        return require('./lib/dossier').harvestWallet;
+        return require('./lib/cli/dossier').harvestWallet;
     } catch (e) {
-        logger.error('[scoundrel] Missing ./lib/dossier. Create a stub that exports { harvestWallet }.');
+        logger.error(`[scoundrel: dossier] ${e}`);
         process.exit(1);
     }
 }
 
 function loadProcessor(name) {
     try {
-        return require(`./lib/${name}`);
+        return require(`./lib/cli/${name}`);
     } catch (e) {
         logger.error(`[scoundrel] Missing ./lib/${name}. Create it and export a function (module.exports = async (args) => { ... }) or a named export.`);
         process.exit(1);
@@ -489,6 +490,84 @@ Examples:
             }
             // Ensure the CLI returns control to the shell after warchest completes
             process.exit(typeof process.exitCode === 'number' ? process.exitCode : 0);
+        }
+    });
+
+program
+    .command('warchestd')
+    .description('Control the warchest daemon (start, stop, restart, or run a HUD session)')
+    .argument('<action>', 'start|stop|restart|hud')
+    .option(
+        '--wallet <spec>',
+        'Wallet spec alias:pubkey:color (repeatable, use multiple --wallet flags)',
+        (value, previous) => {
+            if (!previous) return [value];
+            return previous.concat(value);
+        }
+    )
+    .option('--hud', 'Start daemon with HUD enabled (for start/restart actions)')
+    .addHelpText('after', `
+Examples:
+  # Start warchest daemon in the background
+  $ scoundrel warchestd start --wallet warlord:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
+
+  # Start daemon with HUD enabled in the foreground (dev mode)
+  $ scoundrel warchestd start --wallet warlord:DDkF...:orange --hud
+
+  # One-off HUD session (no PID management)
+  $ scoundrel warchestd hud --wallet warlord:DDkF...:orange
+
+  # Stop background daemon
+  $ scoundrel warchestd stop
+
+  # Restart daemon with new wallet args
+  $ scoundrel warchestd restart --wallet warlord:DDkF...:orange
+`)
+    .action(async (action, opts) => {
+        // In Commander v9+, the second argument here is the options object, not the Command instance.
+        // We defined --wallet as a repeatable option, so opts.wallet will be:
+        //   - undefined (if not provided)
+        //   - a string (if provided once)
+        //   - an array of strings (if provided multiple times)
+        const rawWallet = opts && Object.prototype.hasOwnProperty.call(opts, 'wallet')
+            ? opts.wallet
+            : undefined;
+
+        let walletSpecs = [];
+        if (Array.isArray(rawWallet)) {
+            walletSpecs = rawWallet;
+        } else if (typeof rawWallet === 'string') {
+            walletSpecs = [rawWallet];
+        }
+
+        const needsWallets = action === 'start' || action === 'restart' || action === 'hud';
+
+        if (needsWallets && walletSpecs.length === 0) {
+            logger.error('[scoundrel] warchestd requires at least one --wallet alias:pubkey:color for this action');
+            process.exitCode = 1;
+            return;
+        }
+
+        try {
+            if (!warchestService) {
+                throw new Error('warchest service module is not available');
+            }
+
+            if (action === 'start') {
+                await warchestService.start({ walletSpecs, hud: !!opts.hud });
+            } else if (action === 'stop') {
+                await warchestService.stop();
+            } else if (action === 'restart') {
+                await warchestService.restart({ walletSpecs, hud: !!opts.hud });
+            } else if (action === 'hud') {
+                warchestService.hud({ walletSpecs });
+            } else {
+                logger.error(`[scoundrel] Unknown warchestd action: ${action}`);
+                process.exitCode = 1;
+            }
+        } catch (err) {
+            logger.error('[scoundrel] ❌ warchestd command failed:', err?.message || err);
+            process.exitCode = 1;
         }
     });
 
