@@ -572,9 +572,13 @@ async function main() {
   }, HUD_TOKENS_REFRESH_SEC * 1000);
 
   const healthTimer = setInterval(() => {
-    updateHealth(state, rpcStats);
-    if (mode === 'daemon') {
-      logger.info(`[warchest] Health: up=${state.__health.process.uptimeSec}s rss=${state.__health.process.rssBytes} slot=${state.__health.ws.slot} wsAge=${state.__health.ws.lastSlotAgeMs}ms wallets=${state.__health.wallets.count}`);
+    const health = updateHealth(state, rpcStats);
+    if (mode === 'daemon' && health && health.process && health.ws && health.wallets) {
+      const rssMb = Math.round(health.process.rssBytes / 1024 / 1024);
+      const lagMs = health.process.eventLoopLagMs;
+      logger.info(
+        `[warchest] Health: up=${health.process.uptimeSec}s rss=${rssMb}MB slot=${health.ws.slot} wsAge=${health.ws.lastSlotAgeMs}ms lag=${lagMs}ms wallets=${health.wallets.count}`
+      );
     }
   }, 5000);
 
