@@ -496,7 +496,7 @@ Examples:
 program
     .command('warchestd')
     .description('Control the warchest daemon (start, stop, restart, or run a HUD session)')
-    .argument('<action>', 'start|stop|restart|hud')
+    .argument('<action>', 'start|stop|restart|hud|status')
     .option(
         '--wallet <spec>',
         'Wallet spec alias:pubkey:color (repeatable, use multiple --wallet flags)',
@@ -522,6 +522,9 @@ Examples:
 
   # Restart daemon with new wallet args
   $ scoundrel warchestd restart --wallet warlord:DDkF...:orange
+
+  # Show daemon health and latest status snapshot
+  $ scoundrel warchestd status
 `)
     .action(async (action, opts) => {
         // In Commander v9+, the second argument here is the options object, not the Command instance.
@@ -540,13 +543,9 @@ Examples:
             walletSpecs = [rawWallet];
         }
 
-        const needsWallets = action === 'start' || action === 'restart' || action === 'hud';
-
-        if (needsWallets && walletSpecs.length === 0) {
-            logger.error('[scoundrel] warchestd requires at least one --wallet alias:pubkey:color for this action');
-            process.exitCode = 1;
-            return;
-        }
+        // walletSpecs may be empty here. The warchest service will attempt to resolve
+        // wallets from configuration (autoAttachWarchest/default funding) when none
+        // are provided explicitly.
 
         try {
             if (!warchestService) {
@@ -554,13 +553,21 @@ Examples:
             }
 
             if (action === 'start') {
-                await warchestService.start({ walletSpecs, hud: !!opts.hud });
+                // Default to starting the daemon headless; enable HUD only when explicitly requested.
+                const hud = !!opts.hud;
+                await warchestService.start({ walletSpecs, hud });
             } else if (action === 'stop') {
                 await warchestService.stop();
             } else if (action === 'restart') {
-                await warchestService.restart({ walletSpecs, hud: !!opts.hud });
+                // Default to restarting the daemon headless; enable HUD only when explicitly requested.
+                const hud = !!opts.hud;
+                await warchestService.restart({ walletSpecs, hud });
             } else if (action === 'hud') {
+                // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
                 warchestService.hud({ walletSpecs });
+            } else if (action === 'status') {
+                // Report daemon + health snapshot status without modifying state.
+                await warchestService.status();
             } else {
                 logger.error(`[scoundrel] Unknown warchestd action: ${action}`);
                 process.exitCode = 1;
@@ -628,6 +635,29 @@ program
             process.exit(0);
         }
     });
+
+// Ensure the warchest daemon is running for most commands.
+program.hook('preAction', async (thisCommand, actionCommand) => {
+    const name = actionCommand && typeof actionCommand.name === 'function'
+        ? actionCommand.name()
+        : undefined;
+
+    // Avoid recursion / conflicts for the service management command itself.
+    if (name === 'warchestd') {
+        return;
+    }
+
+    if (!warchestService || typeof warchestService.ensureDaemonRunning !== 'function') {
+        return;
+    }
+
+    try {
+        await warchestService.ensureDaemonRunning();
+    } catch (err) {
+        const msg = err && err.message ? err.message : err;
+        logger.warn(`[scoundrel] Failed to ensure warchest daemon is running: ${msg}`);
+    }
+});
 
 // Default/help handling is provided by commander
 program.parseAsync(process.argv);

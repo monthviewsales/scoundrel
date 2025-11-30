@@ -8,7 +8,11 @@
 //
 // NOTE: v1 stops before metadata/price pulls. Tokens/prices are stubbed.
 
+
 require('dotenv').config({ quiet: true });
+
+const fs = require('fs');
+const path = require('path');
 
 const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
 const { createRpcMethods } = require('../lib/solana/rpcMethods');
@@ -19,6 +23,35 @@ const { updateFromSlotEvent } = require('../lib/solana/rpcMethods/internal/chain
 const { updateSol } = require('../lib/solana/rpcMethods/internal/walletState');
 const { renderHud } = require('../lib/hud/warchestHudRenderer');
 const { updateHealth } = require('../lib/warchest/health');
+
+const WARCHEST_STATUS_DIR = path.join(process.cwd(), 'data', 'warchest');
+const WARCHEST_STATUS_FILE = path.join(WARCHEST_STATUS_DIR, 'status.json');
+
+/**
+ * Persist a lightweight health snapshot for other commands to read.
+ * This is only used in daemon mode; HUD mode is ephemeral.
+ *
+ * @param {object} health
+ */
+function writeStatusSnapshot(health) {
+  if (!health) return;
+
+  try {
+    if (!fs.existsSync(WARCHEST_STATUS_DIR)) {
+      fs.mkdirSync(WARCHEST_STATUS_DIR, { recursive: true });
+    }
+
+    const snapshot = {
+      updatedAt: new Date().toISOString(),
+      health,
+    };
+
+    fs.writeFileSync(WARCHEST_STATUS_FILE, JSON.stringify(snapshot, null, 2), 'utf8');
+  } catch (err) {
+    const msg = err && err.message ? err.message : err;
+    logger.warn(`[HUD] Failed to write warchest status snapshot: ${msg}`);
+  }
+}
 
 // ---------- env helpers ----------
 function intFromEnv(name, fallback) {
@@ -576,6 +609,10 @@ async function main() {
     if (mode === 'daemon' && health && health.process && health.ws && health.wallets) {
       const rssMb = Math.round(health.process.rssBytes / 1024 / 1024);
       const lagMs = health.process.eventLoopLagMs;
+
+      // Persist a snapshot for other commands to inspect.
+      writeStatusSnapshot(health);
+
       logger.info(
         `[warchest] Health: up=${health.process.uptimeSec}s rss=${rssMb}MB slot=${health.ws.slot} wsAge=${health.ws.lastSlotAgeMs}ms lag=${lagMs}ms wallets=${health.wallets.count}`
       );
