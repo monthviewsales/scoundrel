@@ -550,11 +550,15 @@ Examples:
             }
 
             if (action === 'start') {
-                await warchestService.start({ walletSpecs, hud: !!opts.hud });
+                // Default to starting with HUD enabled unless explicitly overridden.
+                const hud = (typeof opts.hud === 'boolean') ? opts.hud : true;
+                await warchestService.start({ walletSpecs, hud });
             } else if (action === 'stop') {
                 await warchestService.stop();
             } else if (action === 'restart') {
-                await warchestService.restart({ walletSpecs, hud: !!opts.hud });
+                // Default to restarting with HUD enabled unless explicitly overridden.
+                const hud = (typeof opts.hud === 'boolean') ? opts.hud : true;
+                await warchestService.restart({ walletSpecs, hud });
             } else if (action === 'hud') {
                 warchestService.hud({ walletSpecs });
             } else {
@@ -624,6 +628,29 @@ program
             process.exit(0);
         }
     });
+
+// Ensure the warchest daemon is running for most commands.
+program.hook('preAction', async (thisCommand, actionCommand) => {
+    const name = actionCommand && typeof actionCommand.name === 'function'
+        ? actionCommand.name()
+        : undefined;
+
+    // Avoid recursion / conflicts for the service management command itself.
+    if (name === 'warchestd') {
+        return;
+    }
+
+    if (!warchestService || typeof warchestService.ensureDaemonRunning !== 'function') {
+        return;
+    }
+
+    try {
+        await warchestService.ensureDaemonRunning();
+    } catch (err) {
+        const msg = err && err.message ? err.message : err;
+        logger.warn(`[scoundrel] Failed to ensure warchest daemon is running: ${msg}`);
+    }
+});
 
 // Default/help handling is provided by commander
 program.parseAsync(process.argv);
