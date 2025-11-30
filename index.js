@@ -540,13 +540,9 @@ Examples:
             walletSpecs = [rawWallet];
         }
 
-        const needsWallets = action === 'start' || action === 'restart' || action === 'hud';
-
-        if (needsWallets && walletSpecs.length === 0) {
-            logger.error('[scoundrel] warchestd requires at least one --wallet alias:pubkey:color for this action');
-            process.exitCode = 1;
-            return;
-        }
+        // walletSpecs may be empty here. The warchest service will attempt to resolve
+        // wallets from configuration (autoAttachWarchest/default funding) when none
+        // are provided explicitly.
 
         try {
             if (!warchestService) {
