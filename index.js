@@ -496,7 +496,7 @@ Examples:
 program
     .command('warchestd')
     .description('Control the warchest daemon (start, stop, restart, or run a HUD session)')
-    .argument('<action>', 'start|stop|restart|hud')
+    .argument('<action>', 'start|stop|restart|hud|status')
     .option(
         '--wallet <spec>',
         'Wallet spec alias:pubkey:color (repeatable, use multiple --wallet flags)',
@@ -522,6 +522,9 @@ Examples:
 
   # Restart daemon with new wallet args
   $ scoundrel warchestd restart --wallet warlord:DDkF...:orange
+
+  # Show daemon health and latest status snapshot
+  $ scoundrel warchestd status
 `)
     .action(async (action, opts) => {
         // In Commander v9+, the second argument here is the options object, not the Command instance.
@@ -550,17 +553,21 @@ Examples:
             }
 
             if (action === 'start') {
-                // Default to starting with HUD enabled unless explicitly overridden.
-                const hud = (typeof opts.hud === 'boolean') ? opts.hud : true;
+                // Default to starting the daemon headless; enable HUD only when explicitly requested.
+                const hud = !!opts.hud;
                 await warchestService.start({ walletSpecs, hud });
             } else if (action === 'stop') {
                 await warchestService.stop();
             } else if (action === 'restart') {
-                // Default to restarting with HUD enabled unless explicitly overridden.
-                const hud = (typeof opts.hud === 'boolean') ? opts.hud : true;
+                // Default to restarting the daemon headless; enable HUD only when explicitly requested.
+                const hud = !!opts.hud;
                 await warchestService.restart({ walletSpecs, hud });
             } else if (action === 'hud') {
+                // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
                 warchestService.hud({ walletSpecs });
+            } else if (action === 'status') {
+                // Report daemon + health snapshot status without modifying state.
+                await warchestService.status();
             } else {
                 logger.error(`[scoundrel] Unknown warchestd action: ${action}`);
                 process.exitCode = 1;
