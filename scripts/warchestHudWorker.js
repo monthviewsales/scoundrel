@@ -19,10 +19,27 @@ const { createRpcMethods } = require('../lib/solana/rpcMethods');
 const { createSolanaTrackerDataClient } = require('../lib/solanaTrackerDataClient');
 const { ensureTokenInfo } = require('../lib/services/tokenInfoService');
 const logger = require('../lib/logger');
-const { updateFromSlotEvent } = require('../lib/solana/rpcMethods/internal/chainSTate');
+const { updateFromSlotEvent } = require('../lib/solana/rpcMethods/internal/chainState');
 const { updateSol } = require('../lib/solana/rpcMethods/internal/walletState');
 const { renderHud } = require('../lib/hud/warchestHudRenderer');
 const { updateHealth } = require('../lib/warchest/health');
+
+const WalletManagerV2 = require('../lib/WalletManagerV2');
+const txInsightService = require('../lib/services/txInsightService');
+
+let BootyBox = {};
+try {
+  // BootyBox index should select the appropriate adapter (MySQL/SQLite).
+  // If it is not available in this environment, we fall back to a no-op
+  // object so WalletManagerV2 can still run without persisting trades.
+  // Adjust the require path if your BootyBox entrypoint lives elsewhere.
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  BootyBox = require('../packages/BootyBox');
+} catch (err) {
+  const msg = err && err.message ? err.message : err;
+  logger.warn(`[HUD] BootyBox module not available for WalletManagerV2: ${msg}`);
+  BootyBox = {};
+}
 
 const WARCHEST_STATUS_DIR = path.join(process.cwd(), 'data', 'warchest');
 const WARCHEST_STATUS_FILE = path.join(WARCHEST_STATUS_DIR, 'status.json');
@@ -460,6 +477,38 @@ async function main() {
   const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
   const rpcMethods = createRpcMethods(rpc, rpcSubs);
 
+  // WalletManagerV2 instances per wallet alias. These are responsible for
+  // turning log notifications into trade events and position updates.
+  const walletManagers = {};
+
+  wallets.forEach((w, index) => {
+    try {
+      walletManagers[w.alias] = new WalletManagerV2({
+        rpc,
+        // NOTE: For now we use a simple numeric walletId derived from the
+        // CLI order. Once warchest has a proper sc_wallets registry, this
+        // should be switched to the real DB id.
+        walletId: index + 1,
+        walletAlias: w.alias,
+        walletPubkey: w.pubkey,
+        txInsightService,
+        // tokenPriceService is optional; HUD already has a global SOL price
+        // via lastSolPriceUsd and token price pulls, so we can omit it here
+        // for now and add it later if needed.
+        tokenPriceService: null,
+        bootyBox: BootyBox,
+        // Strategy / WarlordAI decision context provider is optional and
+        // will be wired in once that layer is ready.
+        strategyContextProvider: null,
+      });
+    } catch (err) {
+      const msg = err && err.message ? err.message : err;
+      logger.warn(
+        `[HUD] Failed to initialize WalletManagerV2 for ${w.alias} (${w.pubkey}): ${msg}`,
+      );
+    }
+  });
+
   let slotSub = null;
   const accountSubs = [];
   const logsSubs = [];
@@ -487,6 +536,19 @@ async function main() {
               const msg = firstLog ? firstLog.slice(0, 60) : 'log event';
               const summary = `${new Date().toLocaleTimeString()} ${shortSig} ${msg}`;
               pushRecentEvent(wallet, summary);
+
+              // Forward the raw log notification to WalletManagerV2 so it can
+              // derive trade events and position updates. This is best-effort
+              // and should never crash the HUD loop.
+              const wm = walletManagers[alias];
+              if (wm && typeof wm.handleLogNotification === 'function') {
+                Promise.resolve(wm.handleLogNotification(ev)).catch((wmErr) => {
+                  const wmsg = wmErr && wmErr.message ? wmErr.message : wmErr;
+                  logger.warn(
+                    `[HUD] WalletManagerV2 error for ${wallet.alias}: ${wmsg}`,
+                  );
+                });
+              }
             } catch (logErr) {
               const msg = logErr && logErr.message ? logErr.message : logErr;
               logger.warn(`[HUD] Error processing logs event for ${wallet.alias}: ${msg}`);
