@@ -2,12 +2,12 @@
 // index.js — Scoundrel CLI
 require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
+const chalk = require('chalk');
 const { program } = require('commander');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
 const BootyBox = require('./packages/BootyBox');
 const { requestId } = require('./lib/id/issuer');
-const chalk = require('chalk');
 const util = require('util');
 const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
@@ -325,6 +325,7 @@ program
         }
     });
 
+
 program
     .command('tx')
     .argument('<signature>', 'Solana transaction signature to inspect')
@@ -354,6 +355,34 @@ program
             process.exit(0);
         } catch (err) {
             logger.error('[scoundrel] ❌ tx inspection failed:', err?.message || err);
+            process.exit(1);
+        }
+    });
+
+// --- trade command ---
+program
+    .command('trade')
+    .argument('<mint>', 'Token mint address to trade')
+    .description('Execute a token trade via the SolanaTracker swap API')
+    .requiredOption('-w, --wallet <aliasOrAddress>', 'Wallet alias or address from the warchest registry')
+    .option('-b, --buy <amount>', "Spend <amount> SOL (number or '<percent>%') to buy the token")
+    .option('-s, --sell <amount>', "Sell <amount> of the token (number, 'auto', or '<percent>%')")
+    .option('--slippage <percent>', 'Override default slippage percent for this trade')
+    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use "auto")')
+    .option('--jito', 'Use Jito-style priority fee routing when supported')
+    .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
+    .action(async (mint, opts) => {
+        try {
+            const tradeCli = require('./lib/cli/trade');
+            if (typeof tradeCli !== 'function') {
+                logger.error('[scoundrel] ./lib/cli/trade must export a default function (module.exports = async (mint, opts) => { ... })');
+                process.exit(1);
+            }
+            await tradeCli(mint, opts);
+            process.exit(0);
+        } catch (err) {
+            logger.error('[scoundrel] ❌ trade failed:', err?.message || err);
             process.exit(1);
         }
     });
