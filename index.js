@@ -397,7 +397,11 @@ program
             await tradeCli(mint, opts);
             process.exit(0);
         } catch (err) {
-            logger.error('[scoundrel] ❌ trade failed:', err?.message || err);
+            const msg = err && err.message ? err.message : err;
+            logger.error(`[scoundrel] ❌ trade failed: ${msg}`);
+            if (err && err.stack && logger.debug) {
+                logger.debug(err.stack);
+            }
             process.exit(1);
         }
     });
