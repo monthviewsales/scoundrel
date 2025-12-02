@@ -45,6 +45,21 @@ function loadProcessor(name) {
     }
 }
 
+function resolveVersion() {
+    try {
+        const lockPath = join(__dirname, 'package-lock.json');
+        const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+        if (lock && lock.version) return lock.version;
+    } catch (_) {}
+    try {
+        // Fallback to package.json if lock parsing fails.
+        // eslint-disable-next-line global-require, import/no-dynamic-require
+        const pkg = require('./package.json');
+        if (pkg && pkg.version) return pkg.version;
+    } catch (_) {}
+    return '0.0.0';
+}
+
 function shortenPubkey(addr) {
     if (!addr) return '';
     return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
@@ -106,7 +121,7 @@ function logAutopsyError(err) {
 program
     .name('scoundrel')
     .description('Research & validation tooling for memecoin trading using SolanaTracker + OpenAI')
-    .version('0.1.0');
+    .version(resolveVersion());
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
 program.addHelpText('after', `\nDatabase env:\n  DB_ENGINE=mysql\n  DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_POOL_LIMIT (default 30)\n`);
