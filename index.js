@@ -614,17 +614,17 @@ program
     .action(async () => {
     console.log('[test] starting test action');
     const hasKey = !!process.env.OPENAI_API_KEY;
-    logger.info('[scoundrel] environment check:');
+        logger.info('[scoundrel] environment check:');
         logger.info(`  OPENAI_API_KEY: ${hasKey ? 'present' : 'MISSING'}`);
-        logger.info('  Working directory:', process.cwd());
-        logger.info('  Node version:', process.version);
+        logger.info(`  Working directory: ${process.cwd()}`);
+        logger.info(`  Node version: ${process.version}`);
 
         // Check presence of core modules in the new pipeline
         const pathsToCheck = [
-            join(__dirname, 'lib', 'dossier.js'),
+            join(__dirname, 'lib', 'cli', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
             join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
-            join(__dirname, 'lib', 'ask.js'),
+            join(__dirname, 'lib', 'cli', 'ask.js'),
         ];
         logger.info('\n[scoundrel] core files:');
         pathsToCheck.forEach(p => {
@@ -634,7 +634,7 @@ program
 
         // DB diagnostics
         const {
-            DB_ENGINE = 'mysql',
+            DB_ENGINE = 'sqlite',
             DB_HOST = 'localhost',
             DB_PORT = '3306',
             DB_NAME = '(unset)',
@@ -650,10 +650,17 @@ program
         logger.info(`  Pool     : ${DB_POOL_LIMIT}`);
 
         try {
+            if (typeof BootyBox.init === 'function') {
+                await BootyBox.init();
+            }
             await BootyBox.ping();
             logger.info('[db] ✅ connected');
         } catch (e) {
-            logger.info('[db] ❌ connection failed:', e?.message || e);
+            const msg = e && e.message ? e.message : e;
+            logger.info(`[db] ❌ connection failed: ${msg}`);
+            if (e && e.stack) {
+                logger.debug && logger.debug(e.stack);
+            }
         }
 
         if (!hasKey) {
