@@ -11,7 +11,7 @@ const { requestId } = require('./lib/id/issuer');
 const util = require('util');
 const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
-const { getAllWallets } = require('./lib/warchest/walletRegistry');
+const { getAllWallets } = require('./lib/wallets/registry');
 const { runAutopsy } = require('./lib/cli/autopsy');
 const {
     dossierBaseDir,

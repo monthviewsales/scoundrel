@@ -147,7 +147,7 @@ describe('harvestWallet (dossier)', () => {
   });
 
   it('builds a merged payload and skips analysis when runAnalysis=false', async () => {
-    const { harvestWallet } = require('../lib/dossier');
+    const { harvestWallet } = require('../lib/cli/dossier');
 
     const result = await harvestWallet({
       wallet: WALLET,
@@ -197,7 +197,7 @@ describe('harvestWallet (dossier)', () => {
   });
 
   it('returns zero-count result when no trades are found', async () => {
-    const { harvestWallet } = require('../lib/dossier');
+    const { harvestWallet } = require('../lib/cli/dossier');
 
     mockGetWalletTrades.mockResolvedValue([]);
 
