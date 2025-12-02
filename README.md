@@ -45,7 +45,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 BootyBox lives in the `packages/BootyBox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/BootyBox')` from application modules and tests.
 
 - `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and are wrapped under `lib/wallets/registry.js` (BootyBox-backed).
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
 - Loader coverage lives in `__tests__/lib/db/BootyBox.*.test.js`.
 
@@ -195,6 +195,18 @@ These price endpoints are now used by the HUD worker to display live USD estimat
 All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
 
 Token metadata caching is now handled by `/lib/services/tokenInfoService.js`, ensuring dossier, autopsy, and future processors all use a unified, hardened metadata pipeline.
+
+## Wallet domain
+
+Wallet-related helpers now live under `lib/wallets/`:
+
+- `registry.js` – thin wrapper over the BootyBox-backed warchest registry (no behavior changes).
+- `resolver.js` – resolves aliases or pubkeys to registry records or watch-only passthroughs.
+- `state.js` – shared live SOL/token state wrapper.
+- `scanner.js` – passthrough to the raw RPC wallet scanner.
+- `getWalletForSwap.js` – **TODO placeholder** until swap flow is finalized; implement with secure key handling (no plaintext keys/logging).
+
+BootyBox remains the source of truth for persisted wallets. Keep key material protected when adding swap/signing support.
 
 Special endpoints:
 - **Risk** (`getTokenRiskScores`) returns `{ token, score, rating, factors, raw }`. Each factor carries `{ name, score, severity }` so downstream risk caps can stay deterministic.
