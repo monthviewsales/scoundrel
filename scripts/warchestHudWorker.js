@@ -41,6 +41,43 @@ try {
   BootyBox = {};
 }
 
+/**
+ * Ensure the BootyBox adapter is ready before processing trades.
+ * This guards against silent failures when the submodule is missing or the
+ * adapter has not been initialised, and verifies that the warchest-specific
+ * helpers we rely on are present.
+ *
+ * @returns {Promise<boolean>} true if BootyBox is usable, false otherwise
+ */
+async function ensureBootyBoxReady() {
+  if (!BootyBox || typeof BootyBox.init !== 'function') {
+    logger.error('[HUD] BootyBox client unavailable; warchest cannot persist trades.');
+    return false;
+  }
+
+  try {
+    await BootyBox.init();
+  } catch (err) {
+    const msg = err && err.message ? err.message : err;
+    logger.error(`[HUD] BootyBox init failed; persistence disabled: ${msg}`);
+    return false;
+  }
+
+  const missing = [];
+  if (typeof BootyBox.recordScTradeEvent !== 'function') missing.push('recordScTradeEvent');
+  if (typeof BootyBox.applyScTradeEventToPositions !== 'function')
+    missing.push('applyScTradeEventToPositions');
+
+  if (missing.length) {
+    logger.error(
+      `[HUD] BootyBox missing required helpers (${missing.join(', ')}); warchest persistence disabled.`
+    );
+    return false;
+  }
+
+  return true;
+}
+
 const WARCHEST_STATUS_DIR = path.join(process.cwd(), 'data', 'warchest');
 const WARCHEST_STATUS_FILE = path.join(WARCHEST_STATUS_DIR, 'status.json');
 
@@ -466,6 +503,12 @@ async function main() {
 
   if (!wallets || wallets.length === 0) {
     logger.error('[HUD] No wallets provided. Use --wallet alias:pubkey:color');
+    process.exit(1);
+  }
+
+  const bootyReady = await ensureBootyBoxReady();
+  if (!bootyReady) {
+    logger.error('[HUD] Exiting because BootyBox is unavailable for persistence.');
     process.exit(1);
   }
 
