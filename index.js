@@ -17,7 +17,7 @@ const { requestId } = require('./lib/id/issuer');
 const util = require('util');
 const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
-const { getAllWallets } = require('./lib/wallets/registry');
+const walletsDomain = require('./lib/wallets');
 const { runAutopsy } = require('./lib/cli/autopsy');
 const {
     dossierBaseDir,
@@ -298,9 +298,9 @@ program
     .action(async () => {
         const rl = readline.createInterface({ input, output });
         try {
-            const wallets = await getAllWallets();
-            const options = wallets.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
-            options.push(`${wallets.length + 1}) Other (enter address)`);
+            const walletRows = await walletsDomain.registry.getAllWallets();
+            const options = walletRows.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
+            options.push(`${walletRows.length + 1}) Other (enter address)`);
 
             logger.info('Which wallet?');
             options.forEach((opt) => logger.info(opt));
@@ -309,8 +309,8 @@ program
             let walletAddress;
 
             const numeric = Number(choice);
-            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= wallets.length) {
-                const selected = wallets[numeric - 1];
+            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= walletRows.length) {
+                const selected = walletRows[numeric - 1];
                 walletLabel = selected.alias;
                 walletAddress = selected.pubkey;
             } else {
@@ -356,7 +356,7 @@ program
         return previous.concat(value);
     })
     .option('-s, --swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
-    .option('-w, --wallet <pubkey>', 'Wallet address that initiated the swap (focus wallet)')
+    .option('-w, --wallet <aliasOrAddress>', 'Wallet alias or address that initiated the swap (focus wallet)')
     .option('-m, --mint <mint>', 'SPL mint address for the swapped token')
     .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n  • With -s/--swap, also computes token + SOL deltas for the given wallet/mint.\n`)
     .action(async (signature, cmd) => {
