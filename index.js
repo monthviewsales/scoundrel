@@ -375,7 +375,8 @@ program
             await runner({ signature, cmd });
             process.exit(0);
         } catch (err) {
-            logger.error('[scoundrel] ❌ tx inspection failed:', err?.message || err);
+            const msg = (err && (err.stack || err.message)) ? (err.stack || err.message) : err;
+            logger.error('[scoundrel] ❌ tx command failed:', msg);
             process.exit(1);
         }
     });
