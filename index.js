@@ -4,6 +4,12 @@ require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
 const chalk = require('chalk');
 const { program } = require('commander');
+const {
+    getConfigPath: getSwapConfigPath,
+    loadConfig: loadSwapConfig,
+    saveConfig: saveSwapConfig,
+    editConfig: editSwapConfig,
+} = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
 const BootyBox = require('./packages/BootyBox');
@@ -11,7 +17,7 @@ const { requestId } = require('./lib/id/issuer');
 const util = require('util');
 const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
-const { getAllWallets } = require('./lib/wallets/registry');
+const walletsDomain = require('./lib/wallets');
 const { runAutopsy } = require('./lib/cli/autopsy');
 const {
     dossierBaseDir,
@@ -292,9 +298,9 @@ program
     .action(async () => {
         const rl = readline.createInterface({ input, output });
         try {
-            const wallets = await getAllWallets();
-            const options = wallets.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
-            options.push(`${wallets.length + 1}) Other (enter address)`);
+            const walletRows = await walletsDomain.registry.getAllWallets();
+            const options = walletRows.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
+            options.push(`${walletRows.length + 1}) Other (enter address)`);
 
             logger.info('Which wallet?');
             options.forEach((opt) => logger.info(opt));
@@ -303,8 +309,8 @@ program
             let walletAddress;
 
             const numeric = Number(choice);
-            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= wallets.length) {
-                const selected = wallets[numeric - 1];
+            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= walletRows.length) {
+                const selected = walletRows[numeric - 1];
                 walletLabel = selected.alias;
                 walletAddress = selected.pubkey;
             } else {
@@ -350,7 +356,7 @@ program
         return previous.concat(value);
     })
     .option('-s, --swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
-    .option('-w, --wallet <pubkey>', 'Wallet address that initiated the swap (focus wallet)')
+    .option('-w, --wallet <aliasOrAddress>', 'Wallet alias or address that initiated the swap (focus wallet)')
     .option('-m, --mint <mint>', 'SPL mint address for the swapped token')
     .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n  • With -s/--swap, also computes token + SOL deltas for the given wallet/mint.\n`)
     .action(async (signature, cmd) => {
@@ -369,8 +375,76 @@ program
             await runner({ signature, cmd });
             process.exit(0);
         } catch (err) {
-            logger.error('[scoundrel] ❌ tx inspection failed:', err?.message || err);
+            const msg = (err && (err.stack || err.message)) ? (err.stack || err.message) : err;
+            logger.error('[scoundrel] ❌ tx command failed:', msg);
             process.exit(1);
+        }
+    });
+
+// --- swap:config command ---
+const swapConfigCmd = program
+    .command('swap:config')
+    .description('Manage Scoundrel swap configuration (RPC, swap API key, slippage, etc.)')
+    .addHelpText('after', `
+Examples:
+  $ scoundrel swap:config view
+  $ scoundrel swap:config edit
+  $ scoundrel swap:config set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true
+  $ scoundrel swap:config set swapAPIKey YOUR_API_KEY
+`);
+
+swapConfigCmd
+    .command('view')
+    .description('Show current swap config')
+    .action(async () => {
+        try {
+            const configPath = getSwapConfigPath();
+            const cfg = await loadSwapConfig();
+
+            // Redact API key to avoid screen-share leaks
+            const redacted = { ...cfg };
+            if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
+                const tail = redacted.swapAPIKey.slice(-4);
+                redacted.swapAPIKey = `************${tail}`;
+            }
+
+            logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
+            logger.info(JSON.stringify(redacted, null, 2));
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to load config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+swapConfigCmd
+    .command('edit')
+    .description('Edit swap config in your $EDITOR')
+    .action(async () => {
+        try {
+            await editSwapConfig();
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to edit config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+swapConfigCmd
+    .command('set <key> <value>')
+    .description('Set a single swap config key')
+    .action(async (key, value) => {
+        try {
+            const configPath = getSwapConfigPath();
+            const cfg = await loadSwapConfig();
+            const numeric = Number(value);
+            const castValue = Number.isNaN(numeric) ? value : numeric;
+
+            cfg[key] = castValue;
+            await saveSwapConfig(cfg);
+
+            logger.info(`[scoundrel:swap-config] ✅ Updated ${key} → ${castValue} in ${configPath}`);
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to update config:', err?.message || err);
+            process.exitCode = 1;
         }
     });
 
@@ -386,7 +460,7 @@ program
     .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use "auto")')
     .option('--jito', 'Use Jito-style priority fee routing when supported')
     .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
     .action(async (mint, opts) => {
         try {
             const tradeCli = require('./lib/cli/trade');
