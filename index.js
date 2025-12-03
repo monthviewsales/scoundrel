@@ -4,6 +4,12 @@ require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
 const chalk = require('chalk');
 const { program } = require('commander');
+const {
+    getConfigPath: getSwapConfigPath,
+    loadConfig: loadSwapConfig,
+    saveConfig: saveSwapConfig,
+    editConfig: editSwapConfig,
+} = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
 const BootyBox = require('./packages/BootyBox');
@@ -374,6 +380,73 @@ program
         }
     });
 
+// --- swap:config command ---
+const swapConfigCmd = program
+    .command('swap:config')
+    .description('Manage Scoundrel swap configuration (RPC, swap API key, slippage, etc.)')
+    .addHelpText('after', `
+Examples:
+  $ scoundrel swap:config view
+  $ scoundrel swap:config edit
+  $ scoundrel swap:config set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true
+  $ scoundrel swap:config set swapAPIKey YOUR_API_KEY
+`);
+
+swapConfigCmd
+    .command('view')
+    .description('Show current swap config')
+    .action(async () => {
+        try {
+            const configPath = getSwapConfigPath();
+            const cfg = await loadSwapConfig();
+
+            // Redact API key to avoid screen-share leaks
+            const redacted = { ...cfg };
+            if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
+                const tail = redacted.swapAPIKey.slice(-4);
+                redacted.swapAPIKey = `************${tail}`;
+            }
+
+            logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
+            logger.info(JSON.stringify(redacted, null, 2));
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to load config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+swapConfigCmd
+    .command('edit')
+    .description('Edit swap config in your $EDITOR')
+    .action(async () => {
+        try {
+            await editSwapConfig();
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to edit config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+swapConfigCmd
+    .command('set <key> <value>')
+    .description('Set a single swap config key')
+    .action(async (key, value) => {
+        try {
+            const configPath = getSwapConfigPath();
+            const cfg = await loadSwapConfig();
+            const numeric = Number(value);
+            const castValue = Number.isNaN(numeric) ? value : numeric;
+
+            cfg[key] = castValue;
+            await saveSwapConfig(cfg);
+
+            logger.info(`[scoundrel:swap-config] ✅ Updated ${key} → ${castValue} in ${configPath}`);
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to update config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
 // --- trade command ---
 program
     .command('trade')
@@ -386,7 +459,7 @@ program
     .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use "auto")')
     .option('--jito', 'Use Jito-style priority fee routing when supported')
     .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
     .action(async (mint, opts) => {
         try {
             const tradeCli = require('./lib/cli/trade');
