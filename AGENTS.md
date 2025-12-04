@@ -13,9 +13,11 @@ Use these commands when planning, testing, or validating changes.
 
 - Install dependencies:  
   - `npm install`
-- Run unit tests (Jest):  
+- Run unit tests (Jest):
   - `npm test`
-- Run lints / static checks (if configured):  
+- Run CI-grade tests with coverage (used by GitHub Actions):
+  - `npm run test:ci`
+- Run lints / static checks (if configured):
   - `npm run lint`
 - Run the CLI in development mode:  
   - `NODE_ENV=development <CLI_ENTRYPOINT> ...`

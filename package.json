@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "jest",
+    "test:ci": "COVERAGE=true jest --runInBand --coverage",
     "db:migrate:profiles": "mysql < sql/2025-11-11_profiles.sql"
   },
   "repository": {

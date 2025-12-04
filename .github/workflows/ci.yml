@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [20.x, 22.x]
     env:
       SOLANATRACKER_API_KEY: ${{ secrets.SOLANATRACKER_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -38,7 +38,15 @@ jobs:
         working-directory: packages/BootyBox
         run: npm ci
       - name: Run tests
+        run: npm run test:ci
+      - name: Run BootyBox tests
         run: |
-          npm test -- --runInBand
           if [ -f packages/bootybox/package.json ]; then (cd packages/bootybox && npm test -- --runInBand); fi
           if [ -f packages/BootyBox/package.json ]; then (cd packages/BootyBox && npm test -- --runInBand); fi
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.node-version }}
+          path: artifacts/coverage
+          if-no-files-found: warn
