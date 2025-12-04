@@ -38,6 +38,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 ## Testing
 
 - Run the full suite with `npm test`.
+- For CI-grade runs with coverage output to `artifacts/coverage/`, use `npm run test:ci` (also used by GitHub Actions).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
 
 ## Database Access (BootyBox)
