@@ -38,6 +38,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 ## Testing
 
 - Run the full suite with `npm test`.
+- For CI-grade runs with coverage output to `artifacts/coverage/`, use `npm run test:ci` (also used by GitHub Actions).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
 
 ## Database Access (BootyBox)
@@ -45,30 +46,12 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 BootyBox lives in the `packages/BootyBox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/BootyBox')` from application modules and tests.
 
 - `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and `lib/warchest/walletRegistry.js`.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and are wrapped under `lib/wallets/registry.js` (BootyBox-backed).
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
 - Loader coverage lives in `__tests__/lib/db/BootyBox.*.test.js`.
 
 If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.
 
-- Token metadata caching now flows through `/lib/services/tokenInfoService.js`, which safely merges SolanaTracker metadata with cached DB rows without overwriting good data during API outages.
-
----
-
-## What’s new (Nov 2025)
-
-Scoundrel has been refactored to a **Responses‑first** architecture. No Assistants, no Chat Completions, no thread state. We send **JSON in** and get **schema‑locked JSON out**.
-
-**Highlights**
-- Clean AI backbone: `/ai/client.js` (Responses) + `/ai/jobs/*` + `/ai/schemas/*`.
-- Operator dossier with **operator_summary**: CT/CIA‑style reporting and analysis.
-- CLI processors called directly (no thin shims):
-  - `dossier.js` → harvests wallet trades + chart, merges into unified JSON, and calls AI job.
-  - `ask.js` → Q&A over a saved profile.
-  - `tune.js` → strategy tuning proposals.
-- Full migration from legacy REST `userTokenTradesByWallet` to the official SolanaTracker Data API SDK (`getUserTokenTrades`), including dossier + autopsy.
-- Quiet, predictable logging (`NODE_ENV=production` by default).
-- `dossier -r` flag to re-run AI on latest merged file without re-harvesting.
 - Token metadata caching now flows through `/lib/services/tokenInfoService.js`, which safely merges SolanaTracker metadata with cached DB rows without overwriting good data during API outages.
 
 ---
@@ -196,6 +179,18 @@ All helpers share the same error contract: retries on `RateLimitError`, 5xx, or 
 
 Token metadata caching is now handled by `/lib/services/tokenInfoService.js`, ensuring dossier, autopsy, and future processors all use a unified, hardened metadata pipeline.
 
+## Wallet domain
+
+Wallet-related helpers now live under `lib/wallets/`:
+
+- `registry.js` – thin wrapper over the BootyBox-backed warchest registry (no behavior changes).
+- `resolver.js` – resolves aliases or pubkeys to registry records or watch-only passthroughs.
+- `state.js` – shared live SOL/token state wrapper.
+- `scanner.js` – passthrough to the raw RPC wallet scanner.
+- `getWalletForSwap.js` – **TODO placeholder** until swap flow is finalized; implement with secure key handling (no plaintext keys/logging).
+
+BootyBox remains the source of truth for persisted wallets. Keep key material protected when adding swap/signing support.
+
 Special endpoints:
 - **Risk** (`getTokenRiskScores`) returns `{ token, score, rating, factors, raw }`. Each factor carries `{ name, score, severity }` so downstream risk caps can stay deterministic.
 - **Search** (`searchTokens`) accepts advanced filters (arrays, nested objects) and translates them into the query-string the API expects. Empty filters throw immediately so we never spam the API with no-ops.
@@ -208,94 +203,86 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
 
-**Warchest HUD (scripts/warchestHudWorker.js)**  
-A real-time wallet monitor that displays SOL balance, session deltas, token balances, and live USD prices using SolanaTracker RPC + Data APIs.  
-Useful during active trading sessions.
+**Quick reference**
 
-### `tx <SIGNATURE>`
+- `research <walletId>` — Harvest wallet trades + chart + per-mint user trades; writes merged payload and profile (Responses).
+- `dossier <walletId>` — Same harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`).
+- `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
+- `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
+- `swap:config <view|edit|set>` — Manage swap config file (RPC URL, swap API key, slippage, priority fee, tx version).
+- `trade <mint>` — Execute a swap through the SolanaTracker swap API using the configured warchest wallet.
+- `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
+- `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
+- `warchest [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
+- `warchestd <action>` — Start/stop/restart the warchest HUD daemon, run HUD foreground, or show status.
+- `test` — Environment + dependency smoke test.
 
-Inspect a Solana transaction using SolanaTracker RPC and Scoundrel's TxInspector.
+### research `<walletId>`
+- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, then runs `analyzeWallet` (Responses).
+- Options: `--start <iso|epoch>`, `--end <iso|epoch>`, `--name <alias>`, `--feature-mint-count <num>`.
+- Artifacts: merged payload under `data/dossier/<alias>/merged/merged-*.json`; profile JSON under `profiles/<alias>.json`; DB upsert via BootyBox.
+- Env: `SOLANATRACKER_API_KEY`, `OPENAI_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
 
-- Fetches the transaction via `rpcMethods.getTransaction()` and normalizes it.
-- Shows status (`ok` / `err` / `unknown`), network fee (lamports + SOL), and per-account SOL balance changes.
-- Useful for verifying swap costs (network fee, Jito tips, protocol fees) and sanity-checking wallet activity.
+### dossier `<walletId>`
+- Same harvest pipeline as `research` plus:
+  - `--limit <num>` cap trades
+  - `--feature-mint-count <num>` override mint sampling
+  - `--resend` re-run AI on latest merged payload without new data pulls
+- Writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, persists `sc_profiles` snapshot.
 
-Examples:
-```bash
-# Inspect a single transaction
-scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ
+### autopsy
+- Prompts for HUD wallet (or custom address) + mint, then builds a campaign payload:
+  - user token trades, token metadata, price range, PnL, ATH, OHLCV window, derived metrics
+- Runs `tradeAutopsy` AI job, prints graded analysis, and saves `profiles/autopsy-<wallet>-<mint>-<ts>.json`.
+- Raw/parsed/enriched artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
 
-# Inspect multiple transactions in one run
-scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ \
-  --sig ANOTHER_SIG \
-  --sig THIRD_SIG
-```
+### tx `<signature>` [--sig ...] [--swap --wallet <alias|address> --mint <mint>]
+- Fetches transaction(s) via `rpcMethods.getTransaction`.
+- Prints status, slot/block time, network fee, and per-account SOL deltas.
+- Swap mode adds wallet/mint deltas, decodes errors, and upserts fee-only or swap events to `sc_trades` when the wallet is tracked.
 
-### `dossier <WALLET>`
+### swap:config `view|edit|set`
+- Config file: macOS `~/Library/Application Support/com.VAULT77.scoundrel/swapConfig.json`; other OS: `$XDG_CONFIG_HOME/com.VAULT77.scoundrel/swapConfig.json`.
+- Keys: `rpcUrl`, `swapAPIKey`, `slippage`, `priorityFee`, `priorityFeeLevel`, `txVersion`, `showQuoteDetails`, `DEBUG_MODE`.
+- `set <key> <value>` casts numbers when possible; `edit` opens `$EDITOR`.
 
-**Operator Dossier**  
-Scoundrel harvests all trades, chart history, and on‑chain features for the selected wallet and generates a full CT/CIA‑style behavioral profile using the Responses API.  
+### trade `<mint>`
+- Executes a buy/sell via SolanaTracker swap API through `lib/trades` (swapEngine).
+- Required: `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
+- Optional: `--slippage <pct>` (default 15), `--priority-fee <microlamports|auto>`, `--jito`, `--dry-run`.
+- Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when available.
 
-Harvests wallet trades + chart, merges a unified JSON payload, and sends it to the OpenAI Responses API to generate a CT/CIA‑style operator report.
+### ask
+- Q&A over `profiles/<name>.json`; includes latest `data/dossier/<alias>/enriched/techniqueFeatures-*` when present.
+- Flags: `--name <alias>` (defaults to `default`), `--question <text>` (required).
+- Persists ask/answer to DB (BootyBox recordAsk).
 
-### `autopsy`
-Interactive post‑trade analysis. Prompts you to select a tracked HUD wallet (or enter any Solana address) and a token mint, then builds a **single‑campaign trade autopsy** using enriched SolanaTracker data.
+### addcoin `<mint>`
+- Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
+- `--force` skips cache; when `SAVE_RAW` is on, writes token info to `data/addcoin/<mint>-<runId>.json`.
 
-The autopsy engine pulls:
-- user‑specific token trades  
-- token metadata + price range  
-- OHLCV window (5m before → last sell → 5m after)  
-- PnL (realized + residual)  
-- ATH context  
+### warchest `[add|list|remove|set-color]` [args]
+- Wallet registry backed by BootyBox. `--solo` opens a picker for quick lookups.
+- `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
-And generates:
-- structured JSON coaching analysis (`tradeAutopsy` job)  
-- entry/exit evaluation  
-- risk assessment and sizing feedback  
-- rules + corrections for future trades  
+### warchestd `<start|stop|restart|hud|status>`
+- Daemon/HUD controller around `scripts/warchestHudWorker.js`.
+- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to run interactive HUD.
+- `hud` runs foreground HUD; `status` reads pid/status snapshot and reports health (slot, RPC timings, wallet count).
 
-Outputs:
-- Writes JSON to: `./profiles/autopsy-<wallet>-<symbol>-<timestamp>.json`
-- Saves raw/parsed/enriched artifacts under `./data/autopsy/<wallet>/<mint>/` when `SAVE_RAW`, `SAVE_PARSED`, or `SAVE_ENRICHED` are true
-- Prints AI JSON into the terminal in a clean, sectioned layout
-
-### `ask`  
-Ask a question about a trader using their saved profile (Responses API).
-
-- Reads `./profiles/<name>.json` for context.
-- Returns a concise answer; may include bullets and suggested actions.
-- When dossier enrichment is saved, pulls the latest snapshot from `./data/dossier/<alias>/enriched/` for extra context.
-
-Examples:
-```bash
-node index.js ask -n Gh0stee -q "What patterns do you see?"
-node index.js ask -n Gh0stee -q "List common entry mistakes."
-```
-
-### `tune`  
-Get safe, incremental tuning recommendations for your strategy settings.
-
-- Uses the saved profile plus your current settings (env‑backed defaults).
-- May emit a partial JSON `changes` object and/or a JSON Patch array.
-
-Example:
-```bash
-node index.js tune -n Gh0stee
-```
-
-### `test`
-Quick self‑check: environment and presence of core files.
-
-```bash
-node index.js test
-```
+### test
+- Verifies `OPENAI_API_KEY` presence, prints core file existence, DB config, and attempts BootyBox ping.
+- Exits non-zero when API key is missing.
 
 ---
 
 ## Data artifacts
 
 - `./profiles/<alias>.json` — final dossier with markdown + operator_summary
+- `./profiles/autopsy-<wallet>-<mint>-<ts>.json` — trade autopsy payload + AI output
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
+- `./data/autopsy/<wallet>/<mint>/{raw,parsed,enriched}/` — campaign artifacts gated by `SAVE_*`
+- `./data/warchest/{warchest.pid,status.json}` — HUD daemon pid + health snapshot
 
 ---
 
@@ -345,54 +332,6 @@ All AI jobs enforce **strict JSON Schema**. The wallet profile currently include
   All callers use the official SDK `getUserTokenTrades` method.  
   The file remains only for historical reference and may be removed in a future development cycle.
 
----
-
-## Roadmap to Success
-
-### Phase 1 — Data Harvesting (Currently here)
-- Select a set of famous wallets to track.
-- Pull their trade history from SolanaTracker.
-- For each trade, snapshot the token’s history at the time of entry and exit.
-- Store enriched data locally (features, outcomes, fees, realized PnL).
-
-### Phase 2 — Feature Engineering & Labeling
-- Engineer features at trade time: price, liquidity, spread, velocity, holders, pool age, creator flags, etc.
-- Label outcomes at multiple horizons (5m, 15m, 1h, 24h).
-- Normalize for all fees to ensure net PnL realism.
-
-### Phase 3 — Style Profiling
-- Cluster wallet histories into trading styles.
-- Extract descriptors (entry timing, hold duration, fee tolerance).
-- Encode as JSON “playbooks” that can be referenced later.
-
-### Phase 4 — LLM Integration
-- Build an OpenAI-powered validator that:
-  - Compares live signals to learned profiles.
-  - Runs rulebook checks (liquidity floors, dust guards, rug heuristics).
-  - Produces structured JSON verdicts (proceed, reduce size, veto).
-  - Logs rationale for journaling and social content.
-
-### Phase 5 — Bot Integration
-- Connect validator into the Warlord Bot event bus.
-- Run numeric signals first, then validate with Scoundrel.
-- Enforce risk caps locally regardless of model output.
-- Operate in shadow mode before live trading.
-
-### Phase 6 — Production & Iteration
-- Go live with small caps and strict trailing stops.
-- Evaluate results weekly against fees and benchmarks.
-- Retrain style profiles as wallets evolve.
-- Expand coverage to new traders and coins.
-
----
-
-## Success Criteria
-- **Consistency**: Validator adds measurable edge to raw indicator signals.
-- **Resilience**: Trades respect liquidity/fee constraints and avoid dust traps.
-- **Explainability**: Every trade comes with machine-readable verdict and short rationale.
-- **Scalability**: Easy to add new wallets, styles, and rules over time.
-
----
 
 # Scoundrel — a VAULT77 🔐77 relic
 

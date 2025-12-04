@@ -2,23 +2,30 @@
 // index.js — Scoundrel CLI
 require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
+const chalk = require('chalk');
 const { program } = require('commander');
+const {
+    getConfigPath: getSwapConfigPath,
+    loadConfig: loadSwapConfig,
+    saveConfig: saveSwapConfig,
+    editConfig: editSwapConfig,
+} = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./packages/BootyBox/src');
+const BootyBox = require('./packages/BootyBox');
 const { requestId } = require('./lib/id/issuer');
-const chalk = require('chalk');
 const util = require('util');
 const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
-const { getAllWallets } = require('./lib/warchest/walletRegistry');
-const { runAutopsy } = require('./lib/autopsy');
+const walletsDomain = require('./lib/wallets');
+const { runAutopsy } = require('./lib/cli/autopsy');
 const {
     dossierBaseDir,
     loadLatestJson,
     normalizeTraderAlias,
 } = require('./lib/persist/jsonArtifacts');
 const warchestModule = require('./commands/warchest');
+const warchestService = require('./lib/cli/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
     : warchestModule && typeof warchestModule.run === 'function'
@@ -28,20 +35,35 @@ const warchestRun = typeof warchestModule === 'function'
 function loadHarvest() {
     try {
         // Lazy-load to keep startup fast and allow running without Solana deps during setup
-        return require('./lib/dossier').harvestWallet;
+        return require('./lib/cli/dossier').harvestWallet;
     } catch (e) {
-        logger.error('[scoundrel] Missing ./lib/dossier. Create a stub that exports { harvestWallet }.');
+        logger.error(`[scoundrel: dossier] ${e}`);
         process.exit(1);
     }
 }
 
 function loadProcessor(name) {
     try {
-        return require(`./lib/${name}`);
+        return require(`./lib/cli/${name}`);
     } catch (e) {
         logger.error(`[scoundrel] Missing ./lib/${name}. Create it and export a function (module.exports = async (args) => { ... }) or a named export.`);
         process.exit(1);
     }
+}
+
+function resolveVersion() {
+    try {
+        const lockPath = join(__dirname, 'package-lock.json');
+        const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
+        if (lock && lock.version) return lock.version;
+    } catch (_) {}
+    try {
+        // Fallback to package.json if lock parsing fails.
+        // eslint-disable-next-line global-require, import/no-dynamic-require
+        const pkg = require('./package.json');
+        if (pkg && pkg.version) return pkg.version;
+    } catch (_) {}
+    return '0.0.0';
 }
 
 function shortenPubkey(addr) {
@@ -105,7 +127,7 @@ function logAutopsyError(err) {
 program
     .name('scoundrel')
     .description('Research & validation tooling for memecoin trading using SolanaTracker + OpenAI')
-    .version('0.1.0');
+    .version(resolveVersion());
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
 program.addHelpText('after', `\nDatabase env:\n  DB_ENGINE=mysql\n  DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_POOL_LIMIT (default 30)\n`);
@@ -276,9 +298,9 @@ program
     .action(async () => {
         const rl = readline.createInterface({ input, output });
         try {
-            const wallets = await getAllWallets();
-            const options = wallets.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
-            options.push(`${wallets.length + 1}) Other (enter address)`);
+            const walletRows = await walletsDomain.registry.getAllWallets();
+            const options = walletRows.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
+            options.push(`${walletRows.length + 1}) Other (enter address)`);
 
             logger.info('Which wallet?');
             options.forEach((opt) => logger.info(opt));
@@ -287,8 +309,8 @@ program
             let walletAddress;
 
             const numeric = Number(choice);
-            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= wallets.length) {
-                const selected = wallets[numeric - 1];
+            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= walletRows.length) {
+                const selected = walletRows[numeric - 1];
                 walletLabel = selected.alias;
                 walletAddress = selected.pubkey;
             } else {
@@ -324,6 +346,7 @@ program
         }
     });
 
+
 program
     .command('tx')
     .argument('<signature>', 'Solana transaction signature to inspect')
@@ -333,7 +356,7 @@ program
         return previous.concat(value);
     })
     .option('-s, --swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
-    .option('-w, --wallet <pubkey>', 'Wallet address that initiated the swap (focus wallet)')
+    .option('-w, --wallet <aliasOrAddress>', 'Wallet alias or address that initiated the swap (focus wallet)')
     .option('-m, --mint <mint>', 'SPL mint address for the swapped token')
     .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n  • With -s/--swap, also computes token + SOL deltas for the given wallet/mint.\n`)
     .action(async (signature, cmd) => {
@@ -352,7 +375,107 @@ program
             await runner({ signature, cmd });
             process.exit(0);
         } catch (err) {
-            logger.error('[scoundrel] ❌ tx inspection failed:', err?.message || err);
+            const msg = (err && (err.stack || err.message)) ? (err.stack || err.message) : err;
+            logger.error('[scoundrel] ❌ tx command failed:', msg);
+            process.exit(1);
+        }
+    });
+
+// --- swap:config command ---
+const swapConfigCmd = program
+    .command('swap:config')
+    .description('Manage Scoundrel swap configuration (RPC, swap API key, slippage, etc.)')
+    .addHelpText('after', `
+Examples:
+  $ scoundrel swap:config view
+  $ scoundrel swap:config edit
+  $ scoundrel swap:config set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true
+  $ scoundrel swap:config set swapAPIKey YOUR_API_KEY
+`);
+
+swapConfigCmd
+    .command('view')
+    .description('Show current swap config')
+    .action(async () => {
+        try {
+            const configPath = getSwapConfigPath();
+            const cfg = await loadSwapConfig();
+
+            // Redact API key to avoid screen-share leaks
+            const redacted = { ...cfg };
+            if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
+                const tail = redacted.swapAPIKey.slice(-4);
+                redacted.swapAPIKey = `************${tail}`;
+            }
+
+            logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
+            logger.info(JSON.stringify(redacted, null, 2));
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to load config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+swapConfigCmd
+    .command('edit')
+    .description('Edit swap config in your $EDITOR')
+    .action(async () => {
+        try {
+            await editSwapConfig();
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to edit config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+swapConfigCmd
+    .command('set <key> <value>')
+    .description('Set a single swap config key')
+    .action(async (key, value) => {
+        try {
+            const configPath = getSwapConfigPath();
+            const cfg = await loadSwapConfig();
+            const numeric = Number(value);
+            const castValue = Number.isNaN(numeric) ? value : numeric;
+
+            cfg[key] = castValue;
+            await saveSwapConfig(cfg);
+
+            logger.info(`[scoundrel:swap-config] ✅ Updated ${key} → ${castValue} in ${configPath}`);
+        } catch (err) {
+            logger.error('[scoundrel:swap-config] ❌ failed to update config:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+// --- trade command ---
+program
+    .command('trade')
+    .argument('<mint>', 'Token mint address to trade')
+    .description('Execute a token trade via the SolanaTracker swap API')
+    .requiredOption('-w, --wallet <aliasOrAddress>', 'Wallet alias or address from the warchest registry')
+    .option('-b, --buy <amount>', "Spend <amount> SOL (number or '<percent>%') to buy the token")
+    .option('-s, --sell <amount>', "Sell <amount> of the token (number, 'auto', or '<percent>%')")
+    .option('--slippage <percent>', 'Override default slippage percent for this trade')
+    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use "auto")')
+    .option('--jito', 'Use Jito-style priority fee routing when supported')
+    .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
+    .action(async (mint, opts) => {
+        try {
+            const tradeCli = require('./lib/cli/trade');
+            if (typeof tradeCli !== 'function') {
+                logger.error('[scoundrel] ./lib/cli/trade must export a default function (module.exports = async (mint, opts) => { ... })');
+                process.exit(1);
+            }
+            await tradeCli(mint, opts);
+            process.exit(0);
+        } catch (err) {
+            const msg = err && err.message ? err.message : err;
+            logger.error(`[scoundrel] ❌ trade failed: ${msg}`);
+            if (err && err.stack && logger.debug) {
+                logger.debug(err.stack);
+            }
             process.exit(1);
         }
     });
@@ -493,23 +616,108 @@ Examples:
     });
 
 program
+    .command('warchestd')
+    .description('Control the warchest daemon (start, stop, restart, or run a HUD session)')
+    .argument('<action>', 'start|stop|restart|hud|status')
+    .option(
+        '--wallet <spec>',
+        'Wallet spec alias:pubkey:color (repeatable, use multiple --wallet flags)',
+        (value, previous) => {
+            if (!previous) return [value];
+            return previous.concat(value);
+        }
+    )
+    .option('--hud', 'Start daemon with HUD enabled (for start/restart actions)')
+    .addHelpText('after', `
+Examples:
+  # Start warchest daemon in the background
+  $ scoundrel warchestd start --wallet warlord:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
+
+  # Start daemon with HUD enabled in the foreground (dev mode)
+  $ scoundrel warchestd start --wallet warlord:DDkF...:orange --hud
+
+  # One-off HUD session (no PID management)
+  $ scoundrel warchestd hud --wallet warlord:DDkF...:orange
+
+  # Stop background daemon
+  $ scoundrel warchestd stop
+
+  # Restart daemon with new wallet args
+  $ scoundrel warchestd restart --wallet warlord:DDkF...:orange
+
+  # Show daemon health and latest status snapshot
+  $ scoundrel warchestd status
+`)
+    .action(async (action, opts) => {
+        // In Commander v9+, the second argument here is the options object, not the Command instance.
+        // We defined --wallet as a repeatable option, so opts.wallet will be:
+        //   - undefined (if not provided)
+        //   - a string (if provided once)
+        //   - an array of strings (if provided multiple times)
+        const rawWallet = opts && Object.prototype.hasOwnProperty.call(opts, 'wallet')
+            ? opts.wallet
+            : undefined;
+
+        let walletSpecs = [];
+        if (Array.isArray(rawWallet)) {
+            walletSpecs = rawWallet;
+        } else if (typeof rawWallet === 'string') {
+            walletSpecs = [rawWallet];
+        }
+
+        // walletSpecs may be empty here. The warchest service will attempt to resolve
+        // wallets from configuration (autoAttachWarchest/default funding) when none
+        // are provided explicitly.
+
+        try {
+            if (!warchestService) {
+                throw new Error('warchest service module is not available');
+            }
+
+            if (action === 'start') {
+                // Default to starting the daemon headless; enable HUD only when explicitly requested.
+                const hud = !!opts.hud;
+                await warchestService.start({ walletSpecs, hud });
+            } else if (action === 'stop') {
+                await warchestService.stop();
+            } else if (action === 'restart') {
+                // Default to restarting the daemon headless; enable HUD only when explicitly requested.
+                const hud = !!opts.hud;
+                await warchestService.restart({ walletSpecs, hud });
+            } else if (action === 'hud') {
+                // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
+                warchestService.hud({ walletSpecs });
+            } else if (action === 'status') {
+                // Report daemon + health snapshot status without modifying state.
+                await warchestService.status();
+            } else {
+                logger.error(`[scoundrel] Unknown warchestd action: ${action}`);
+                process.exitCode = 1;
+            }
+        } catch (err) {
+            logger.error('[scoundrel] ❌ warchestd command failed:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
     .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
     .action(async () => {
     console.log('[test] starting test action');
     const hasKey = !!process.env.OPENAI_API_KEY;
-    logger.info('[scoundrel] environment check:');
+        logger.info('[scoundrel] environment check:');
         logger.info(`  OPENAI_API_KEY: ${hasKey ? 'present' : 'MISSING'}`);
-        logger.info('  Working directory:', process.cwd());
-        logger.info('  Node version:', process.version);
+        logger.info(`  Working directory: ${process.cwd()}`);
+        logger.info(`  Node version: ${process.version}`);
 
         // Check presence of core modules in the new pipeline
         const pathsToCheck = [
-            join(__dirname, 'lib', 'dossier.js'),
+            join(__dirname, 'lib', 'cli', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
             join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
-            join(__dirname, 'lib', 'ask.js'),
+            join(__dirname, 'lib', 'cli', 'ask.js'),
         ];
         logger.info('\n[scoundrel] core files:');
         pathsToCheck.forEach(p => {
@@ -519,7 +727,7 @@ program
 
         // DB diagnostics
         const {
-            DB_ENGINE = 'mysql',
+            DB_ENGINE = 'sqlite',
             DB_HOST = 'localhost',
             DB_PORT = '3306',
             DB_NAME = '(unset)',
@@ -535,10 +743,17 @@ program
         logger.info(`  Pool     : ${DB_POOL_LIMIT}`);
 
         try {
+            if (typeof BootyBox.init === 'function') {
+                await BootyBox.init();
+            }
             await BootyBox.ping();
             logger.info('[db] ✅ connected');
         } catch (e) {
-            logger.info('[db] ❌ connection failed:', e?.message || e);
+            const msg = e && e.message ? e.message : e;
+            logger.info(`[db] ❌ connection failed: ${msg}`);
+            if (e && e.stack) {
+                logger.debug && logger.debug(e.stack);
+            }
         }
 
         if (!hasKey) {
@@ -549,6 +764,29 @@ program
             process.exit(0);
         }
     });
+
+// Ensure the warchest daemon is running for most commands.
+program.hook('preAction', async (thisCommand, actionCommand) => {
+    const name = actionCommand && typeof actionCommand.name === 'function'
+        ? actionCommand.name()
+        : undefined;
+
+    // Avoid recursion / conflicts for the service management command itself.
+    if (name === 'warchestd') {
+        return;
+    }
+
+    if (!warchestService || typeof warchestService.ensureDaemonRunning !== 'function') {
+        return;
+    }
+
+    try {
+        await warchestService.ensureDaemonRunning();
+    } catch (err) {
+        const msg = err && err.message ? err.message : err;
+        logger.warn(`[scoundrel] Failed to ensure warchest daemon is running: ${msg}`);
+    }
+});
 
 // Default/help handling is provided by commander
 program.parseAsync(process.argv);

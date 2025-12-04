@@ -22,7 +22,10 @@ describe('createGetTransaction', () => {
     const getTransaction = createGetTransaction(rpc);
     const result = await getTransaction('sig123', { commitment: 'confirmed' });
 
-    expect(rpc.getTransaction).toHaveBeenCalledWith('sig123', { commitment: 'confirmed' });
+    expect(rpc.getTransaction).toHaveBeenCalledWith('sig123', {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
     expect(result).toEqual({
       signature: 'sig123',
       slot: 123,

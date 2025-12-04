@@ -2,7 +2,7 @@
 
 const readline = require('readline');
 const chalk = require('chalk');
-const walletRegistry = require('../lib/warchest/walletRegistry');
+const walletRegistry = require('../lib/wallets/registry');
 const logger = require('../lib/logger');
 
 const COLOR_PALETTE = ['green', 'cyan', 'magenta', 'yellow', 'blue'];

@@ -8,16 +8,104 @@
 //
 // NOTE: v1 stops before metadata/price pulls. Tokens/prices are stubbed.
 
-require("dotenv").config({ quiet: true });
 
-const chalk = require('chalk');
+require('dotenv').config({ quiet: true });
+
+const fs = require('fs');
+const path = require('path');
+
 const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
 const { createRpcMethods } = require('../lib/solana/rpcMethods');
 const { createSolanaTrackerDataClient } = require('../lib/solanaTrackerDataClient');
 const { ensureTokenInfo } = require('../lib/services/tokenInfoService');
 const logger = require('../lib/logger');
-const { updateFromSlotEvent, getChainState } = require('../lib/solana/rpcMethods/internal/chainSTate');
-const { updateSol, getWalletState } = require('../lib/solana/rpcMethods/internal/walletState');
+const { updateFromSlotEvent } = require('../lib/solana/rpcMethods/internal/chainState');
+const { updateSol } = require('../lib/solana/rpcMethods/internal/walletState');
+const { renderHud } = require('../lib/hud/warchestHudRenderer');
+const { updateHealth } = require('../lib/warchest/health');
+
+const WalletManagerV2 = require('../lib/WalletManagerV2');
+const txInsightService = require('../lib/services/txInsightService');
+
+let BootyBox = {};
+try {
+  // BootyBox index should select the appropriate adapter (MySQL/SQLite).
+  // If it is not available in this environment, we fall back to a no-op
+  // object so WalletManagerV2 can still run without persisting trades.
+  // Adjust the require path if your BootyBox entrypoint lives elsewhere.
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  BootyBox = require('../packages/BootyBox');
+} catch (err) {
+  const msg = err && err.message ? err.message : err;
+  logger.warn(`[HUD] BootyBox module not available for WalletManagerV2: ${msg}`);
+  BootyBox = {};
+}
+
+/**
+ * Ensure the BootyBox adapter is ready before processing trades.
+ * This guards against silent failures when the submodule is missing or the
+ * adapter has not been initialised, and verifies that the warchest-specific
+ * helpers we rely on are present.
+ *
+ * @returns {Promise<boolean>} true if BootyBox is usable, false otherwise
+ */
+async function ensureBootyBoxReady() {
+  if (!BootyBox || typeof BootyBox.init !== 'function') {
+    logger.error('[HUD] BootyBox client unavailable; warchest cannot persist trades.');
+    return false;
+  }
+
+  try {
+    await BootyBox.init();
+  } catch (err) {
+    const msg = err && err.message ? err.message : err;
+    logger.error(`[HUD] BootyBox init failed; persistence disabled: ${msg}`);
+    return false;
+  }
+
+  const missing = [];
+  if (typeof BootyBox.recordScTradeEvent !== 'function') missing.push('recordScTradeEvent');
+  if (typeof BootyBox.applyScTradeEventToPositions !== 'function')
+    missing.push('applyScTradeEventToPositions');
+
+  if (missing.length) {
+    logger.error(
+      `[HUD] BootyBox missing required helpers (${missing.join(', ')}); warchest persistence disabled.`
+    );
+    return false;
+  }
+
+  return true;
+}
+
+const WARCHEST_STATUS_DIR = path.join(process.cwd(), 'data', 'warchest');
+const WARCHEST_STATUS_FILE = path.join(WARCHEST_STATUS_DIR, 'status.json');
+
+/**
+ * Persist a lightweight health snapshot for other commands to read.
+ * This is only used in daemon mode; HUD mode is ephemeral.
+ *
+ * @param {object} health
+ */
+function writeStatusSnapshot(health) {
+  if (!health) return;
+
+  try {
+    if (!fs.existsSync(WARCHEST_STATUS_DIR)) {
+      fs.mkdirSync(WARCHEST_STATUS_DIR, { recursive: true });
+    }
+
+    const snapshot = {
+      updatedAt: new Date().toISOString(),
+      health,
+    };
+
+    fs.writeFileSync(WARCHEST_STATUS_FILE, JSON.stringify(snapshot, null, 2), 'utf8');
+  } catch (err) {
+    const msg = err && err.message ? err.message : err;
+    logger.warn(`[HUD] Failed to write warchest status snapshot: ${msg}`);
+  }
+}
 
 // ---------- env helpers ----------
 function intFromEnv(name, fallback) {
@@ -58,27 +146,6 @@ const rpcStats = {
 
 // Shared SolanaTracker Data API client for token metadata lookups.
 const dataClient = createSolanaTrackerDataClient();
-
-// ---------- colorizer (reuse palette semantics from warchest) ----------
-function colorizer(color) {
-  if (!color) return (text) => text;
-  switch (color) {
-    case 'green':
-      return chalk.green;
-    case 'cyan':
-      return chalk.cyan;
-    case 'magenta':
-      return chalk.magenta;
-    case 'yellow':
-      return chalk.yellow;
-    case 'blue':
-      return chalk.blue;
-    case 'red':
-      return chalk.red;
-    default:
-      return (text) => text;
-  }
-}
 
 // ---------- CLI arg parsing ----------
 // For now we keep it dead simple and independent of commander:
@@ -172,24 +239,6 @@ function buildInitialState(walletSpecs) {
   return state;
 }
 
-// ---------- HUD rendering ----------
-
-function shortenPubkey(pubkey) {
-  if (!pubkey || pubkey.length <= 8) return pubkey;
-  return `${pubkey.slice(0, 3)}...${pubkey.slice(-5)}`;
-}
-
-/**
- * Format a number with fixed decimals and thousands separators.
- */
-function fmtNum(value, decimals = 3) {
-  if (value == null || Number.isNaN(value)) return '-';
-  return value.toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
 // Helper to push recent activity events for a wallet.
 function pushRecentEvent(wallet, summary) {
   if (!wallet.recentEvents) wallet.recentEvents = [];
@@ -197,197 +246,6 @@ function pushRecentEvent(wallet, summary) {
   if (wallet.recentEvents.length > 5) {
     wallet.recentEvents.length = 5;
   }
-}
-
-/**
- * Render a single wallet section in the style you described.
- * For now, tokens are whatever is in state.tokens (stubbed until we wire metadata/prices).
- * @param {WalletState} w
- * @returns {string}
- */
-function renderWalletSection(w) {
-  const c = colorizer(w.color);
-
-  const headerWidth = 65;
-  const borderTop = `┌${'─'.repeat(headerWidth)}┐`;
-  const borderMid = `├${'─'.repeat(headerWidth)}┤`;
-  const borderBottom = `└${'─'.repeat(headerWidth)}┘`;
-
-  const shortPk = shortenPubkey(w.pubkey);
-
-  // Prefer live WS-driven SOL balance from walletState when available.
-  let effectiveSolBalance = w.solBalance;
-  const wsWallet = getWalletState(w.pubkey);
-  if (wsWallet && typeof wsWallet.solLamports === 'number' && Number.isFinite(wsWallet.solLamports)) {
-    effectiveSolBalance = wsWallet.solLamports / 1_000_000_000;
-  }
-
-  const solStr = `SOL: ${fmtNum(effectiveSolBalance, 3)}`;
-
-  // Recompute session delta from the effective balance when we have a baseline.
-  let sessionDelta = w.solSessionDelta;
-  if (w.startSolBalance != null && effectiveSolBalance != null && Number.isFinite(effectiveSolBalance)) {
-    sessionDelta = effectiveSolBalance - w.startSolBalance;
-  }
-
-  let deltaStr = '';
-  if (sessionDelta !== 0) {
-    const deltaRaw = `${sessionDelta > 0 ? '+' : ''}${fmtNum(sessionDelta, 3)}`;
-    const deltaColored = sessionDelta > 0 ? chalk.green(deltaRaw) : chalk.red(deltaRaw);
-    deltaStr = ` (${deltaColored})`;
-  }
-
-  const solWithDelta = `${solStr}${deltaStr}`;
-
-  let solPriceStr = '';
-  if (typeof lastSolPriceUsd === 'number' && Number.isFinite(lastSolPriceUsd)) {
-    solPriceStr = ` @ $${fmtNum(lastSolPriceUsd, 2)}`;
-  }
-
-  const headerText = `${c(w.alias)} (${shortPk})   ${solWithDelta}${solPriceStr}`;
-  const headerLine = `│ ${headerText.padEnd(headerWidth - 1, ' ')}│`;
-
-  // Table header
-  const colSym = 'Sym'.padEnd(6, ' ');
-  const colMint = 'Mint'.padEnd(15, ' ');
-  // Numeric columns: right-align headers to match right-aligned values.
-  const colBal = 'Balance'.padStart(14, ' ');
-  const colDelta = 'Δ Session'.padStart(14, ' ');
-  const colUsd = 'Est. USD'.padStart(10, ' ');
-
-  const colsHeader = `│ ${colSym}│ ${colMint}│ ${colBal}│ ${colDelta}│ ${colUsd}│`;
-
-  const sepRow = '├────────┼───────────────┼──────────────┼──────────────┼──────────┤';
-
-  const rows = [];
-
-  if (!w.tokens || w.tokens.length === 0) {
-    const emptyMsg = '(no tokens yet)';
-    const line = `│ ${emptyMsg.padEnd(headerWidth - 1, ' ')}│`;
-    rows.push(line);
-  } else {
-    const stableTokens = [];
-    const otherTokens = [];
-
-    for (const t of w.tokens) {
-      if (t.mint && STABLE_MINTS.has(t.mint)) {
-        stableTokens.push(t);
-      } else {
-        otherTokens.push(t);
-      }
-    }
-
-    const makeRow = (t, isStable) => {
-      const sym = (t.symbol || '').slice(0, 6).padEnd(6, ' ');
-      const mint = shortenPubkey(t.mint || '').slice(0, 15).padEnd(15, ' ');
-      const rawBal = fmtNum(t.balance, 2);
-      const bal = (isStable ? `$${rawBal}` : rawBal).padStart(14, ' ');
-      const delta = fmtNum(t.sessionDelta, 2).padStart(14, ' ');
-      const usd = t.usdEstimate == null
-        ? '-'.padStart(10, ' ')
-        : (`$${fmtNum(t.usdEstimate, 2)}`).padStart(10, ' ');
-
-      const row = `│ ${sym}│ ${mint}│ ${bal}│ ${delta}│ ${usd}│`;
-      return isStable ? chalk.green(row) : row;
-    };
-
-    if (stableTokens.length > 0) {
-      for (const t of stableTokens) {
-        rows.push(makeRow(t, true));
-      }
-      if (otherTokens.length > 0) {
-        // visual divider between stables and the rest
-        rows.push(sepRow);
-      }
-    }
-
-    for (const t of otherTokens) {
-      rows.push(makeRow(t, false));
-    }
-  }
-
-  const lines = [
-    borderTop,
-    headerLine,
-    borderMid,
-    colsHeader,
-    sepRow,
-    ...rows,
-  ];
-
-  if (w.recentEvents && w.recentEvents.length > 0) {
-    lines.push(borderMid);
-    const activityHeader = 'Recent activity:';
-    lines.push(`│ ${activityHeader.padEnd(headerWidth - 1, ' ')}│`);
-
-    const maxEvents = Math.min(w.recentEvents.length, 5);
-    for (let i = 0; i < maxEvents; i += 1) {
-      const summary = w.recentEvents[i].summary || '';
-      lines.push(`│ ${summary.slice(0, headerWidth - 1).padEnd(headerWidth - 1, ' ')}│`);
-    }
-  }
-
-  lines.push(borderBottom);
-
-  return lines.join('\n');
-}
-
-/**
- * Render the full HUD screen for all wallets.
- * @param {Record<string,WalletState>} state
- */
-function renderHud(state) {
-  // Clear the screen + move cursor to top-left
-  // eslint-disable-next-line no-console
-  process.stdout.write('\x1b[2J\x1b[H');
-
-  const aliases = Object.keys(state).sort();
-  if (aliases.length === 0) {
-    // eslint-disable-next-line no-console
-    console.log('No wallets configured for HUD worker.\n');
-    return;
-  }
-
-  const now = Date.now();
-  const chain = getChainState();
-  let chainLine = 'Chain: slot N/A (WS idle)';
-
-  if (chain && chain.slot != null) {
-    const ageMs = chain.lastSlotAt ? now - chain.lastSlotAt : null;
-    const ageStr = ageMs != null ? `${Math.round(ageMs)}ms ago` : 'just now';
-    const rootStr = chain.root != null ? `root ${chain.root}` : 'root N/A';
-    chainLine = `Chain: slot ${chain.slot} (${rootStr}), last update ${ageStr}`;
-  }
-
-  const wsStatus = (() => {
-    if (!chain || chain.slot == null || !chain.lastSlotAt) return 'WS: idle';
-    const ageMs = now - chain.lastSlotAt;
-    if (ageMs < 2000) return `WS: OK (${ageMs}ms)`;
-    if (ageMs < 10000) return `WS: stale (${ageMs}ms)`;
-    return `WS: lagging (${ageMs}ms)`;
-  })();
-
-  const rpcParts = [];
-  if (typeof rpcStats.lastSolMs === 'number') rpcParts.push(`SOL RPC: ${rpcStats.lastSolMs}ms`);
-  if (typeof rpcStats.lastTokenMs === 'number') rpcParts.push(`Tokens RPC: ${rpcStats.lastTokenMs}ms`);
-  if (typeof rpcStats.lastDataApiMs === 'number') rpcParts.push(`Data API: ${rpcStats.lastDataApiMs}ms`);
-  const rpcLine = rpcParts.length ? rpcParts.join('  |  ') : 'RPC: (no recent calls)';
-
-  const sections = aliases.map((alias) => renderWalletSection(state[alias]));
-  const combined = sections.join('\n\n');
-
-  const footer = `Last redraw: ${new Date(now).toLocaleTimeString()}  |  Wallets: ${aliases.length}  |  Ctrl-C to exit`;
-
-  // eslint-disable-next-line no-console
-  console.log(chainLine);
-  // eslint-disable-next-line no-console
-  console.log(`${wsStatus}  |  ${rpcLine}`);
-  // eslint-disable-next-line no-console
-  console.log('');
-  // eslint-disable-next-line no-console
-  console.log(combined);
-  // eslint-disable-next-line no-console
-  console.log('\n' + footer);
 }
 
 // ---------- helpers for SOL balance refresh ----------
@@ -648,6 +506,12 @@ async function main() {
     process.exit(1);
   }
 
+  const bootyReady = await ensureBootyBoxReady();
+  if (!bootyReady) {
+    logger.error('[HUD] Exiting because BootyBox is unavailable for persistence.');
+    process.exit(1);
+  }
+
   logger.info(`[HUD] Starting warchest HUD worker in ${mode} mode.`);
 
   const state = buildInitialState(wallets);
@@ -655,6 +519,38 @@ async function main() {
   // Create SolanaTracker RPC client (HTTP + WS).
   const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
   const rpcMethods = createRpcMethods(rpc, rpcSubs);
+
+  // WalletManagerV2 instances per wallet alias. These are responsible for
+  // turning log notifications into trade events and position updates.
+  const walletManagers = {};
+
+  wallets.forEach((w, index) => {
+    try {
+      walletManagers[w.alias] = new WalletManagerV2({
+        rpc,
+        // NOTE: For now we use a simple numeric walletId derived from the
+        // CLI order. Once warchest has a proper sc_wallets registry, this
+        // should be switched to the real DB id.
+        walletId: index + 1,
+        walletAlias: w.alias,
+        walletPubkey: w.pubkey,
+        txInsightService,
+        // tokenPriceService is optional; HUD already has a global SOL price
+        // via lastSolPriceUsd and token price pulls, so we can omit it here
+        // for now and add it later if needed.
+        tokenPriceService: null,
+        bootyBox: BootyBox,
+        // Strategy / WarlordAI decision context provider is optional and
+        // will be wired in once that layer is ready.
+        strategyContextProvider: null,
+      });
+    } catch (err) {
+      const msg = err && err.message ? err.message : err;
+      logger.warn(
+        `[HUD] Failed to initialize WalletManagerV2 for ${w.alias} (${w.pubkey}): ${msg}`,
+      );
+    }
+  });
 
   let slotSub = null;
   const accountSubs = [];
@@ -683,6 +579,19 @@ async function main() {
               const msg = firstLog ? firstLog.slice(0, 60) : 'log event';
               const summary = `${new Date().toLocaleTimeString()} ${shortSig} ${msg}`;
               pushRecentEvent(wallet, summary);
+
+              // Forward the raw log notification to WalletManagerV2 so it can
+              // derive trade events and position updates. This is best-effort
+              // and should never crash the HUD loop.
+              const wm = walletManagers[alias];
+              if (wm && typeof wm.handleLogNotification === 'function') {
+                Promise.resolve(wm.handleLogNotification(ev)).catch((wmErr) => {
+                  const wmsg = wmErr && wmErr.message ? wmErr.message : wmErr;
+                  logger.warn(
+                    `[HUD] WalletManagerV2 error for ${wallet.alias}: ${wmsg}`,
+                  );
+                });
+              }
             } catch (logErr) {
               const msg = logErr && logErr.message ? logErr.message : logErr;
               logger.warn(`[HUD] Error processing logs event for ${wallet.alias}: ${msg}`);
@@ -800,11 +709,26 @@ async function main() {
     });
   }, HUD_TOKENS_REFRESH_SEC * 1000);
 
+  const healthTimer = setInterval(() => {
+    const health = updateHealth(state, rpcStats);
+    if (mode === 'daemon' && health && health.process && health.ws && health.wallets) {
+      const rssMb = Math.round(health.process.rssBytes / 1024 / 1024);
+      const lagMs = health.process.eventLoopLagMs;
+
+      // Persist a snapshot for other commands to inspect.
+      writeStatusSnapshot(health);
+
+      logger.info(
+        `[warchest] Health: up=${health.process.uptimeSec}s rss=${rssMb}MB slot=${health.ws.slot} wsAge=${health.ws.lastSlotAgeMs}ms lag=${lagMs}ms wallets=${health.wallets.count}`
+      );
+    }
+  }, 5000);
+
   // Render loop (only in HUD mode)
   let renderTimer = null;
   if (mode === 'hud') {
     renderTimer = setInterval(() => {
-      renderHud(state);
+      renderHud(state, { lastSolPriceUsd, rpcStats, stableMints: STABLE_MINTS });
     }, HUD_RENDER_INTERVAL_MS);
   }
 
@@ -812,6 +736,7 @@ async function main() {
   function shutdown() {
     clearInterval(solTimer);
     clearInterval(tokenTimer);
+    clearInterval(healthTimer);
     if (renderTimer) {
       clearInterval(renderTimer);
     }
@@ -864,7 +789,7 @@ async function main() {
 
   // Initial render only in HUD mode
   if (mode === 'hud') {
-    renderHud(state);
+    renderHud(state, { lastSolPriceUsd, rpcStats, stableMints: STABLE_MINTS });
   }
 }
 
