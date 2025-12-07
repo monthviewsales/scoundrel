@@ -34,7 +34,7 @@ try {
   // object so WalletManagerV2 can still run without persisting trades.
   // Adjust the require path if your BootyBox entrypoint lives elsewhere.
   // eslint-disable-next-line global-require, import/no-dynamic-require
-  BootyBox = require('../packages/BootyBox');
+  BootyBox = require('../db');
 } catch (err) {
   const msg = err && err.message ? err.message : err;
   logger.warn(`[HUD] BootyBox module not available for WalletManagerV2: ${msg}`);

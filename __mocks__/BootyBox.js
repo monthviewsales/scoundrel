@@ -1,6 +1,5 @@
 'use strict';
 
-const mysqlAdapter = require('./BootyBoxMysqlAdapter');
 const sqliteAdapter = require('./BootyBoxSqliteAdapter');
 
 const sharedHelpers = {
@@ -25,21 +24,6 @@ const sharedHelpers = {
   close: jest.fn(),
 };
 
-Object.assign(mysqlAdapter, sharedHelpers);
 Object.assign(sqliteAdapter, sharedHelpers);
 
-function selectAdapter() {
-  const engine = (process.env.DB_ENGINE || 'sqlite').toLowerCase();
-  if (engine === 'mysql') {
-    return mysqlAdapter;
-  }
-  if (engine === 'sqlite') {
-    return sqliteAdapter;
-  }
-
-  // eslint-disable-next-line no-console
-  console.warn(`[BootyBox] Unknown DB_ENGINE "${process.env.DB_ENGINE}", defaulting to sqlite`);
-  return sqliteAdapter;
-}
-
-module.exports = selectAdapter();
+module.exports = sqliteAdapter;

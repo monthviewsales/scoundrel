@@ -1,23 +1,16 @@
 'use strict';
 
-jest.mock('../../../packages/BootyBox/src/adapters/mysql', () => ({
-  engine: 'mysql',
-  init: jest.fn(),
-  addOrUpdateCoin: jest.fn(),
-  getCoinByMint: jest.fn(),
-}));
-
-jest.mock('../../../packages/BootyBox/src/adapters/sqlite', () => ({
+jest.mock('../../../db/src/adapters/sqlite', () => ({
   engine: 'sqlite',
   init: jest.fn(),
   addOrUpdateCoin: jest.fn(),
   getCoinByMint: jest.fn(),
 }));
 
-describe('BootyBox adapter selection (mysql)', () => {
+describe('BootyBox adapter selection', () => {
   const loadBootyBox = () => {
     jest.resetModules();
-    return require('../../../packages/BootyBox');
+    return require('../../../db');
   };
 
   afterEach(() => {
@@ -26,25 +19,24 @@ describe('BootyBox adapter selection (mysql)', () => {
     jest.clearAllMocks();
   });
 
-  test('selects mysql adapter when DB_ENGINE=mysql', () => {
-    process.env.DB_ENGINE = 'mysql';
+  test('always resolves to sqlite adapter', () => {
+    process.env.DB_ENGINE = 'not-sqlite';
     const BootyBox = loadBootyBox();
-    const mysqlAdapter = require('../../../packages/BootyBox/src/adapters/mysql');
+    const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 
-    expect(BootyBox).toBe(mysqlAdapter);
-    expect(BootyBox.engine).toBe('mysql');
+    expect(BootyBox).toBe(sqliteAdapter);
+    expect(BootyBox.engine).toBe('sqlite');
   });
 
-  test('exposes adapter helpers from the selected engine', async () => {
-    process.env.DB_ENGINE = 'mysql';
+  test('proxies helper calls to sqlite adapter', async () => {
     const BootyBox = loadBootyBox();
-    const mysqlAdapter = require('../../../packages/BootyBox/src/adapters/mysql');
+    const sqliteAdapter = require('../../../db/src/adapters/sqlite');
     const payload = { mint: 'MintXYZ' };
 
-    mysqlAdapter.addOrUpdateCoin.mockResolvedValueOnce('ok');
+    sqliteAdapter.addOrUpdateCoin.mockResolvedValueOnce('ok');
 
     await BootyBox.addOrUpdateCoin(payload);
 
-    expect(mysqlAdapter.addOrUpdateCoin).toHaveBeenCalledWith(payload);
+    expect(sqliteAdapter.addOrUpdateCoin).toHaveBeenCalledWith(payload);
   });
 });

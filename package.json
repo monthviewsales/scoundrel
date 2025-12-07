@@ -1,15 +1,14 @@
 {
   "name": "scoundrel",
   "version": "3.7.0",
-  "description": "Scoundrel is a research and trading side project designed to explore the use of OpenAI’s APIs and SolanaTracker data to improve memecoin trading strategies.",
+  "description": "Scoundrel is a research and trading side project designed to explore the use of OpenAI\u2019s APIs and SolanaTracker data to improve memecoin trading strategies.",
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "test": "jest",
-    "test:ci": "COVERAGE=true jest --runInBand --coverage",
-    "db:migrate:profiles": "mysql < sql/2025-11-11_profiles.sql"
+    "test:ci": "COVERAGE=true jest --runInBand --coverage"
   },
   "repository": {
     "type": "git",
@@ -33,13 +32,13 @@
     "dotenv": "^17.2.3",
     "fs-extra": "^11.3.2",
     "https-proxy-agent": "^7.0.6",
-    "mysql2": "^3.15.3",
     "openai": "^6.8.1",
     "solana-swap": "^1.3.0",
     "ulid": "^3.0.1",
     "undici": "^7.16.0",
     "winston": "^3.18.3",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "better-sqlite3": "^12.4.1"
   },
   "bin": {
     "scoundrel": "./index.js"
