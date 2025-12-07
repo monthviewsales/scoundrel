@@ -19,12 +19,12 @@ You have access to:
 
 - Code style:
   - **CommonJS** (`require`, `module.exports`), not ESM.
-  - Node 22.x, `mysql2`, `chalk`, `dotenv`, etc.
+  - Node 22.x, `better-sqlite3`, `chalk`, `dotenv`, etc.
   - Use **JSDoc** for public-facing functions.
   - Keep code **lint-friendly** (I use ESLint).
 - This repo **already has**:
   - `lib/solanaTrackerRPCClient.js` — wraps SolanaTracker RPC (HTTP + WebSocket) using `@solana/kit` (Anza).
-  - `lib/db/mysql.js` — MySQL2 connection/pool.
+  - `db` — MySQL2 connection/pool.
   - `commands/warchest.js` — CLI command for the “warchest” wallet registry.
   - `scripts/warchestHudWorker.js` — long-running wallet HUD (we just built this; it currently calls `createSolanaTrackerRPCClient()` and tries to use `rpc.getBalance()` directly).
 - Do **not** rip out or reinvent my connection logic.  

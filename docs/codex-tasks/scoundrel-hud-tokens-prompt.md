@@ -19,7 +19,7 @@ Important project rules:
 
 - Code style:
   - CommonJS (`require`, `module.exports`), not ESM.
-  - Node 22.x, `mysql2`, `chalk`, `dotenv`.
+  - Node 22.x, `better-sqlite3`, `chalk`, `dotenv`.
   - Use JSDoc for any new helper functions you introduce in shared modules.
   - Keep code lint-friendly (ESLint).
 - Do not:
@@ -329,7 +329,7 @@ This task is **Option A only** — no metadata resolution, no prices, no Data A
 ### Important project rules:
 - Write **CommonJS** (using `require` / `module.exports`).
 - Node 22.x environment.
-- Use `mysql2`, `chalk`, `dotenv` — already installed.
+- Use `better-sqlite3`, `chalk`, `dotenv` — already installed.
 - Use **JSDoc** for any new helper you introduce.
 - Maintain ESLint-friendly code.
 

@@ -1,10 +1,5 @@
 'use strict';
 
-jest.mock('../../../db/src/adapters/mysql', () => ({
-  engine: 'mysql',
-  init: jest.fn(),
-}));
-
 jest.mock('../../../db/src/adapters/sqlite', () => ({
   engine: 'sqlite',
   init: jest.fn(),
@@ -33,17 +28,12 @@ describe('BootyBox adapter selection (sqlite)', () => {
     expect(BootyBox.engine).toBe('sqlite');
   });
 
-  test('falls back to sqlite and warns on unknown engine', () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  test('falls back to sqlite on unknown engine', () => {
     process.env.DB_ENGINE = 'postgres';
 
     const BootyBox = loadBootyBox();
     const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 
     expect(BootyBox).toBe(sqliteAdapter);
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[BootyBox] Unknown DB_ENGINE "postgres", defaulting to sqlite'
-    );
-    warnSpy.mockRestore();
   });
 });

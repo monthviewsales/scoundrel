@@ -32,8 +32,8 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 - A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
 - An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
-- A MySQL database
 - Node.js 22 LTS and npm.
+- SQLite accessible to Node (BootyBox defaults to `db/bootybox.db`, override via `BOOTYBOX_SQLITE_PATH`).
 
 ## Testing
 
@@ -43,12 +43,12 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Database Access (BootyBox)
 
-BootyBox lives in the `packages/BootyBox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../db')` from application modules and tests.
+BootyBox now lives natively under `/db` (no git submodule) and exports the full helper surface (coins, positions, sc_* tables, warchest registry). Import it directly via `require('../db')` from application modules and tests.
 
-- `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and are wrapped under `lib/wallets/registry.js` (BootyBox-backed).
+- `init()` must run before calling other helpers; it initializes the SQLite adapter and schema.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and are wrapped under `lib/wallets/registry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
-- Loader coverage lives in `__tests__/lib/db/BootyBox.*.test.js`.
+- Loader coverage includes `db/test/*.test.js`, which run alongside the rest of Jest.
 
 If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.
 

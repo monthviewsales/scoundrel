@@ -1,42 +1,23 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
+const pathModule = require('path');
 
 /**
- * Minimal migration runner for BootyBox.
+ * Minimal migration runner for BootyBox (SQLite only).
  *
- * NOTE: MySQL migrations are deprecated and will only emit warnings. SQLite is
- * the only supported engine in current releases.
- *
- * This is intentionally dumb and side‑effect free:
- *  - The host app is responsible for constructing mysql/sqlite connections.
- *  - We just discover *.sql files in migrations/mysql and migrations/sqlite,
- *    run them in filename order, and record which ones have been applied.
+ * This is intentionally dumb and side-effect free:
+ *  - The host app constructs the SQLite connection.
+ *  - We discover *.sql files in migrations/sqlite, run them in order, and
+ *    record which ones have been applied.
  */
-
-async function runMysqlMigrations(mysql, logger) {
-  logger.warn?.(
-    '[BootyBox:migrations] MySQL migrations are disabled. SQLite is the only supported engine.'
-  );
-  if (mysql?.end) {
-    try {
-      await mysql.end();
-    } catch (err) {
-      logger.debug?.(
-        `[BootyBox:migrations] Ignoring MySQL teardown error after disablement: ${err.message}`
-      );
-    }
-  }
-}
-
 function runSqliteMigrations(sqlite, logger) {
   if (!sqlite) {
-    logger.warn?.('[BootyBox:migrations] SQLite db not provided, skipping SQLite migrations');
+    logger.warn?.('[BootyBox:migrations] SQLite db not provided, skipping migrations');
     return;
   }
 
-  const migrationsDir = path.join(__dirname, 'sqlite');
+  const migrationsDir = pathModule.join(__dirname, 'sqlite');
   if (!fs.existsSync(migrationsDir)) {
     logger.info?.('[BootyBox:migrations] No SQLite migrations directory found, skipping', {
       dir: migrationsDir,
@@ -53,13 +34,9 @@ function runSqliteMigrations(sqlite, logger) {
     );
   `);
 
-  const getApplied = sqlite.prepare(
-    'SELECT name FROM bootybox_migrations'
-  );
-  const appliedRows = getApplied.all();
+  const appliedRows = sqlite.prepare('SELECT name FROM bootybox_migrations').all();
   const applied = new Set(appliedRows.map((r) => r.name));
 
-  // Handle legacy filenames so renamed migrations are not re-run.
   const legacyAppliedNames = new Map([
     ['001_bootstrap_legacy.sqlite.sql', ['bootstrap.sqlite.sql', 'sqlite.sql', '001_bootstrap.sqlite.sql']],
     ['002_schema_upgrade.sqlite.sql', ['schema_upgrade.sqlite.sql', '002_schema_upgrade_legacy.sqlite.sql']],
@@ -88,7 +65,7 @@ function runSqliteMigrations(sqlite, logger) {
       continue;
     }
 
-    const fullPath = path.join(migrationsDir, file);
+    const fullPath = pathModule.join(migrationsDir, file);
     const sql = fs.readFileSync(fullPath, 'utf8');
 
     logger.info?.('[BootyBox:migrations] Applying SQLite migration', {
@@ -116,29 +93,9 @@ function runSqliteMigrations(sqlite, logger) {
   }
 }
 
-/**
- * Migration entrypoint.
- *
- * The host app is responsible for:
- *  - constructing mysql/sqlite connections
- *  - deciding which driver(s) to migrate (mysql/sqlite/both)
- *
- * Example usage from a parent project:
- *
- *   const { runMigrations } = require('./submodules/BootyBox/migrations');
- *   await runMigrations({ driver: 'both', mysql: mysqlPool, sqlite: sqliteDb, logger });
- */
-async function runMigrations({ driver = 'sqlite', mysql, sqlite, logger = console } = {}) {
-  logger.info?.('[BootyBox:migrations] runMigrations start', { driver });
-
-  if (driver === 'mysql' || driver === 'both') {
-    await runMysqlMigrations(mysql, logger);
-  }
-
-  if (driver === 'sqlite' || driver === 'both') {
-    runSqliteMigrations(sqlite, logger);
-  }
-
+async function runMigrations({ sqlite, logger = console } = {}) {
+  logger.info?.('[BootyBox:migrations] runMigrations start');
+  runSqliteMigrations(sqlite, logger);
   logger.info?.('[BootyBox:migrations] runMigrations complete');
 }
 

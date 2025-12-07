@@ -17,13 +17,6 @@ const {
 } = require('./context');
 let dbClosed = false;
 let defaultWalletPublicKey = getDefaultWalletPublicKey();
-const VALID_USAGE_TYPES = new Set(['funding', 'strategy', 'kol', 'deployer', 'other']);
-
-function normalizeUsageType(value) {
-  if (typeof value !== 'string') return 'other';
-  const trimmed = value.trim().toLowerCase();
-  return VALID_USAGE_TYPES.has(trimmed) ? trimmed : 'other';
-}
 
 // ==== Scoundrel/wallet-profile helpers ====
 function mapWalletRow(row) {
@@ -286,83 +279,6 @@ function insertWarchestWallet(record) {
     updated_at: now,
   });
   return getWarchestWalletByAlias(record.alias);
-}
-
-function updateWarchestWalletOptions(alias, updates = {}) {
-  if (!alias) {
-    throw new Error('updateWarchestWalletOptions: alias is required');
-  }
-
-  const hasProp = (prop) => Object.prototype.hasOwnProperty.call(updates, prop);
-  const setParts = [];
-  const params = [];
-
-  if (hasProp('usageType')) {
-    setParts.push('usage_type = ?');
-    params.push(normalizeUsageType(updates.usageType));
-  }
-
-  if (hasProp('autoAttachWarchest')) {
-    setParts.push('auto_attach_warchest = ?');
-    params.push(updates.autoAttachWarchest ? 1 : 0);
-  }
-
-  if (hasProp('strategyId')) {
-    const strategyId = updates.strategyId == null || updates.strategyId === ''
-      ? null
-      : String(updates.strategyId).trim().slice(0, 64);
-    setParts.push('strategy_id = ?');
-    params.push(strategyId);
-  }
-
-  if (hasProp('color')) {
-    setParts.push('color = ?');
-    params.push(updates.color ? String(updates.color).trim().slice(0, 32) : null);
-  }
-
-  if (hasProp('hasPrivateKey')) {
-    setParts.push('has_private_key = ?');
-    params.push(updates.hasPrivateKey ? 1 : 0);
-  }
-
-  if (hasProp('keySource')) {
-    const keySource = updates.keySource ? String(updates.keySource).trim() : 'none';
-    setParts.push('key_source = ?');
-    params.push(keySource || 'none');
-  }
-
-  if (hasProp('keyRef')) {
-    const keyRef = updates.keyRef == null || updates.keyRef === '' ? null : String(updates.keyRef).trim();
-    setParts.push('key_ref = ?');
-    params.push(keyRef);
-  }
-
-  if (hasProp('isDefaultFunding')) {
-    setParts.push('is_default_funding = ?');
-    params.push(updates.isDefaultFunding ? 1 : 0);
-  }
-
-  if (!setParts.length) {
-    return getWarchestWalletByAlias(alias);
-  }
-
-  const setDefault = updates.isDefaultFunding === true;
-  const now = Date.now();
-  const tx = db.transaction(() => {
-    if (setDefault) {
-      db.prepare('UPDATE sc_wallets SET is_default_funding = 0 WHERE alias <> ?').run(alias);
-    }
-
-    const clauses = setParts.concat('updated_at = ?');
-    db.prepare(
-      `UPDATE sc_wallets
-         SET ${clauses.join(', ')}
-       WHERE alias = ?`
-    ).run(...params, now, alias);
-  });
-
-  tx();
-  return getWarchestWalletByAlias(alias);
 }
 
 function updateWarchestWalletColor(alias, color) {
@@ -1789,7 +1705,6 @@ const BootyBox = {
   listWarchestWallets,
   getWarchestWalletByAlias,
   insertWarchestWallet,
-  updateWarchestWalletOptions,
   updateWarchestWalletColor,
   deleteWarchestWallet,
   listFundingWallets,

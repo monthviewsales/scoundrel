@@ -20,7 +20,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 1) `lib/solanaTrackerDataClient.js` binds the official `@solana-tracker/data-api` SDK to per-endpoint helpers under `lib/solanaTrackerData/methods/` (each with Jest coverage). RPC helpers live under `lib/solana/rpcMethods/` when raw RPC access is needed.
 2) Harvesters (e.g., `lib/dossier.js`, `lib/autopsy.js`) gather trades, OHLCV, metadata, and assemble merged payloads under `./data/dossier/<alias>/` and `./data/autopsy/<wallet>/<mint>/`.
 3) AI jobs in `ai/jobs/*.js` call `ai/client.js` (Responses API) with strict schemas from `ai/schemas/`; parsed output writes to `./profiles/` and, when configured, to MySQL via BootyBox.
-4) DB access is centralized through the `packages/BootyBox` submodule (adapter chosen via `DB_ENGINE`, default sqlite); higher-level persistors sit in `lib/persist/`.
+4) DB access is centralized through the `db` submodule (adapter chosen via `DB_ENGINE`, default sqlite); higher-level persistors sit in `lib/persist/`.
 
 ## Key directories
 - `index.js` – CLI wiring + help text; keep new commands here consistent with Commander patterns.
