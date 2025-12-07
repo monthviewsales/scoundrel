@@ -262,6 +262,86 @@ function insertWarchestWallet(record) {
   return getWarchestWalletByAlias(record.alias);
 }
 
+/**
+ * Update configurable warchest wallet options.
+ * Supports usage type, auto-attach flag, default funding toggle,
+ * strategy binding, color, and key metadata.
+ *
+ * @param {string} alias
+ * @param {Object} updates
+ * @returns {import('../../../lib/warchest/walletRegistry').WalletRecord|null}
+ */
+function updateWarchestWalletOptions(alias, updates = {}) {
+  if (!alias) return null;
+
+  const existing = getWarchestWalletByAlias(alias);
+  if (!existing) return null;
+
+  const setters = [];
+  const params = [];
+  let setAsDefault = false;
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'usageType')) {
+    setters.push('usage_type = ?');
+    params.push(updates.usageType || 'other');
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'autoAttachWarchest')) {
+    setters.push('auto_attach_warchest = ?');
+    params.push(updates.autoAttachWarchest ? 1 : 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'isDefaultFunding')) {
+    setters.push('is_default_funding = ?');
+    params.push(updates.isDefaultFunding ? 1 : 0);
+    setAsDefault = !!updates.isDefaultFunding;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'strategyId')) {
+    setters.push('strategy_id = ?');
+    params.push(updates.strategyId ?? null);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'color')) {
+    setters.push('color = ?');
+    params.push(updates.color ?? null);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'hasPrivateKey')) {
+    setters.push('has_private_key = ?');
+    params.push(updates.hasPrivateKey ? 1 : 0);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'keySource')) {
+    setters.push('key_source = ?');
+    params.push(updates.keySource || 'none');
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'keyRef')) {
+    setters.push('key_ref = ?');
+    params.push(updates.keyRef ?? null);
+  }
+
+  if (!setters.length) {
+    return existing;
+  }
+
+  const now = Date.now();
+  params.push(now, alias);
+
+  const tx = db.transaction(() => {
+    if (setAsDefault) {
+      db.prepare('UPDATE sc_wallets SET is_default_funding = 0').run();
+    }
+
+    db.prepare(`UPDATE sc_wallets SET ${setters.join(', ')}, updated_at = ? WHERE alias = ?`).run(...params);
+  });
+
+  tx();
+
+  return getWarchestWalletByAlias(alias);
+}
+
 function updateWarchestWalletColor(alias, color) {
   if (!alias) return false;
   const res = db
@@ -450,6 +530,7 @@ module.exports = {
   listWarchestWallets,
   listWalletsByUsage,
   mapWalletRow,
+  updateWarchestWalletOptions,
   setDefaultFundingWallet,
   updateWarchestWalletColor,
   upsertKolWalletFromDossier,

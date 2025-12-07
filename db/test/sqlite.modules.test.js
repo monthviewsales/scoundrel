@@ -32,6 +32,45 @@ describe('wallets submodule', () => {
     expect(adapter.listFundingWallets()[0].alias).toBe('main');
   });
 
+  test('updates wallet options and enforces a single default', () => {
+    adapter.insertWarchestWallet({
+      alias: 'primary',
+      pubkey: 'pub-primary',
+      usageType: 'funding',
+      isDefaultFunding: true,
+      autoAttachWarchest: false,
+    });
+
+    adapter.insertWarchestWallet({
+      alias: 'secondary',
+      pubkey: 'pub-secondary',
+      usageType: 'other',
+      isDefaultFunding: false,
+      autoAttachWarchest: false,
+    });
+
+    const updated = adapter.updateWarchestWalletOptions('secondary', {
+      usageType: 'strategy',
+      autoAttachWarchest: true,
+      isDefaultFunding: true,
+      strategyId: 'strat-1',
+      color: '#abcdef',
+    });
+
+    expect(updated).toMatchObject({
+      alias: 'secondary',
+      usageType: 'strategy',
+      autoAttachWarchest: true,
+      isDefaultFunding: true,
+      strategyId: 'strat-1',
+      color: '#abcdef',
+    });
+
+    const priorDefault = adapter.getWarchestWalletByAlias('primary');
+    expect(priorDefault.isDefaultFunding).toBe(false);
+    expect(adapter.getDefaultFundingWallet().alias).toBe('secondary');
+  });
+
   test('upserts tracked KOL wallet from dossier data', () => {
     const walletId = adapter.upsertKolWalletFromDossier({
       wallet: 'wallet-1234',
