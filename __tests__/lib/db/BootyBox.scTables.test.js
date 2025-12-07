@@ -1,11 +1,11 @@
 'use strict';
 
-jest.mock('../../../packages/BootyBox/src/adapters/mysql', () => ({
+jest.mock('../../../db/src/adapters/mysql', () => ({
   engine: 'mysql',
   init: jest.fn(),
 }));
 
-jest.mock('../../../packages/BootyBox/src/adapters/sqlite', () => ({
+jest.mock('../../../db/src/adapters/sqlite', () => ({
   engine: 'sqlite',
   init: jest.fn(),
   addOrUpdateCoin: jest.fn(),
@@ -14,7 +14,7 @@ jest.mock('../../../packages/BootyBox/src/adapters/sqlite', () => ({
 describe('BootyBox adapter selection (sqlite)', () => {
   const loadBootyBox = () => {
     jest.resetModules();
-    return require('../../../packages/BootyBox');
+    return require('../../../db');
   };
 
   afterEach(() => {
@@ -27,7 +27,7 @@ describe('BootyBox adapter selection (sqlite)', () => {
     delete process.env.DB_ENGINE;
 
     const BootyBox = loadBootyBox();
-    const sqliteAdapter = require('../../../packages/BootyBox/src/adapters/sqlite');
+    const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 
     expect(BootyBox).toBe(sqliteAdapter);
     expect(BootyBox.engine).toBe('sqlite');
@@ -38,7 +38,7 @@ describe('BootyBox adapter selection (sqlite)', () => {
     process.env.DB_ENGINE = 'postgres';
 
     const BootyBox = loadBootyBox();
-    const sqliteAdapter = require('../../../packages/BootyBox/src/adapters/sqlite');
+    const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 
     expect(BootyBox).toBe(sqliteAdapter);
     expect(warnSpy).toHaveBeenCalledWith(

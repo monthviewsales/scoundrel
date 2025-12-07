@@ -1,6 +1,6 @@
 'use strict';
 
-jest.mock('../packages/BootyBox', () => ({
+jest.mock('../db', () => ({
   init: jest.fn(),
   getCoinByMint: jest.fn(),
   addOrUpdateCoin: jest.fn(),
@@ -13,7 +13,7 @@ jest.mock('../lib/log', () => ({
   error: jest.fn(),
 }));
 
-const BootyBox = require('../packages/BootyBox');
+const BootyBox = require('../db');
 
 const loadService = () => {
   let service;

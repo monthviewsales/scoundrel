@@ -1,13 +1,13 @@
 'use strict';
 
-jest.mock('../../../packages/BootyBox/src/adapters/mysql', () => ({
+jest.mock('../../../db/src/adapters/mysql', () => ({
   engine: 'mysql',
   init: jest.fn(),
   addOrUpdateCoin: jest.fn(),
   getCoinByMint: jest.fn(),
 }));
 
-jest.mock('../../../packages/BootyBox/src/adapters/sqlite', () => ({
+jest.mock('../../../db/src/adapters/sqlite', () => ({
   engine: 'sqlite',
   init: jest.fn(),
   addOrUpdateCoin: jest.fn(),
@@ -17,7 +17,7 @@ jest.mock('../../../packages/BootyBox/src/adapters/sqlite', () => ({
 describe('BootyBox adapter selection (mysql)', () => {
   const loadBootyBox = () => {
     jest.resetModules();
-    return require('../../../packages/BootyBox');
+    return require('../../../db');
   };
 
   afterEach(() => {
@@ -29,7 +29,7 @@ describe('BootyBox adapter selection (mysql)', () => {
   test('selects mysql adapter when DB_ENGINE=mysql', () => {
     process.env.DB_ENGINE = 'mysql';
     const BootyBox = loadBootyBox();
-    const mysqlAdapter = require('../../../packages/BootyBox/src/adapters/mysql');
+    const mysqlAdapter = require('../../../db/src/adapters/mysql');
 
     expect(BootyBox).toBe(mysqlAdapter);
     expect(BootyBox.engine).toBe('mysql');
@@ -38,7 +38,7 @@ describe('BootyBox adapter selection (mysql)', () => {
   test('exposes adapter helpers from the selected engine', async () => {
     process.env.DB_ENGINE = 'mysql';
     const BootyBox = loadBootyBox();
-    const mysqlAdapter = require('../../../packages/BootyBox/src/adapters/mysql');
+    const mysqlAdapter = require('../../../db/src/adapters/mysql');
     const payload = { mint: 'MintXYZ' };
 
     mysqlAdapter.addOrUpdateCoin.mockResolvedValueOnce('ok');

@@ -12,7 +12,7 @@ const {
 } = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./packages/BootyBox');
+const BootyBox = require('./db');
 const { requestId } = require('./lib/id/issuer');
 const util = require('util');
 const readline = require('readline/promises');
