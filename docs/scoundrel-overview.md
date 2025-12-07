@@ -13,7 +13,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 - `dossier <wallet>` – harvest + build a profile via `ai/jobs/walletAnalysis.js`; supports `--resend` to rerun the last merged payload without re-harvesting.
 - `autopsy` – interactive; pick a wallet + mint to run the `tradeAutopsy` job and save JSON to `./profiles/autopsy-*.json`.
 - `ask -q <text> [-n <alias>]` – Q&A against `./profiles/<alias>.json`.
-- `warchest [add|list|remove|set-color]` – manage the local wallet registry stored via BootyBox.
+- `warchest [add|list|remove|set-color|options]` – manage the local wallet registry stored via BootyBox.
 - `test` – environment + dependency sanity check (no Jest).
 
 ## Data & AI flow

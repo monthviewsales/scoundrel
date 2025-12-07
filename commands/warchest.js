@@ -3,9 +3,11 @@
 const readline = require('readline');
 const chalk = require('chalk');
 const walletRegistry = require('../lib/wallets/registry');
+const walletOptions = require('../lib/wallets/optionsManager');
 const logger = require('../lib/logger');
 
 const COLOR_PALETTE = ['green', 'cyan', 'magenta', 'yellow', 'blue'];
+const { USAGE_TYPES } = walletOptions;
 
 /**
  * @typedef {Object} WalletRecord
@@ -68,6 +70,63 @@ function colorizer(color) {
     default:
       return (text) => text;
   }
+}
+
+function shortenPubkey(pubkey) {
+  if (!pubkey || typeof pubkey !== 'string') return '';
+  if (pubkey.length <= 10) return pubkey;
+  return `${pubkey.slice(0, 4)}...${pubkey.slice(-4)}`;
+}
+
+async function promptYesNo(rl, question, current) {
+  while (true) {
+    const defaultHint = current ? 'Y/n' : 'y/N';
+    const raw = await ask(rl, `${question} (${defaultHint}): `);
+    if (!raw) return !!current;
+    const normalized = raw.toLowerCase();
+    if (normalized === 'y' || normalized === 'yes') return true;
+    if (normalized === 'n' || normalized === 'no') return false;
+    logger.warn('Please answer with y or n.');
+  }
+}
+
+async function promptUsageType(rl, current) {
+  const normalized = (current && current.toLowerCase()) || 'other';
+  while (true) {
+    logger.info('\nUsage types:');
+    USAGE_TYPES.forEach((type, idx) => {
+      const marker = type === normalized ? ' [current]' : '';
+      logger.info(` ${idx + 1}) ${type}${marker}`);
+    });
+
+    const defaultIdx = Math.max(USAGE_TYPES.indexOf(normalized), 0) + 1;
+    const raw = await ask(rl, `Select usage type [${defaultIdx}]: `);
+    if (!raw) return normalized;
+
+    const numeric = Number(raw);
+    if (Number.isInteger(numeric) && numeric >= 1 && numeric <= USAGE_TYPES.length) {
+      return USAGE_TYPES[numeric - 1];
+    }
+
+    const maybeType = raw.toLowerCase();
+    if (USAGE_TYPES.includes(maybeType)) {
+      return maybeType;
+    }
+
+    logger.warn('Invalid choice. Enter the list number or type name.');
+  }
+}
+
+async function promptStrategyId(rl, current) {
+  const label = current ? `${current}` : 'none';
+  const raw = await ask(
+    rl,
+    `Strategy ID (blank=keep, '-'=clear) [${label}]: `
+  );
+
+  if (!raw) return current;
+  if (raw === '-') return null;
+  return raw;
 }
 
 /**
@@ -326,6 +385,83 @@ async function handleSolo() {
 }
 
 /**
+ * Handle `scoundrel warchest options`.
+ * Allows selecting a wallet and updating key registry options.
+ */
+async function handleOptions() {
+  const rl = createInterface();
+
+  try {
+    const wallets = await walletRegistry.getAllWallets();
+    if (!wallets || wallets.length === 0) {
+      logger.info(chalk.yellow('No wallets in your warchest yet.'));
+      logger.info('Use', chalk.cyan('scoundrel warchest add'), 'to add one.');
+      return;
+    }
+
+    logger.info(chalk.bold('\nSelect a wallet to configure:\n'));
+    wallets.forEach((w, idx) => {
+      const c = colorizer(w.color);
+      logger.info(`${idx + 1}) ${c(w.alias)} (${shortenPubkey(w.pubkey)})`);
+    });
+
+    const choiceRaw = await ask(rl, `\nEnter choice (1-${wallets.length}): `);
+    const choice = parseInt(choiceRaw, 10);
+    if (Number.isNaN(choice) || choice < 1 || choice > wallets.length) {
+      logger.error(chalk.red('Invalid selection.'));
+      return;
+    }
+
+    const wallet = wallets[choice - 1];
+    logger.info('\nCurrent settings:');
+    logger.info(`  usageType       : ${wallet.usageType || 'other'}`);
+    logger.info(`  autoAttachHUD   : ${wallet.autoAttachWarchest ? 'yes' : 'no'}`);
+    logger.info(`  defaultFunding  : ${wallet.isDefaultFunding ? 'yes' : 'no'}`);
+    logger.info(`  strategyId      : ${wallet.strategyId || 'none'}`);
+
+    const usageType = await promptUsageType(rl, wallet.usageType || 'other');
+    const autoAttach = await promptYesNo(
+      rl,
+      'Auto-attach to the warchest daemon?',
+      !!wallet.autoAttachWarchest
+    );
+    const defaultFunding = await promptYesNo(
+      rl,
+      'Mark as default funding wallet?',
+      !!wallet.isDefaultFunding
+    );
+    const strategyId = await promptStrategyId(rl, wallet.strategyId);
+
+    const updates = {};
+    if (usageType !== (wallet.usageType || 'other')) updates.usageType = usageType;
+    if (autoAttach !== !!wallet.autoAttachWarchest) updates.autoAttachWarchest = autoAttach;
+    if (defaultFunding !== !!wallet.isDefaultFunding) updates.isDefaultFunding = defaultFunding;
+    if (strategyId !== wallet.strategyId) updates.strategyId = strategyId;
+
+    if (!Object.keys(updates).length) {
+      logger.info(chalk.yellow('No changes submitted.'));
+      return;
+    }
+
+    const updated = await walletOptions.updateWalletOptions(wallet.alias, updates);
+    logger.info(
+      chalk.green('\nUpdated wallet:'),
+      chalk.cyan(wallet.alias),
+      `(${shortenPubkey(wallet.pubkey)})`
+    );
+    logger.info(`  usageType       : ${updated.usageType}`);
+    logger.info(`  autoAttachHUD   : ${updated.autoAttachWarchest ? 'yes' : 'no'}`);
+    logger.info(`  defaultFunding  : ${updated.isDefaultFunding ? 'yes' : 'no'}`);
+    logger.info(`  strategyId      : ${updated.strategyId || 'none'}`);
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err);
+    logger.error(chalk.red(`Failed to update wallet options: ${msg}`));
+  } finally {
+    rl.close();
+  }
+}
+
+/**
  * Entry point for the warchest command.
  *
  * @param {string[]} argv Arguments after `warchest`.
@@ -357,12 +493,17 @@ async function run(argv) {
     case 'set-color':
       await handleSetColor(args[1], args[2]);
       break;
+    case 'options':
+    case 'configure':
+      await handleOptions();
+      break;
     default:
       logger.info(chalk.bold('Usage:'));
       logger.info('  scoundrel warchest add');
       logger.info('  scoundrel warchest list');
       logger.info('  scoundrel warchest remove <alias>');
       logger.info('  scoundrel warchest set-color <alias> <color>');
+      logger.info('  scoundrel warchest options         # interactive options editor');
       logger.info('  scoundrel warchest --solo   # or: -s');
   }
 }
