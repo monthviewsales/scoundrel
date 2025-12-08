@@ -1,6 +1,6 @@
 # BootyBox (SQLite-only)
 
-BootyBox is the shared persistence layer for the VAULT77 bots. It now lives natively inside Scoundrel under `db/` and runs exclusively on SQLite.
+BootyBox is the shared persistence layer for the VAULT77 bots. The SQLite file lives at `db/bootybox.db` by default (the old `db/db/bootybox.db` location is migrated automatically). It now lives natively inside Scoundrel under `db/` and runs exclusively on SQLite.
 
 ## What’s inside
 - SQLite adapter split into submodules (wallets, profiles, coins, trading, sessions) under `src/adapters/sqlite/`.

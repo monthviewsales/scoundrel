@@ -33,7 +33,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 - A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
 - An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
 - Node.js 22 LTS and npm.
-- SQLite accessible to Node (BootyBox defaults to `db/bootybox.db`, override via `BOOTYBOX_SQLITE_PATH`).
+- SQLite accessible to Node (BootyBox stores data in `db/bootybox.db`, override via `BOOTYBOX_SQLITE_PATH`).
 
 ## Testing
 

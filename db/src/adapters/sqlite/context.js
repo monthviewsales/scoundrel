@@ -17,8 +17,25 @@ try {
   logger?.debug?.(`[BootyBox] mkdirSync failed: ${e.message}`);
 }
 
-const dbFile =
-  process.env.BOOTYBOX_SQLITE_PATH || path.join(dbDir, 'bootybox.db');
+const legacyDbPath = path.join(dbDir, 'db', 'bootybox.db');
+const defaultDbPath = path.join(dbDir, 'bootybox.db');
+
+let dbFile = process.env.BOOTYBOX_SQLITE_PATH || defaultDbPath;
+
+if (!process.env.BOOTYBOX_SQLITE_PATH && !fs.existsSync(defaultDbPath) && fs.existsSync(legacyDbPath)) {
+  try {
+    fs.mkdirSync(path.dirname(defaultDbPath), { recursive: true });
+    fs.renameSync(legacyDbPath, defaultDbPath);
+    logger.warn?.(
+      chalk.bgYellow.black(
+        '[BootyBox] Detected legacy db/db/bootybox.db. Migrated to db/bootybox.db for native Scoundrel installs.'
+      )
+    );
+  } catch (err) {
+    logger.warn?.(`[BootyBox] Failed to migrate legacy SQLite file: ${err?.message || err}`);
+  }
+}
+
 try {
   fs.mkdirSync(path.dirname(dbFile), { recursive: true });
 } catch (e) {
