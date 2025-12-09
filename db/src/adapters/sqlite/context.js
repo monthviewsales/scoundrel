@@ -10,7 +10,7 @@ const { ensureSqliteSchema } = require('../sqliteSchema');
 let defaultWalletPublicKey = null;
 
 // Ensure DB directory exists to avoid failures in tests/runtime
-const dbDir = path.join(__dirname, '../../../db');
+const dbDir = path.join(__dirname, '../../../../','db');
 try {
   fs.mkdirSync(dbDir, { recursive: true });
 } catch (e) {
