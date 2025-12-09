@@ -24,7 +24,7 @@ const {
     loadLatestJson,
     normalizeTraderAlias,
 } = require('./lib/persist/jsonArtifacts');
-const warchestModule = require('./commands/warchest');
+const warchestModule = require('./lib/cli/warchestCli');
 const warchestService = require('./lib/cli/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
@@ -158,8 +158,16 @@ program
 
         const startTime = parseTs(opts.start);
         const endTime = parseTs(opts.end);
-        const traderName = opts.name || process.env.TEST_TRADER || null;
+        const cliTraderName = opts.name ? String(opts.name).trim() : null;
+        const traderName = cliTraderName || process.env.TEST_TRADER || null;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
+
+        if (cliTraderName) {
+            await walletsDomain.kol.ensureKolWallet({
+                walletAddress: walletId,
+                alias: cliTraderName,
+            });
+        }
 
         logger.info(`[scoundrel] Research starting for wallet ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
@@ -203,9 +211,17 @@ program
 
         const startTime = parseTs(opts.start);
         const endTime = parseTs(opts.end);
-        const traderName = opts.name || process.env.TEST_TRADER || null;
+        const cliTraderName = opts.name ? String(opts.name).trim() : null;
+        const traderName = cliTraderName || process.env.TEST_TRADER || null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
+
+        if (cliTraderName) {
+            await walletsDomain.kol.ensureKolWallet({
+                walletAddress: walletId,
+                alias: cliTraderName,
+            });
+        }
         const alias = normalizeTraderAlias(traderName, walletId);
 
         logger.info(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);

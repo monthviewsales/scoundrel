@@ -46,7 +46,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 BootyBox now lives natively under `/db` (no git submodule) and exports the full helper surface (coins, positions, sc_* tables, warchest registry). Import it directly via `require('../db')` from application modules and tests.
 
 - `init()` must run before calling other helpers; it initializes the SQLite adapter and schema.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and are wrapped under `lib/wallets/registry.js`.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`lib/cli/warchestCli.js`) and are wrapped under `lib/wallets/registry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
 - Loader coverage includes `db/test/*.test.js`, which run alongside the rest of Jest.
 
