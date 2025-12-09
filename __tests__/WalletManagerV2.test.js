@@ -11,11 +11,16 @@ const WalletManagerV2 = require('../lib/WalletManagerV2');
 describe('WalletManagerV2', () => {
   const baseInsight = {
     mint: 'mint111',
-    tokenDelta: 10,
-    solDelta: -1.5,
+    tokenDeltaNet: 10,
+    tokenDeltaIn: 10,
+    tokenDeltaOut: 0,
+    solDeltaNet: -1.5,
+    solDeltaIn: 0,
+    solDeltaOut: 1.5,
     priceSolPerToken: 0.15,
     executedAt: 1710000000000,
-    feesSol: 0.01,
+    feeSol: 0.01,
+    side: 'buy',
   };
 
   const buildManager = (bootyBoxOverrides = {}) => {
@@ -26,7 +31,7 @@ describe('WalletManagerV2', () => {
     };
 
     const txInsightService = {
-      recoverPriceFromTransactionv2: jest.fn().mockResolvedValue({ ...baseInsight }),
+      recoverSwapInsightFromTransaction: jest.fn().mockResolvedValue({ ...baseInsight }),
     };
 
     return {

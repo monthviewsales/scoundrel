@@ -23,6 +23,8 @@ const { updateFromSlotEvent } = require('../lib/solana/rpcMethods/internal/chain
 const { updateSol } = require('../lib/solana/rpcMethods/internal/walletState');
 const { renderHud } = require('../lib/hud/warchestHudRenderer');
 const { updateHealth } = require('../lib/warchest/health');
+const { fetchAllTokenAccounts } = require('../lib/warchest/fetchAllTokenAccounts');
+const { resolveWalletSpecsWithRegistry } = require('../lib/warchest/walletResolver');
 
 const WalletManagerV2 = require('../lib/WalletManagerV2');
 const txInsightService = require('../lib/services/txInsightService');
@@ -200,6 +202,7 @@ function parseArgs(argv) {
  * @property {string} alias
  * @property {string} pubkey
  * @property {string|null} color
+ * @property {number|undefined} walletId
  * @property {number|null} startSolBalance
  * @property {number} solBalance
  * @property {number} solSessionDelta
@@ -225,6 +228,7 @@ function buildInitialState(walletSpecs) {
       alias: w.alias,
       pubkey: w.pubkey,
       color: w.color || null,
+      walletId: w.walletId,
       startSolBalance: null,
       solBalance: 0,
       solSessionDelta: 0,
@@ -327,36 +331,33 @@ async function refreshAllTokenBalances(rpcMethods, state) {
       try {
         const allAccounts = [];
 
-        // Always query Token-2022 program; cheap extra call and ensures we
-        // pick up new Token-22 balances even if they appear after the HUD starts.
-        const res22 = await rpcMethods.getTokenAccountsByOwnerV2(wallet.pubkey, {
+        const res22 = await fetchAllTokenAccounts(rpcMethods, wallet.pubkey, {
           programId: TOKEN_PROGRAM_22,
-          limit: 100,
+          limit: 500,
           excludeZero: true,
+          pageLimit: 20,
         });
         const accounts22 = Array.isArray(res22?.accounts) ? res22.accounts : [];
         if (accounts22.length > 0) {
-          // Track that this wallet has seen Token-22 accounts, but do not
-          // use this to skip future checks. We always probe both programs.
           wallet.hasToken22 = true;
           allAccounts.push(...accounts22);
-        if (res22?.hasMore) {
-          logger.debug(`[HUD] Token-22 fetch truncated for ${wallet.alias}; pagination TBD.`);
         }
+        if (res22?.truncated) {
+          logger.warn(`[HUD] Token-22 pagination incomplete for ${wallet.alias}; balances may be partial.`);
         }
 
-        // Always query legacy SPL (Tokenkeg) for fungible tokens.
-        const resLegacy = await rpcMethods.getTokenAccountsByOwnerV2(wallet.pubkey, {
+        const resLegacy = await fetchAllTokenAccounts(rpcMethods, wallet.pubkey, {
           programId: TOKEN_PROGRAM_LEGACY,
-          limit: 100,
+          limit: 500,
           excludeZero: true,
+          pageLimit: 20,
         });
         const accountsLegacy = Array.isArray(resLegacy?.accounts) ? resLegacy.accounts : [];
         if (accountsLegacy.length > 0) {
           allAccounts.push(...accountsLegacy);
-        if (resLegacy?.hasMore) {
-          logger.debug(`[HUD] Legacy token fetch truncated for ${wallet.alias}; pagination TBD.`);
         }
+        if (resLegacy?.truncated) {
+          logger.warn(`[HUD] Legacy token pagination incomplete for ${wallet.alias}; balances may be partial.`);
         }
 
         const aggregated = new Map();
@@ -444,45 +445,45 @@ async function refreshAllTokenBalances(rpcMethods, state) {
             tokenInfoCache.set(mint, tokenMeta);
           }
 
-        let symbol = '';
-        let decimals = null;
+          let symbol = '';
+          let decimals = null;
 
-        if (tokenMeta) {
-          // Handle both API shape ({ token: {...} }) and DB row shape ({ symbol, decimals, ... }).
-          const tokenLike = tokenMeta.token || tokenMeta;
+          if (tokenMeta) {
+            // Handle both API shape ({ token: {...} }) and DB row shape ({ symbol, decimals, ... }).
+            const tokenLike = tokenMeta.token || tokenMeta;
 
-          if (tokenLike.symbol) {
-            symbol = String(tokenLike.symbol);
-          } else if (tokenLike.name) {
-            // Fallback: show truncated name instead of blank.
-            symbol = String(tokenLike.name).slice(0, 6);
+            if (tokenLike.symbol) {
+              symbol = String(tokenLike.symbol);
+            } else if (tokenLike.name) {
+              // Fallback: show truncated name instead of blank.
+              symbol = String(tokenLike.name).slice(0, 6);
+            }
+
+            if (typeof tokenLike.decimals === 'number') {
+              decimals = tokenLike.decimals;
+            }
           }
 
-          if (typeof tokenLike.decimals === 'number') {
-            decimals = tokenLike.decimals;
+          // Optional debug: see what we're getting if symbol is still empty
+          if (!symbol && tokenMeta && process.env.HUD_DEBUG_METADATA === '1') {
+            // eslint-disable-next-line no-console
+            logger.debug('[HUD] tokenMeta had no symbol', { mint, tokenMeta });
           }
-        }
 
-        // Optional debug: see what we're getting if symbol is still empty
-        if (!symbol && tokenMeta && process.env.HUD_DEBUG_METADATA === '1') {
-          // eslint-disable-next-line no-console
-          logger.debug('[HUD] tokenMeta had no symbol', { mint, tokenMeta });
-        }
+          const priceUsd = pricesByMint[mint];
+          const usdEstimate =
+            priceUsd != null && Number.isFinite(priceUsd)
+              ? priceUsd * balance
+              : null;
 
-        const priceUsd = pricesByMint[mint];
-        const usdEstimate =
-          priceUsd != null && Number.isFinite(priceUsd)
-            ? priceUsd * balance
-            : null;
-
-        tokenRows.push({
-          symbol,
-          mint,
-          balance,
-          sessionDelta: balance - baseline,
-          usdEstimate,
-          decimals,
-        });
+          tokenRows.push({
+            symbol,
+            mint,
+            balance,
+            sessionDelta: balance - baseline,
+            usdEstimate,
+            decimals,
+          });
         }
 
         wallet.tokens = tokenRows;
@@ -512,9 +513,21 @@ async function main() {
     process.exit(1);
   }
 
+  const resolvedWallets = await resolveWalletSpecsWithRegistry(wallets, BootyBox);
+  if (!resolvedWallets.length) {
+    logger.error('[HUD] Exiting because no wallets could be resolved against sc_wallets.');
+    process.exit(1);
+  }
+
+  if (resolvedWallets.length !== wallets.length) {
+    logger.warn(
+      `[HUD] Resolved ${resolvedWallets.length}/${wallets.length} wallets; unresolved entries will not be persisted.`,
+    );
+  }
+
   logger.info(`[HUD] Starting warchest HUD worker in ${mode} mode.`);
 
-  const state = buildInitialState(wallets);
+  const state = buildInitialState(resolvedWallets);
 
   // Create SolanaTracker RPC client (HTTP + WS).
   const { rpc, rpcSubs, close } = createSolanaTrackerRPCClient();
@@ -524,14 +537,15 @@ async function main() {
   // turning log notifications into trade events and position updates.
   const walletManagers = {};
 
-  wallets.forEach((w, index) => {
+  resolvedWallets.forEach((w) => {
+    if (w.walletId == null) {
+      logger.warn(`[HUD] Skipping WalletManagerV2 for ${w.alias}; walletId not resolved.`);
+      return;
+    }
     try {
       walletManagers[w.alias] = new WalletManagerV2({
         rpc,
-        // NOTE: For now we use a simple numeric walletId derived from the
-        // CLI order. Once warchest has a proper sc_wallets registry, this
-        // should be switched to the real DB id.
-        walletId: index + 1,
+        walletId: w.walletId,
         walletAlias: w.alias,
         walletPubkey: w.pubkey,
         txInsightService,
