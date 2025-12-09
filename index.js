@@ -12,6 +12,12 @@ const {
 } = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
+
+if (!process.env.BOOTYBOX_SQLITE_PATH) {
+    // Normalize BootyBox to a single SQLite location to avoid accidental splits
+    process.env.BOOTYBOX_SQLITE_PATH = join(__dirname, 'db', 'bootybox.db');
+}
+
 const BootyBox = require('./db');
 const { requestId } = require('./lib/id/issuer');
 const util = require('util');
