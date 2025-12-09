@@ -314,29 +314,16 @@ program
     .action(async () => {
         const rl = readline.createInterface({ input, output });
         try {
-            const walletRows = await walletsDomain.registry.getAllWallets();
-            const options = walletRows.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
-            options.push(`${walletRows.length + 1}) Other (enter address)`);
+            const selection = await walletsDomain.selection.selectWalletInteractively({
+                promptLabel: 'Which wallet?',
+                allowOther: true,
+                rl,
+            });
 
-            logger.info('Which wallet?');
-            options.forEach((opt) => logger.info(opt));
-            let choice = await rl.question('> ');
-            let walletLabel;
-            let walletAddress;
-
-            const numeric = Number(choice);
-            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= walletRows.length) {
-                const selected = walletRows[numeric - 1];
-                walletLabel = selected.alias;
-                walletAddress = selected.pubkey;
-            } else {
-                if (!walletAddress) {
-                    walletAddress = choice && choice.trim() ? choice.trim() : null;
-                }
-                if (!walletAddress) {
-                    walletAddress = await rl.question('Enter wallet address:\n> ');
-                }
-                walletLabel = 'other';
+            let walletLabel = selection && selection.walletLabel ? selection.walletLabel : 'other';
+            let walletAddress = selection && selection.walletAddress ? selection.walletAddress.trim() : '';
+            if (!walletAddress) {
+                walletAddress = (await rl.question('Enter wallet address:\n> ')).trim();
             }
 
             let mint = await rl.question('Enter mint to trace:\n> ');

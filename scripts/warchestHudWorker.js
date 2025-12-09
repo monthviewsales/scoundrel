@@ -24,7 +24,7 @@ const { updateSol } = require('../lib/solana/rpcMethods/internal/walletState');
 const { renderHud } = require('../lib/hud/warchestHudRenderer');
 const { updateHealth } = require('../lib/warchest/health');
 const { fetchAllTokenAccounts } = require('../lib/warchest/fetchAllTokenAccounts');
-const { resolveWalletSpecsWithRegistry } = require('../lib/warchest/walletResolver');
+const { resolveWalletSpecsWithRegistry } = require('../lib/wallets/resolver');
 
 const WalletManagerV2 = require('../lib/WalletManagerV2');
 const txInsightService = require('../lib/services/txInsightService');
