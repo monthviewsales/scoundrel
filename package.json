@@ -1,7 +1,7 @@
 {
   "name": "scoundrel",
   "version": "3.7.0",
-  "description": "Scoundrel is a research and trading side project designed to explore the use of OpenAI\u2019s APIs and SolanaTracker data to improve memecoin trading strategies.",
+  "description": "Scoundrel is a research and trading side project designed to explore the use of OpenAI’s APIs and SolanaTracker data to improve memecoin trading strategies.",
   "main": "index.js",
   "directories": {
     "lib": "lib"
@@ -27,6 +27,7 @@
     "@solana/kit": "^5.0.0",
     "@solana/web3.js": "^1.98.4",
     "b58": "^4.0.3",
+    "better-sqlite3": "^12.5.0",
     "chalk": "^4.1.2",
     "commander": "^14.0.2",
     "dotenv": "^17.2.3",
@@ -37,8 +38,7 @@
     "ulid": "^3.0.1",
     "undici": "^7.16.0",
     "winston": "^3.18.3",
-    "winston-daily-rotate-file": "^5.0.0",
-    "better-sqlite3": "^12.4.1"
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "bin": {
     "scoundrel": "./index.js"
