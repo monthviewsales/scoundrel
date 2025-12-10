@@ -214,10 +214,29 @@ program
         const startTime = parseTs(opts.start);
         const endTime = parseTs(opts.end);
         const cliTraderName = opts.name ? String(opts.name).trim() : null;
-        const traderName = cliTraderName || process.env.TEST_TRADER || null;
+        const defaultTraderName = process.env.TEST_TRADER ? String(process.env.TEST_TRADER).trim() : null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
         const harvestOnly = !!opts.harvestOnly;
+
+        let traderName = cliTraderName || null;
+        if (!cliTraderName && defaultTraderName) {
+            const rl = readline.createInterface({ input, output });
+            try {
+                const modeLabel = harvestOnly ? 'harvest-only (no AI run)' : 'full dossier (AI + DB)';
+                const answerRaw = await rl.question(
+                    `[scoundrel] No --name provided. Use default trader alias "${defaultTraderName}" for wallet ${walletId} in ${modeLabel} mode? [y/N] `
+                );
+                const answer = (answerRaw || '').trim().toLowerCase();
+                if (answer === 'y' || answer === 'yes') {
+                    traderName = defaultTraderName;
+                } else {
+                    logger.info('[scoundrel] Continuing without default trader alias; artifacts will be tagged by wallet only.');
+                }
+            } finally {
+                rl.close();
+            }
+        }
 
         if (cliTraderName) {
             await walletsDomain.kol.ensureKolWallet({
