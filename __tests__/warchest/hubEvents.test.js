@@ -22,19 +22,17 @@ describe('hub event followers', () => {
     follower.onStatus((snapshot) => seenStatuses.push(snapshot));
     follower.onEvent((ev) => seenEvents.push(ev));
 
-    const initialStatus = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
-    seenStatuses.push(initialStatus);
-    const initialEvents = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
-    initialEvents.forEach((ev) => seenEvents.push(ev));
-
     await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(seenStatuses.length).toBeGreaterThan(0);
     expect(seenStatuses[0].health.ok).toBe(true);
+    expect(seenEvents.length).toBeGreaterThan(0);
     expect(seenEvents[0].txid).toBe('abc');
 
+    const beforeCloseCount = seenEvents.length;
     follower.close();
     appendHubEvent({ txid: 'later' }, eventPath);
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(seenEvents.length).toBe(1);
+    expect(seenEvents.length).toBe(beforeCloseCount);
   });
 });
