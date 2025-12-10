@@ -43,8 +43,10 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 ## Where to store worker modules and docs
 
-- **Code placement:** Add a dedicated folder like `lib/warchest/workers/` for job entrypoints (`tradeWorker.js`, `txWorker.js`, `autopsyWorker.js`, `coinMonitorWorker.js`, `txMonitorWorker.js`). Keep the small harness (`warchestWorkerHarness.js`) nearby so every worker shares bootstrap/teardown helpers.
-- **HUD integration:** Keep HUD-specific render/TUI code in `scripts/warchestHudWorker.js`, but have it consume worker results via IPC or a shared file instead of owning RPC subscriptions itself.
+- **Code placement:** Add a dedicated folder like `lib/warchest/workers/` for job entrypoints (`tradeWorker.js`, `txWorker.js`, `autopsyWorker.js`, `coinMonitorWorker.js`, `txMonitorWorker.js`). Keep the small harness (`warchestWorkerHarness.js`) nearby so every worker shares bootstrap/teardown helpers. The HUD worker now lives in this folder.
+- **Shared client bootstrap:** Use `lib/warchest/client.js` to open BootyBox, create SolanaTracker RPC/Data clients, build initial wallet HUD state, and register cleanup handlers. Call `const client = await setup({ walletSpecs, mode });` and make sure to invoke `await client.close()` on shutdown so timers/subscriptions are cleared and the RPC client closes.
+- **Health snapshot hook:** In daemon mode, reuse `client.writeStatusSnapshot(health)` when `updateHealth` reports fresh metrics so other CLIs can read `data/warchest/status.json`.
+- **HUD integration:** Keep HUD-specific render/TUI code in `lib/warchest/workers/warchestHudWorker.js`, but have it consume worker results via IPC or a shared file instead of owning RPC subscriptions itself.
 - **Docs:** Extend this file with per-worker “contract” snippets (payload shape, IPC messages, teardown rules) and add short READMEs in `lib/warchest/workers/` to keep code+docs co-located.
 
 ## Applicability to AI processes (dossier, autopsy)
