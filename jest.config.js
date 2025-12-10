@@ -12,6 +12,7 @@ module.exports = {
     '!db/test/**',
     '!node_modules/**',
   ],
+  testPathIgnorePatterns: ['/__tests__/fixtures/'],
   coverageDirectory: 'artifacts/coverage',
   coverageReporters: ['text', 'lcov'],
 };
