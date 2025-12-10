@@ -51,6 +51,7 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 - **Message envelope:** Parent sends `{ type: 'start', payload, requestId }` over IPC. Workers respond with `{ type: 'result' | 'error', payload, requestId }` and ignore mismatched IDs.
 - **Timeouts:** Parents arm a timeout (default 30s) and `kill()` the worker if no response arrives. The promise rejects with `Worker timed out after <ms>ms`.
+- **Lifecycle logging + metrics:** `createWorkerHarness` now emits structured lifecycle logs (`start`, `success`, `error`, `cleanup`) and accepts an optional metrics hook. Pass `workerName` to ensure messages stay grep-friendly (`[coinMonitor] start {...}`) and forward metrics into Winston if you need line-delimited counters.
 - **Cleanup hooks:** Workers track resources via the harness. On exit, it calls `close()` then `unsubscribe()` on tracked resources, invokes an optional `onClose()` hook, removes `process` listeners, and exits. Parents also clear listeners and release PID tags/locks after any completion path.
 - **Env and payload helpers:** `buildWorkerEnv` passes RPC/Data endpoints, wallet IDs, or BootyBox paths as env vars. Parents may still serialize the same values inside `payload` for clarity.
 - **Lightweight coordination:** `createPidTag(tag, dir?)` writes `data/warchest/locks/<tag>.json` (or a custom dir) containing `{ pid, tag, ts }` and throws when a tag is already present, preventing duplicate workers.
@@ -110,3 +111,9 @@ When a swap worker returns a `txid`, immediately spin up a transaction-monitor j
 - **Error reporting:** If the monitor detects a confirmed error, send `{ type: 'trade:error', txid, reason }` back over IPC so the parent can log/alert. On success, send `{ type: 'trade:confirmed', txid, slot, signatureStatus }`.
 - **HUD integration:** Treat the HUD as another IPC consumer. When the parent receives `trade:confirmed`, forward `{ txid, mint, side, walletAlias, filledSize }` to the HUD process (or write to the shared status file the HUD already reads). The HUD worker can then add the position by reusing the same BootyBox/open-position helpers it already uses for wallet tracking, without needing to observe the entire swap lifecycle.
 - **No shared sockets:** Each phase (trade, monitor, HUD update) uses its own worker with fresh SolanaTracker RPC clients. The parent just relays messages, keeping the main hub lean and avoiding stuck WebSocket handles.
+
+## Retry/backoff expectations (RPC + Data helpers)
+
+- RPC/Data calls used by workers (token account hydration, tx confirmations) now wrap a shared retry helper with exponential backoff (default ~250–2000ms, 3–4 attempts) and treat ECONNRESET/ETIMEDOUT/EAI_AGAIN/5xx/429 as transient.
+- Persistent failures bubble as errors so workers fail fast instead of silently continuing with empty state; supervisors should catch these and decide whether to restart.
+- Metrics hooks receive `retry:*` and `error:*` events when provided so ops can alert on noisy links without parsing stdout.

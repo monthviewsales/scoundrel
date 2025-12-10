@@ -85,4 +85,37 @@ describe('coinMonitorWorker controller', () => {
     expect(unsubscribeAccount).toHaveBeenCalled();
     expect(snapshot).toHaveBeenCalledWith(expect.objectContaining({ stopReason: 'drained' }));
   });
+
+  test('retries transient account fetches before bootstrapping', async () => {
+    const rpcMethods = {
+      getTokenAccountsByOwner: jest
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error('flaky'), { code: 'ECONNRESET' }))
+        .mockResolvedValue({
+          value: [
+            {
+              pubkey: 'acct1',
+              account: { data: { parsed: { info: { tokenAmount: { uiAmount: 3, decimals: 6 } } } } },
+            },
+          ],
+        }),
+      subscribeAccount: jest.fn(async () => ({ unsubscribe: jest.fn() })),
+    };
+
+    const metrics = jest.fn();
+    const controller = createCoinMonitorController(
+      { mint: 'Mint333', wallet: { alias: 'gamma', pubkey: 'WalletPub' }, exitOnZero: false },
+      { rpcMethods, retryDelayFn: () => Promise.resolve(), metricsReporter: metrics }
+    );
+
+    const promise = controller.start();
+    await new Promise((resolve) => setImmediate(resolve));
+    await controller.stop('manual');
+    await promise;
+
+    expect(rpcMethods.getTokenAccountsByOwner).toHaveBeenCalledTimes(2);
+    expect(metrics).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'retry:getTokenAccountsByOwner', worker: 'coinMonitor', attempt: 1 })
+    );
+  });
 });
