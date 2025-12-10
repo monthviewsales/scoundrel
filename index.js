@@ -620,7 +620,7 @@ Examples:
 
 program
     .command('warchestd')
-    .description('Control the warchest daemon (start, stop, restart, or run a HUD session)')
+    .description('Run the warchest HUD follower or clean up legacy daemon artifacts')
     .argument('<action>', 'start|stop|restart|hud|status')
     .option(
         '--wallet <spec>',
@@ -630,25 +630,25 @@ program
             return previous.concat(value);
         }
     )
-    .option('--hud', 'Start daemon with HUD enabled (for start/restart actions)')
+    .option('--hud', 'Render HUD output (for start/restart actions)')
+    .option('--no-follow-hub', 'Disable following hub status/event files')
+    .option('--hub-events <path>', 'Override hub event file path (default: data/warchest/tx-events.json)')
+    .option('--hub-status <path>', 'Override hub status file path (default: data/warchest/status.json)')
     .addHelpText('after', `
 Examples:
-  # Start warchest daemon in the background
+  # Start HUD follower (foreground) with hub event/status files
   $ scoundrel warchestd start --wallet warlord:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
 
-  # Start daemon with HUD enabled in the foreground (dev mode)
+  # Start HUD follower with HUD rendering enabled
   $ scoundrel warchestd start --wallet warlord:DDkF...:orange --hud
 
-  # One-off HUD session (no PID management)
+  # One-off HUD session with selector fallback
   $ scoundrel warchestd hud --wallet warlord:DDkF...:orange
 
-  # Stop background daemon
+  # Clear legacy PID files
   $ scoundrel warchestd stop
 
-  # Restart daemon with new wallet args
-  $ scoundrel warchestd restart --wallet warlord:DDkF...:orange
-
-  # Show daemon health and latest status snapshot
+  # Show hub/HUD health snapshot
   $ scoundrel warchestd status
 `)
     .action(async (action, opts) => {
@@ -677,22 +677,26 @@ Examples:
                 throw new Error('warchest service module is not available');
             }
 
+            const followHub = opts.followHub !== false;
+            const hubEventsPath = opts.hubEvents;
+            const hubStatusPath = opts.hubStatus;
+
             if (action === 'start') {
                 // Default to starting the daemon headless; enable HUD only when explicitly requested.
                 const hud = !!opts.hud;
-                await warchestService.start({ walletSpecs, hud });
+                await warchestService.start({ walletSpecs, hud, followHub, hubEventsPath, hubStatusPath });
             } else if (action === 'stop') {
                 await warchestService.stop();
             } else if (action === 'restart') {
                 // Default to restarting the daemon headless; enable HUD only when explicitly requested.
                 const hud = !!opts.hud;
-                await warchestService.restart({ walletSpecs, hud });
+                await warchestService.restart({ walletSpecs, hud, followHub, hubEventsPath, hubStatusPath });
             } else if (action === 'hud') {
                 // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
-                warchestService.hud({ walletSpecs });
+                warchestService.hud({ walletSpecs, followHub, hubEventsPath, hubStatusPath });
             } else if (action === 'status') {
                 // Report daemon + health snapshot status without modifying state.
-                await warchestService.status();
+                await warchestService.status({ statusPath: hubStatusPath });
             } else {
                 logger.error(`[scoundrel] Unknown warchestd action: ${action}`);
                 process.exitCode = 1;
@@ -767,29 +771,6 @@ program
             process.exit(0);
         }
     });
-
-// Ensure the warchest daemon is running for most commands.
-program.hook('preAction', async (thisCommand, actionCommand) => {
-    const name = actionCommand && typeof actionCommand.name === 'function'
-        ? actionCommand.name()
-        : undefined;
-
-    // Avoid recursion / conflicts for the service management command itself.
-    if (name === 'warchestd') {
-        return;
-    }
-
-    if (!warchestService || typeof warchestService.ensureDaemonRunning !== 'function') {
-        return;
-    }
-
-    try {
-        await warchestService.ensureDaemonRunning();
-    } catch (err) {
-        const msg = err && err.message ? err.message : err;
-        logger.warn(`[scoundrel] Failed to ensure warchest daemon is running: ${msg}`);
-    }
-});
 
 // Default/help handling is provided by commander
 program.parseAsync(process.argv);
