@@ -28,6 +28,17 @@ If Warchest remains the long-lived hub that owns BootyBox plus the SolanaTracker
 
 This approach keeps Warchest as the stable hub while letting you bolt on new per-command workers that use the same primitives (BootyBox, SolanaTracker RPC/Data) without sharing live connections across processes.
 
+## Hub coordinator + event flow
+
+- A lightweight coordinator now lives in `lib/warchest/hubCoordinator.js`. It routes commands to workers through the harness, enforces per-wallet/tx namespaces (duplicate `swap` or `txMonitor` calls on the same wallet/txid throw), and passes shared env hints down to the forked workers.
+- HUD/monitor consumers subscribe to hub status and tx-event files via `lib/warchest/events.js`. When a hub is present, prefer the follower instead of opening another set of WebSocket subscriptions.
+- Event files default to `data/warchest/status.json` (health snapshots) and `data/warchest/tx-events.json` (confirmed/failed tx summaries). Workers should respect overrides from env/CLI so tests can inject temporary paths.
+
+### Shutdown expectations
+
+- Coordinators and HUD workers must close followers/watchers, timers, and RPC/Data clients on `SIGINT`/`SIGTERM`. The HUD worker now closes hub followers in addition to the RPC client.
+- Monitors that write HUD events should do so via `appendHubEvent` (`lib/warchest/events.js`) and avoid leaving behind fs watchers when they exit.
+
 ## Blind spots and requirement gaps
 
 - **Shared reporting contract.** The hub needs a small IPC schema so all workers report consistently (e.g., `{ type: 'log' | 'error' | 'progress' | 'result', job, id, payload }`). Without it, downstream consumers (HUD, CLIs, alerting) will drift.
