@@ -618,8 +618,8 @@ program
 Examples:
   $ scoundrel warchest add
   $ scoundrel warchest list
-  $ scoundrel warchest remove warlord
-  $ scoundrel warchest set-color warlord cyan
+  $ scoundrel warchest remove sampleWallet
+  $ scoundrel warchest set-color sampleWallet cyan
   $ scoundrel warchest -solo
 `)
     .action(async (subcommand, arg1, arg2, cmd) => {
@@ -675,13 +675,13 @@ program
     .addHelpText('after', `
 Examples:
   # Start HUD follower (foreground) with hub event/status files
-  $ scoundrel warchestd start --wallet warlord:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
+  $ scoundrel warchestd start --wallet sampleWallet:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
 
   # Start HUD follower with HUD rendering enabled
-  $ scoundrel warchestd start --wallet warlord:DDkF...:orange --hud
+  $ scoundrel warchestd start --wallet sampleWallet:DDkF...:orange --hud
 
   # One-off HUD session with selector fallback
-  $ scoundrel warchestd hud --wallet warlord:DDkF...:orange
+  $ scoundrel warchestd hud --wallet sampleWallet:DDkF...:orange
 
   # Clear legacy PID files
   $ scoundrel warchestd stop
