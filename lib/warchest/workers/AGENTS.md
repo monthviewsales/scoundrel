@@ -6,3 +6,4 @@ This directory contains warchest worker entrypoints.
 - Keep workers small: delegate shared setup/teardown to `lib/warchest/client.js` and call its `close()` helper before exit.
 - Always clean up timers and subscriptions you start in a worker.
 - When adding monitors or other long-running workers, persist lightweight status snapshots via the hooks in `lib/warchest/client.js` instead of opening new BootyBox instances.
+- Hub-facing workers (HUD, monitors, hub coordinator) should listen to `lib/warchest/events.js` followers instead of duplicating subscriptions when a hub is present, and must close any followers/watchers during shutdown.
