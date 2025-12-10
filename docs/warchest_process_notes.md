@@ -75,6 +75,21 @@ To move swaps into the same forked-worker pattern as tx/autopsy/coin monitors:
 - **Pass config/env explicitly over IPC when needed:** The worker should receive RPC URLs and API keys (or the wallet alias used to resolve them) from the hub so it doesn’t depend on ambient env vars. That mirrors how other workers will receive mint/wallet context for monitors.
 - **Return summarized results to the CLI:** Send back the same shape the CLI prints today (txid, amounts, price impact, quote). The parent can handle log formatting while the worker stays focused on executing the swap and cleaning up RPC/Data clients before exit.
 
+### Swap worker contract (worker-based trade flow)
+
+- **Entrypoint:** `lib/warchest/workers/swapWorker.js` (forked via the harness).
+- **Payload fields:**
+  - `side`: `'buy'` or `'sell'` (required)
+  - `mint`: SPL mint (Base58, 32–44 chars)
+  - `amount`: number, percentage string (e.g., `'50%'`), or `'auto'` for sells
+  - `walletAlias` (preferred) or `walletPrivateKey` (fallback/test hook)
+  - `slippagePercent` (defaults to 15), optional `priorityFee` (number or `'auto'`)
+  - `useJito` / `dryRun` booleans
+- **Validation:** The worker rejects invalid sides, mint formats, negative/empty amounts, or missing wallet context before attempting a swap.
+- **Execution:** A fresh swap client is created from `swapEngine.performTrade`, using the provided keypair and mint/amount context. Each invocation owns its own SolanaTracker client and closes when the process exits.
+- **Response envelope:** `{ txid, signature, slot, timing, tokensReceivedDecimal?, solReceivedDecimal?, totalFees?, priceImpact?, quote?, dryRun? }` where `timing` includes `startedAt`, `endedAt`, and `durationMs`.
+- **CLI integration:** `lib/cli/trade.js` now forks the swap worker through the harness, forwards the normalized payload, and surfaces txid/signature/timing results in the CLI output. Errors from the worker propagate to the caller.
+
 ## How to hand off swap results to a transaction monitor and HUD
 
 When a swap worker returns a `txid`, immediately spin up a transaction-monitor job as another forked worker so the hub/CLI stays responsive and doesn’t hold RPC/WebSocket subscriptions longer than necessary.
