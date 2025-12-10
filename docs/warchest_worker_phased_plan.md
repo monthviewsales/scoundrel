@@ -75,7 +75,8 @@ This plan builds on the prior warchest process notes and defines a staged path t
 ## Phase 6 — AI workers (dossier, autopsy)
 - **Goal:** Align AI workflows with the worker model for isolation and predictable resource usage.
 - **Tasks:**
-  - Add worker entries (e.g., `lib/warchest/workers/dossierWorker.js`, `autopsyWorker.js`) that orchestrate existing AI logic, reading configs via harness payloads.
+  - Worker entries now live at `lib/warchest/workers/dossierWorker.js` and `lib/warchest/workers/autopsyWorker.js`, each wrapping the existing dossier/autopsy flows via the harness payload contract.
+  - Invoke with `forkWorkerWithPayload(workerPath, { payload })` where `workerPath` points at the worker module; payloads mirror the CLI options (wallet, mint, labels) and return the structured AI result + artifact path.
   - Ensure they emit structured results consumable by CLI or HUD and close any network/file handles on exit.
 - **Documentation:**
   - JSDoc for AI worker payloads and outputs.
