@@ -49,9 +49,11 @@ Follow these rules for **all new and modified code**:
     - Error behavior when relevant (`@throws`)
 
 - **Patterns**
-  - Prefer small, single-responsibility modules.
-  - Keep side effects at the edges (CLI entrypoints, process integration, network calls).
-  - Larger services factories should be in /services and imported as needed.
+- Prefer small, single-responsibility modules.
+- Keep side effects at the edges (CLI entrypoints, process integration, network calls).
+- Larger services factories should be in /services and imported as needed.
+- **Readline / TTY usage**
+  - When modules need `process.stdin` / `process.stdout`, reference them at the moment you create a `readline` interface (e.g. inside the function) rather than capturing them at module load time. This keeps tests free of lingering `TTYWRAP` handles when they stub `process.stdin`/`stdout`.
 
 ### SolanaTracker clients
 
