@@ -214,8 +214,14 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `warchest [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
-- `warchestd <action>` — Start/stop/restart the warchest HUD daemon, run HUD foreground, or show status.
+- `warchestd <action>` — Launch the HUD follower in the foreground, clean legacy daemon artifacts, or show hub status.
 - `test` — Environment + dependency smoke test.
+
+## Architecture
+
+- Worker harness + hub live under `lib/warchest/workers/` and `lib/warchest/hubCoordinator.js`, coordinating swap/monitor/HUD jobs via IPC.
+- Hub status + HUD events are written to `data/warchest/status.json` and `data/warchest/tx-events.json`; the HUD follows these files instead of daemon PID files.
+- See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
 
 ### research `<walletId>`
 - Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, then runs `analyzeWallet` (Responses).
@@ -266,9 +272,9 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
 ### warchestd `<start|stop|restart|hud|status>`
-- Daemon/HUD controller around `lib/warchest/workers/warchestHudWorker.js`.
-- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to run interactive HUD.
-- `hud` runs foreground HUD; `status` reads pid/status snapshot and reports health (slot, RPC timings, wallet count).
+- HUD follower controller around `lib/warchest/workers/warchestHudWorker.js` (foreground only).
+- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to render the HUD alongside hub status/events.
+- `hud` runs foreground HUD (with selector fallback); `status` reads hub status snapshot and reports health (slot, RPC timings, wallet count).
 
 ### test
 - Verifies `OPENAI_API_KEY` presence, prints core file existence, DB config, and attempts BootyBox ping.
@@ -282,7 +288,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `./profiles/autopsy-<wallet>-<mint>-<ts>.json` — trade autopsy payload + AI output
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 - `./data/autopsy/<wallet>/<mint>/{raw,parsed,enriched}/` — campaign artifacts gated by `SAVE_*`
-- `./data/warchest/{warchest.pid,status.json}` — HUD daemon pid + health snapshot
+- `./data/warchest/{tx-events.json,status.json}` — Hub/HUD event feed + health snapshot
 
 ---
 

@@ -2,10 +2,19 @@
 
 const path = require('path');
 
-jest.mock('child_process', () => ({
-  spawn: jest.fn(),
-  spawnSync: jest.fn(() => ({ status: 0 })),
-}));
+jest.mock('child_process', () => {
+  const listeners = new Map();
+  return {
+    spawn: jest.fn(() => ({
+      on: (event, cb) => {
+        listeners.set(event, cb);
+        if (event === 'exit') {
+          setImmediate(() => cb(0, null));
+        }
+      },
+    })),
+  };
+});
 
 jest.mock('../../lib/logger', () => ({
   info: jest.fn(),
@@ -50,11 +59,14 @@ describe('warchest HUD CLI', () => {
 
     await hud({ walletSpecs });
 
-    expect(childProcess.spawnSync).toHaveBeenCalled();
-    const [execPath, args, opts] = childProcess.spawnSync.mock.calls[0];
+    expect(childProcess.spawn).toHaveBeenCalled();
+    const [execPath, args, opts] = childProcess.spawn.mock.calls[0];
     expect(execPath).toBe(process.execPath);
     expect(args[0]).toBe(workerPath);
     expect(args).toEqual(expect.arrayContaining(['--wallet', walletSpecs[0], '--hud']));
+    expect(args).toEqual(expect.arrayContaining(['--follow-hub']));
+    expect(args).toEqual(expect.arrayContaining(['--hub-events', path.join(process.cwd(), 'data', 'warchest', 'tx-events.json')]));
+    expect(args).toEqual(expect.arrayContaining(['--hub-status', path.join(process.cwd(), 'data', 'warchest', 'status.json')]));
     expect(opts.stdio).toBe('inherit');
   });
 });
