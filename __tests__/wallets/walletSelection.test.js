@@ -1,5 +1,14 @@
 'use strict';
 
+const mockReadlineInterfaceFactory = jest.fn(() => ({
+  question: jest.fn(() => Promise.resolve('')),
+  close: jest.fn(),
+}));
+
+jest.mock('readline/promises', () => ({
+  createInterface: jest.fn((options) => mockReadlineInterfaceFactory(options)),
+}));
+
 jest.mock('../../lib/logger', () => ({
   info: jest.fn(),
   warn: jest.fn(),
@@ -38,6 +47,7 @@ function createMockRl(responses) {
 
 describe('walletSelection.selectWalletInteractively', () => {
   beforeEach(() => {
+    mockReadlineInterfaceFactory.mockClear();
     jest.clearAllMocks();
     mockResolver.listFundingWallets.mockResolvedValue([]);
     mockResolver.getAllWallets.mockResolvedValue([]);
