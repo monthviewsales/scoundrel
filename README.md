@@ -134,7 +134,7 @@ Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC
 For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
 
-The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+The warchest HUD worker (`lib/warchest/workers/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
 - The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
 
 ---
@@ -266,7 +266,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
 ### warchestd `<start|stop|restart|hud|status>`
-- Daemon/HUD controller around `scripts/warchestHudWorker.js`.
+- Daemon/HUD controller around `lib/warchest/workers/warchestHudWorker.js`.
 - `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to run interactive HUD.
 - `hud` runs foreground HUD; `status` reads pid/status snapshot and reports health (slot, RPC timings, wallet count).
 
