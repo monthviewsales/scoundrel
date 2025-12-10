@@ -1,13 +1,22 @@
 'use strict';
 
+jest.mock('../../../lib/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+}));
+
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
   buildWorkerEnv,
   createPidTag,
+  createLifecycleLogger,
   forkWorkerWithPayload,
 } = require('../../../lib/warchest/workers/harness');
+const logger = require('../../../lib/logger');
 
 const fixturesDir = path.join(__dirname, '..', '..', 'fixtures', 'warchest');
 const echoWorker = path.join(fixturesDir, 'echoWorker.js');
@@ -90,5 +99,22 @@ describe('warchest worker harness', () => {
 
     release();
     expect(fs.existsSync(lockPath)).toBe(false);
+  });
+
+  test('emits structured lifecycle logs with metrics hook', () => {
+    const metrics = jest.fn();
+    const lifecycle = createLifecycleLogger('unit-worker', logger, metrics);
+    const startedAt = Date.now() - 10;
+
+    lifecycle.start('req-1', { payload: true });
+    lifecycle.success('req-1', { ok: true }, startedAt);
+    lifecycle.error('req-1', new Error('boom'), startedAt);
+    lifecycle.cleanup('req-1');
+
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('[unit-worker] start'));
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('success'));
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('error'));
+    expect(metrics).toHaveBeenCalledWith(expect.objectContaining({ event: 'start', worker: 'unit-worker' }));
+    expect(metrics).toHaveBeenCalledWith(expect.objectContaining({ event: 'cleanup', worker: 'unit-worker' }));
   });
 });

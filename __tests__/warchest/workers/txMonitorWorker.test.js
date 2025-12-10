@@ -76,4 +76,19 @@ describe('txMonitorWorker.monitorTransaction', () => {
     expect(result.status).toBe('failed');
     expect(result.slot).toBe(5);
   });
+
+  test('fails fast when transaction lookups keep failing', async () => {
+    const rpcMethods = {
+      getTransaction: jest.fn().mockRejectedValue(Object.assign(new Error('offline'), { code: 'EAI_AGAIN' })),
+    };
+
+    await expect(
+      monitorTransaction({ txid: makeTxid(), wallet: null }, {
+        rpcMethods,
+        retryDelayFn: () => Promise.resolve(),
+        retryOptions: { attempts: 2 },
+      })
+    ).rejects.toThrow(/Retry failed/);
+    expect(rpcMethods.getTransaction).toHaveBeenCalledTimes(2);
+  });
 });

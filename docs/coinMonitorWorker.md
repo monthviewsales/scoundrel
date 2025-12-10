@@ -9,12 +9,19 @@
 - `exitOnZero` (boolean, default: `true`): stop when the aggregated mint balance reaches zero.
 - `renderIntervalMs` (number, default: 1000): logging cadence for the CLI HUD.
 - `statusDir` (string, optional): directory for status snapshots via `writeStatusSnapshot`.
+- `metricsReporter` (function, optional): invoked with lifecycle + retry payloads when provided.
 
 ## Exit conditions
 
 - **Drained**: aggregated token balance at or below zero (default). Status is returned as `drained`.
 - **Stopped**: explicit `stop` message sent to the worker or controller, or harness shutdown. Status is returned as `stopped`.
 - **Errors**: bootstrap failures reject the harness call; subscription errors log warnings but keep running.
+
+## Retries and fault handling
+
+- Account hydration uses exponential backoff (4 attempts, ~300–2500ms) for transient RPC failures (ECONNRESET, 5xx/429, etc.).
+- Persistent failures now bubble as errors so callers/hub supervisors can fail fast instead of silently running with empty state.
+- Metrics hooks receive `retry:getTokenAccountsByOwner` and `error:getTokenAccountsByOwner` events when provided.
 
 ## Start/stop controls
 
