@@ -203,10 +203,10 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
 
-**Quick reference**
-
-- `research <walletId>` — Harvest wallet trades + chart + per-mint user trades; writes merged payload and profile (Responses).
-- `dossier <walletId>` — Same harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`).
+-**Quick reference**
+  
+- `research <walletId>` — (deprecated) Alias for `dossier --harvest-only`; harvests wallet trades + chart + per-mint user trades without calling AI.
+- `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
 - `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap:config <view|edit|set>` — Manage swap config file (RPC URL, swap API key, slippage, priority fee, tx version).
@@ -224,17 +224,20 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
 
 ### research `<walletId>`
-- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, then runs `analyzeWallet` (Responses).
+- (Deprecated) Thin wrapper around the dossier pipeline; equivalent to running `dossier <walletId> --harvest-only`.
+- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, and writes merged/enriched artifacts when `SAVE_*` toggles are set.
+- Does **not** call OpenAI, write profile JSON under `profiles/<alias>.json`, or upsert wallet analyses; use `dossier` without `--harvest-only` for full AI profiles.
 - Options: `--start <iso|epoch>`, `--end <iso|epoch>`, `--name <alias>`, `--feature-mint-count <num>`.
-- Artifacts: merged payload under `data/dossier/<alias>/merged/merged-*.json`; profile JSON under `profiles/<alias>.json`; DB upsert via BootyBox.
-- Env: `SOLANATRACKER_API_KEY`, `OPENAI_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
+- Env: `SOLANATRACKER_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
 
 ### dossier `<walletId>`
-- Same harvest pipeline as `research` plus:
+- Core harvest pipeline for building wallet dossiers; drives both full AI profiles and harvest-only runs.
   - `--limit <num>` cap trades
   - `--feature-mint-count <num>` override mint sampling
   - `--resend` re-run AI on latest merged payload without new data pulls
-- Writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, persists `sc_profiles` snapshot.
+  - `--harvest-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
+- Default: writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, and persists an `sc_profiles` snapshot.
+- With `--harvest-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
 
 ### autopsy
 - Prompts for HUD wallet (or custom address) + mint, then builds a campaign payload:

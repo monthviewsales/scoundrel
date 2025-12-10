@@ -169,9 +169,10 @@ program
             });
         }
 
+        logger.warn('[scoundrel] research is deprecated; use "scoundrel dossier --harvest-only" instead.');
         logger.info(`[scoundrel] Research starting for wallet ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
-            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, featureMintCount });
+            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, featureMintCount, runAnalysis: false });
             const count = (result && typeof result.count === 'number') ? result.count : 0;
             logger.info(`[scoundrel] ✅ harvested ${count} trades from ${walletId}`);
             process.exit(0);
@@ -193,8 +194,9 @@ program
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
+    .option('--harvest-only', 'Harvest trades + chart and write artifacts but skip AI + DB upsert')
     .option('-r, --resend', 'Resend the latest merged file for this trader (-n) to AI without re-harvesting data', false)
-    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n  --harvest-only            Harvest trades + chart and write artifacts but skip AI + DB upsert\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -215,6 +217,7 @@ program
         const traderName = cliTraderName || process.env.TEST_TRADER || null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
+        const harvestOnly = !!opts.harvestOnly;
 
         if (cliTraderName) {
             await walletsDomain.kol.ensureKolWallet({
@@ -224,7 +227,13 @@ program
         }
         const alias = normalizeTraderAlias(traderName, walletId);
 
-        logger.info(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
+        // Disallow --resend with --harvest-only
+        if (opts.resend && harvestOnly) {
+            logger.error('[scoundrel] Cannot use --resend with --harvest-only; resend always runs AI.');
+            process.exit(1);
+        }
+
+        logger.info(`[scoundrel] Dossier (simplified${harvestOnly ? ', harvest-only' : ''}) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
             // ----- RESEND MODE: reuse latest merged payload and skip harvesting -----
             if (opts.resend) {
@@ -269,7 +278,17 @@ program
             // ----- END RESEND MODE -----
 
             // Single-pass: SolanaTracker fetches + merge + one OpenAI Responses call handled by harvestWallet
-            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount });
+            const runAnalysis = !harvestOnly;
+            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount, runAnalysis });
+
+            // HARVEST-ONLY mode: skip AI and DB upsert, print summary and exit
+            if (harvestOnly) {
+                const count = (result && typeof result.count === 'number') ? result.count : 0;
+                logger.info(`[scoundrel] ✅ harvested ${count} trades (harvest-only) for ${walletId}`);
+                const baseDir = dossierBaseDir(alias);
+                logger.info(`[scoundrel] Artifacts written under ${baseDir}`);
+                process.exit(0);
+            }
 
             // Expect Responses output from harvest step
             if (!result || !result.openAiResult) {
