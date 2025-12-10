@@ -37,16 +37,16 @@ function createMockRl(responses) {
 }
 
 describe('walletSelection.selectWalletInteractively', () => {
-beforeEach(() => {
-  jest.clearAllMocks();
-  mockResolver.listFundingWallets.mockResolvedValue([]);
-  mockResolver.getAllWallets.mockResolvedValue([]);
-  mockResolver.getDefaultFundingWallet.mockResolvedValue({
-    alias: 'alpha',
-    pubkey: 'PubAlpha',
-    color: 'green',
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockResolver.listFundingWallets.mockResolvedValue([]);
+    mockResolver.getAllWallets.mockResolvedValue([]);
+    mockResolver.getDefaultFundingWallet.mockResolvedValue({
+      alias: 'alpha',
+      pubkey: 'PubAlpha',
+      color: 'green',
+    });
   });
-});
 
   it('returns registry wallet metadata when user picks an indexed option', async () => {
     mockResolver.listFundingWallets.mockResolvedValue([
@@ -55,11 +55,16 @@ beforeEach(() => {
     ]);
     const rl = createMockRl(['1']);
 
-    const result = await selectWalletInteractively({
-      rl,
-      promptLabel: 'Pick a wallet',
-      allowOther: true,
-    });
+    let result;
+    try {
+      result = await selectWalletInteractively({
+        rl,
+        promptLabel: 'Pick a wallet',
+        allowOther: true,
+      });
+    } finally {
+      rl.close();
+    }
 
     expect(result).toEqual({
       walletLabel: 'alpha',
@@ -75,11 +80,16 @@ beforeEach(() => {
     ]);
     const rl = createMockRl(['3', 'CustomPub']);
 
-    const result = await selectWalletInteractively({
-      rl,
-      promptLabel: 'Pick a wallet',
-      allowOther: true,
-    });
+    let result;
+    try {
+      result = await selectWalletInteractively({
+        rl,
+        promptLabel: 'Pick a wallet',
+        allowOther: true,
+      });
+    } finally {
+      rl.close();
+    }
 
     expect(result).toEqual({
       walletLabel: 'other',
