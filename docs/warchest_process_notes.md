@@ -36,6 +36,14 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 - **Configuration surface.** Decide what the hub passes vs. what workers read from env. Prefer explicit payloads (RPC URLs, API keys, wallet aliases) to avoid surprises in multi-env deployments.
 - **Audit/log retention.** Where should worker stdout/stderr go? Pipe back to the hub and write to rotating files (e.g., `data/warchest/logs/<job>.log`) or append to an existing logger so tx/autopsy/monitors share the same audit trail.
 
+### IPC envelope + cleanup contract (implemented via `lib/warchest/workers/harness.js`)
+
+- **Message envelope:** Parent sends `{ type: 'start', payload, requestId }` over IPC. Workers respond with `{ type: 'result' | 'error', payload, requestId }` and ignore mismatched IDs.
+- **Timeouts:** Parents arm a timeout (default 30s) and `kill()` the worker if no response arrives. The promise rejects with `Worker timed out after <ms>ms`.
+- **Cleanup hooks:** Workers track resources via the harness. On exit, it calls `close()` then `unsubscribe()` on tracked resources, invokes an optional `onClose()` hook, removes `process` listeners, and exits. Parents also clear listeners and release PID tags/locks after any completion path.
+- **Env and payload helpers:** `buildWorkerEnv` passes RPC/Data endpoints, wallet IDs, or BootyBox paths as env vars. Parents may still serialize the same values inside `payload` for clarity.
+- **Lightweight coordination:** `createPidTag(tag, dir?)` writes `data/warchest/locks/<tag>.json` (or a custom dir) containing `{ pid, tag, ts }` and throws when a tag is already present, preventing duplicate workers.
+
 ## Dependencies
 
 - **No new runtime dependencies are required.** `child_process.fork`, IPC messaging, and fs-based PID/tag files are all native to Node.js.
