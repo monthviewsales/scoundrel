@@ -48,7 +48,7 @@ db.pragma('synchronous = NORMAL');
 db.pragma('busy_timeout = 3000');
 
 let dbClosed = false;
-const pendingSwaps = new Set();
+const pendingSwaps = new Map();
 const tradeUuidMap = new Map();
 
 const normalizeWalletField = (value) => {

@@ -143,9 +143,17 @@ describe('trading submodule', () => {
     expect(adapter.getTradeUuid('mint-trade')).toBeNull();
 
     adapter.markPendingSwap('mint-trade');
+    expect(adapter.getPendingSwapCount()).toBe(1);
     expect(adapter.isSwapPending('mint-trade')).toBe(true);
+    adapter.markPendingSwap('mint-trade', 'wallet-a');
+    expect(adapter.isSwapPending('mint-trade', 'wallet-a')).toBe(true);
+    expect(adapter.getPendingSwapCount()).toBe(2);
+    expect(adapter.isSwapPending('mint-trade', 'wallet-b')).toBe(false);
     adapter.clearPendingSwap('mint-trade');
     expect(adapter.isSwapPending('mint-trade')).toBe(false);
+    expect(adapter.getPendingSwapCount()).toBe(1);
+    adapter.clearPendingSwap('mint-trade', 'wallet-a');
+    expect(adapter.getPendingSwapCount()).toBe(0);
   });
 });
 

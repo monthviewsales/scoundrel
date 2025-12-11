@@ -2948,16 +2948,38 @@ const BootyBox = {
    * Marks a swap as pending to prevent overbuying before confirmation.
    * @param {string} mint - The mint of the coin being bought.
    */
-  markPendingSwap(mint) {
-    pendingSwaps.add(mint);
+  markPendingSwap(mint, walletKey) {
+    const normalizedMint = typeof mint === "string" ? mint.trim() : "";
+    if (!normalizedMint) return;
+    const key =
+      walletKey && typeof walletKey === "string" && walletKey.trim()
+        ? walletKey.trim()
+        : "__global__";
+    let set = pendingSwaps.get(normalizedMint);
+    if (!set) {
+      set = new Set();
+      pendingSwaps.set(normalizedMint, set);
+    }
+    set.add(key);
   },
 
   /**
    * Clears a pending swap once confirmed or failed.
    * @param {string} mint - The mint of the coin that was processed.
    */
-  clearPendingSwap(mint) {
-    pendingSwaps.delete(mint);
+  clearPendingSwap(mint, walletKey) {
+    const normalizedMint = typeof mint === "string" ? mint.trim() : "";
+    if (!normalizedMint) return;
+    const key =
+      walletKey && typeof walletKey === "string" && walletKey.trim()
+        ? walletKey.trim()
+        : "__global__";
+    const set = pendingSwaps.get(normalizedMint);
+    if (!set) return;
+    set.delete(key);
+    if (set.size === 0) {
+      pendingSwaps.delete(normalizedMint);
+    }
   },
 
   /**
@@ -2965,7 +2987,11 @@ const BootyBox = {
    * @returns {number} The count of currently pending swaps.
    */
   getPendingSwapCount() {
-    return pendingSwaps.size;
+    let count = 0;
+    pendingSwaps.forEach((set) => {
+      count += set.size;
+    });
+    return count;
   },
 
   /**
@@ -2974,8 +3000,16 @@ const BootyBox = {
    * @param {string} mint
    * @returns {boolean}
    */
-  isSwapPending(mint) {
-    return pendingSwaps.has(mint);
+  isSwapPending(mint, walletKey) {
+    const normalizedMint = typeof mint === "string" ? mint.trim() : "";
+    if (!normalizedMint) return false;
+    const key =
+      walletKey && typeof walletKey === "string" && walletKey.trim()
+        ? walletKey.trim()
+        : "__global__";
+    const set = pendingSwaps.get(normalizedMint);
+    if (!set) return false;
+    return set.has(key);
   },
 
   /**
@@ -3098,11 +3132,22 @@ const BootyBox = {
       };
     }
 
+    const pendingSwapCount = Array.from(pendingSwaps.values()).reduce(
+      (total, wallets) => total + wallets.size,
+      0
+    );
+    const pendingSwapMints = Array.from(pendingSwaps.entries()).map(
+      ([mint, wallets]) => ({
+        mint,
+        wallets: Array.from(wallets),
+      })
+    );
+
     return {
       coinCount: coinCountRow?.count || 0,
       openPositions: openPositionsRow?.count || 0,
-      pendingSwapCount: pendingSwaps.size,
-      pendingSwapMints: Array.from(pendingSwaps),
+      pendingSwapCount,
+      pendingSwapMints,
       recentEvaluationCount,
       evaluationLookbackMs:
         evaluationLookbackMs > 0 ? evaluationLookbackMs : null,
