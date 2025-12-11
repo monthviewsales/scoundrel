@@ -422,87 +422,135 @@ program
         }
     });
 
-// --- swap:config command ---
-const swapConfigCmd = program
-    .command('swap:config')
-    .description('Manage Scoundrel swap configuration (RPC, swap API key, slippage, etc.)')
-    .addHelpText('after', `
-Examples:
-  $ scoundrel swap:config view
-  $ scoundrel swap:config edit
-  $ scoundrel swap:config set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true
-  $ scoundrel swap:config set swapAPIKey YOUR_API_KEY
-`);
-
-swapConfigCmd
-    .command('view')
-    .description('Show current swap config')
-    .action(async () => {
-        try {
-            const configPath = getSwapConfigPath();
-            const cfg = await loadSwapConfig();
-
-            // Redact API key to avoid screen-share leaks
-            const redacted = { ...cfg };
-            if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
-                const tail = redacted.swapAPIKey.slice(-4);
-                redacted.swapAPIKey = `************${tail}`;
-            }
-
-            logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
-            logger.info(JSON.stringify(redacted, null, 2));
-        } catch (err) {
-            logger.error('[scoundrel:swap-config] ❌ failed to load config:', err?.message || err);
-            process.exitCode = 1;
-        }
-    });
-
-swapConfigCmd
-    .command('edit')
-    .description('Edit swap config in your $EDITOR')
-    .action(async () => {
-        try {
-            await editSwapConfig();
-        } catch (err) {
-            logger.error('[scoundrel:swap-config] ❌ failed to edit config:', err?.message || err);
-            process.exitCode = 1;
-        }
-    });
-
-swapConfigCmd
-    .command('set <key> <value>')
-    .description('Set a single swap config key')
-    .action(async (key, value) => {
-        try {
-            const configPath = getSwapConfigPath();
-            const cfg = await loadSwapConfig();
-            const numeric = Number(value);
-            const castValue = Number.isNaN(numeric) ? value : numeric;
-
-            cfg[key] = castValue;
-            await saveSwapConfig(cfg);
-
-            logger.info(`[scoundrel:swap-config] ✅ Updated ${key} → ${castValue} in ${configPath}`);
-        } catch (err) {
-            logger.error('[scoundrel:swap-config] ❌ failed to update config:', err?.message || err);
-            process.exitCode = 1;
-        }
-    });
-
-// --- trade command ---
+// --- swap command ---
 program
-    .command('trade')
-    .argument('<mint>', 'Token mint address to trade')
-    .description('Execute a token trade via the SolanaTracker swap API')
-    .requiredOption('-w, --wallet <aliasOrAddress>', 'Wallet alias or address from the warchest registry')
+    .command('swap')
+    .argument('[mintOrSubcommand]', 'Token mint address to swap, or config subcommand when used with -c')
+    .argument('[configKey]', 'Config key for -c set (e.g., rpcUrl, swapAPIKey)')
+    .argument('[configValue]', 'Config value for -c set')
+    .description('Execute a token swap via the SolanaTracker swap API or manage swap configuration')
+    .requiredOption(
+        '-w, --wallet <aliasOrAddress>',
+        'Wallet alias or address from the wallet registry (ignored when using -c/--config)'
+    )
     .option('-b, --buy <amount>', "Spend <amount> SOL (number or '<percent>%') to buy the token")
     .option('-s, --sell <amount>', "Sell <amount> of the token (number, 'auto', or '<percent>%')")
-    .option('--slippage <percent>', 'Override default slippage percent for this trade')
-    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use "auto")')
+    .option('--slippage <percent>', 'Override default slippage percent for this swap')
+    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use \"auto\")')
     .option('--jito', 'Use Jito-style priority fee routing when supported')
     .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
-    .action(async (mint, opts) => {
+    .option('-c, --config', 'Manage swap configuration instead of executing a swap')
+    .addHelpText('after', `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n\n  # Manage swap configuration\n  $ scoundrel swap -c view\n  $ scoundrel swap -c edit\n  $ scoundrel swap -c set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true\n  $ scoundrel swap -c set swapAPIKey YOUR_API_KEY\n`)
+    .action(async (mintOrSubcommand, configKey, configValue, cmdOrOpts) => {
+        // Commander v14 may pass either (args..., options) or (args..., Command).
+        // If the last parameter has an .opts() function, treat it as the Command instance;
+        // otherwise assume it's already the plain options object.
+        const hasOptsMethod = cmdOrOpts && typeof cmdOrOpts.opts === 'function';
+        const opts = hasOptsMethod ? cmdOrOpts.opts() : (cmdOrOpts || {});
+
+        // Config mode (-c/--config): reuse the previous swap:config workflows
+        if (opts.config) {
+            const sub = mintOrSubcommand || 'view';
+
+            try {
+                if (sub === 'view') {
+                    const configPath = getSwapConfigPath();
+                    const cfg = await loadSwapConfig();
+
+                    // Redact API key to avoid screen-share leaks
+                    const redacted = { ...cfg };
+                    if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
+                        const tail = redacted.swapAPIKey.slice(-4);
+                        redacted.swapAPIKey = `************${tail}`;
+                    }
+
+                    logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
+                    logger.info(JSON.stringify(redacted, null, 2));
+                    return;
+                }
+
+                if (sub === 'edit') {
+                    await editSwapConfig();
+                    return;
+                }
+
+                if (sub === 'set') {
+                    if (!configKey || typeof configValue === 'undefined') {
+                        logger.error('[scoundrel:swap-config] Usage: scoundrel swap -c set <key> <value>');
+                        process.exitCode = 1;
+                        return;
+                    }
+
+                    const configPath = getSwapConfigPath();
+                    const cfg = await loadSwapConfig();
+                    const numeric = Number(configValue);
+                    const castValue = Number.isNaN(numeric) ? configValue : numeric;
+
+                    cfg[configKey] = castValue;
+                    await saveSwapConfig(cfg);
+
+                    logger.info(`[scoundrel:swap-config] ✅ Updated ${configKey} → ${castValue} in ${configPath}`);
+                    return;
+                }
+
+                logger.error(`[scoundrel:swap-config] Unknown config subcommand: ${sub}`);
+                process.exitCode = 1;
+                return;
+            } catch (err) {
+                logger.error('[scoundrel:swap-config] ❌ config operation failed:', err?.message || err);
+                process.exitCode = 1;
+                return;
+            }
+        }
+
+        // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/trade
+        const mint = mintOrSubcommand;
+        if (!mint) {
+            logger.error('[scoundrel] swap requires a mint when not using -c/--config.');
+            process.exit(1);
+        }
+
+        const hasBuy = !!opts.buy;
+        const hasSell = !!opts.sell;
+
+        if (!hasBuy && !hasSell) {
+            logger.error('[scoundrel] swap requires exactly one of -b/--buy or -s/--sell.');
+            process.exit(1);
+        }
+
+        if (hasBuy && hasSell) {
+            logger.error('[scoundrel] swap cannot use both -b/--buy and -s/--sell in the same command.');
+            process.exit(1);
+        }
+
+        // Sell semantics: auto = 100%, bare -s = 100%, "<percent>%" = percent of token balance
+        if (hasSell) {
+            const raw = String(opts.sell).trim();
+            if (!raw || raw.toLowerCase() === 'auto') {
+                // Treat as 100% panic dump; CLI passes a normalized flag for trade implementation.
+                opts.sell = '100%';
+                opts._panic = true;
+            } else if (raw.endsWith('%')) {
+                // Percent-of-balance sell; leave as-is for downstream interpretation.
+                opts.sell = raw;
+            } else {
+                // Numeric amount sell is allowed; leave as-is.
+                opts.sell = raw;
+            }
+        }
+
+        // Buy semantics: "<percent>%" = percent of SOL balance; numeric = SOL amount
+        if (hasBuy) {
+            const raw = String(opts.buy).trim();
+            if (raw.endsWith('%')) {
+                // Percent-of-SOL-balance buy; leave as-is for downstream interpretation.
+                opts.buy = raw;
+            } else {
+                // Numeric amount buy is allowed; leave as-is.
+                opts.buy = raw;
+            }
+        }
+
         try {
             const tradeCli = require('./lib/cli/trade');
             if (typeof tradeCli !== 'function') {
@@ -513,7 +561,7 @@ program
             process.exit(0);
         } catch (err) {
             const msg = err && err.message ? err.message : err;
-            logger.error(`[scoundrel] ❌ trade failed: ${msg}`);
+            logger.error(`[scoundrel] ❌ swap failed: ${msg}`);
             if (err && err.stack && logger.debug) {
                 logger.debug(err.stack);
             }
