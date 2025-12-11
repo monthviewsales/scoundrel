@@ -5,7 +5,6 @@ module.exports = {
   collectCoverage: !!process.env.COVERAGE,
   collectCoverageFrom: [
     'lib/**/*.js',
-    'commands/**/*.js',
     'ai/**/*.js',
     'db/**/*.js',
     '!**/__tests__/**',

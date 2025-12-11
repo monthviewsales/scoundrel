@@ -24,7 +24,6 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 
 ## Key directories
 - `index.js` – CLI wiring + help text; keep new commands here consistent with Commander patterns.
-- `commands/` – standalone command handlers (e.g., `warchest.js`).
 - `lib/` – processors (`dossier.js`, `autopsy.js`, `ask.js`, `tuneStrategy.js`), SolanaTracker data/RPC helpers, persistence, logging, ID issuance.
 - `ai/` – OpenAI client, structured-output jobs, and JSON schemas.
 - `profiles/` (generated) – saved dossiers/autopsies; used by `ask`.
