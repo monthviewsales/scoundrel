@@ -1378,7 +1378,7 @@ function upsertCoinRisk(mint, risk) {
 
   const now = Date.now();
 
-  const rugged = Boolean(risk.rugged);
+  const rugged = risk.rugged ? 1 : 0;
   const riskScore = Number.isFinite(risk.score) ? Number(risk.score) : null;
 
   const snipers = risk.snipers || {};
