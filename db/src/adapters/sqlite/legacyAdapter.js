@@ -3526,7 +3526,7 @@ BootyBox.init = async (options = {}) => {
   defaultWalletPublicKey =
     options.publicKey || options.wallet || options.defaultWallet || null;
   setDefaultWalletPublicKey(defaultWalletPublicKey);
-  logger.info("[BootyBox] SQLite database ready");
+  logger.debug("[BootyBox] SQLite database ready");
 };
 
 BootyBox.engine = "sqlite";
