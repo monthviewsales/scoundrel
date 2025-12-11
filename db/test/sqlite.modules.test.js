@@ -143,9 +143,90 @@ describe('trading submodule', () => {
     expect(adapter.getTradeUuid('mint-trade')).toBeNull();
 
     adapter.markPendingSwap('mint-trade');
+    expect(adapter.getPendingSwapCount()).toBe(1);
     expect(adapter.isSwapPending('mint-trade')).toBe(true);
+    adapter.markPendingSwap('mint-trade', 'wallet-a');
+    expect(adapter.isSwapPending('mint-trade', 'wallet-a')).toBe(true);
+    expect(adapter.getPendingSwapCount()).toBe(2);
+    expect(adapter.isSwapPending('mint-trade', 'wallet-b')).toBe(false);
     adapter.clearPendingSwap('mint-trade');
     expect(adapter.isSwapPending('mint-trade')).toBe(false);
+    expect(adapter.getPendingSwapCount()).toBe(1);
+    adapter.clearPendingSwap('mint-trade', 'wallet-a');
+    expect(adapter.getPendingSwapCount()).toBe(0);
+  });
+
+  test('recordScTradeEvent preserves swap pricing data when duplicates omit fields', () => {
+    const txid = 'tx123';
+    const walletId = 42;
+    const baseEvent = {
+      txid,
+      walletId,
+      walletAlias: 'primary',
+      coinMint: 'mint-xyz',
+      side: 'buy',
+      executedAt: Date.now(),
+      tokenAmount: 1000,
+      solAmount: -0.25,
+      tradeUuid: 'trade-1',
+      strategyId: 'strat-1',
+      strategyName: 'Strat One',
+      priceSolPerToken: 0.00025,
+      priceUsdPerToken: 0.05,
+      solUsdPrice: 200,
+      feesSol: 0.0005,
+      feesUsd: 0.1,
+      slippagePct: 0.5,
+      priceImpactPct: 0.2,
+      program: 'swapEngine',
+      evaluationPayload: { foo: 'bar' },
+      decisionPayload: { bar: 'baz' },
+      decisionLabel: 'buy',
+      decisionReason: 'quote_approved',
+    };
+
+    adapter.recordScTradeEvent(baseEvent);
+    let row = context.db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(txid);
+
+    expect(row.price_sol_per_token).toBeCloseTo(baseEvent.priceSolPerToken);
+    expect(row.price_usd_per_token).toBeCloseTo(baseEvent.priceUsdPerToken);
+    expect(row.sol_usd_price).toBeCloseTo(baseEvent.solUsdPrice);
+    expect(row.fees_usd).toBeCloseTo(baseEvent.feesUsd);
+    expect(row.wallet_alias).toBe('primary');
+
+    adapter.recordScTradeEvent({
+      txid,
+      walletId,
+      coinMint: 'mint-xyz',
+      side: 'buy',
+      executedAt: baseEvent.executedAt + 1000,
+      tokenAmount: 1000,
+      solAmount: -0.25,
+      tradeUuid: null,
+      strategyId: null,
+      strategyName: null,
+      priceSolPerToken: null,
+      priceUsdPerToken: null,
+      solUsdPrice: null,
+      feesSol: null,
+      feesUsd: null,
+      slippagePct: null,
+      priceImpactPct: null,
+      program: null,
+      evaluationPayload: null,
+      decisionPayload: null,
+      decisionLabel: null,
+      decisionReason: null,
+    });
+
+    row = context.db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(txid);
+    expect(row.price_sol_per_token).toBeCloseTo(baseEvent.priceSolPerToken);
+    expect(row.price_usd_per_token).toBeCloseTo(baseEvent.priceUsdPerToken);
+    expect(row.sol_usd_price).toBeCloseTo(baseEvent.solUsdPrice);
+    expect(row.fees_usd).toBeCloseTo(baseEvent.feesUsd);
+    expect(row.wallet_alias).toBe('primary');
+    expect(row.decision_label).toBe('buy');
+    expect(row.decision_reason).toBe('quote_approved');
   });
 });
 

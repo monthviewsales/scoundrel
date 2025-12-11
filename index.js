@@ -429,7 +429,7 @@ program
     .argument('[configKey]', 'Config key for -c set (e.g., rpcUrl, swapAPIKey)')
     .argument('[configValue]', 'Config value for -c set')
     .description('Execute a token swap via the SolanaTracker swap API or manage swap configuration')
-    .requiredOption(
+    .option(
         '-w, --wallet <aliasOrAddress>',
         'Wallet alias or address from the wallet registry (ignored when using -c/--config)'
     )

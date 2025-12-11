@@ -1,1 +1,0 @@
-The /commands directory contains modules used in the CLI.

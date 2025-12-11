@@ -18,6 +18,12 @@ const {
 let dbClosed = false;
 let defaultWalletPublicKey = getDefaultWalletPublicKey();
 
+function toFiniteOrNull(value) {
+  if (value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
 // ==== Scoundrel/wallet-profile helpers ====
 function mapWalletRow(row) {
   if (!row) return null;
@@ -1002,29 +1008,15 @@ function recordScTradeEvent(event) {
   const strategyId = event.strategyId || null;
   const strategyName = event.strategyName || null;
 
-  const priceSolPerToken = Number.isFinite(Number(event.priceSolPerToken))
-    ? Number(event.priceSolPerToken)
-    : null;
-  const priceUsdPerToken = Number.isFinite(Number(event.priceUsdPerToken))
-    ? Number(event.priceUsdPerToken)
-    : null;
-  const solUsdPrice = Number.isFinite(Number(event.solUsdPrice))
-    ? Number(event.solUsdPrice)
-    : null;
+  const priceSolPerToken = toFiniteOrNull(event.priceSolPerToken);
+  const priceUsdPerToken = toFiniteOrNull(event.priceUsdPerToken);
+  const solUsdPrice = toFiniteOrNull(event.solUsdPrice);
 
-  const feesSol = Number.isFinite(Number(event.feesSol))
-    ? Number(event.feesSol)
-    : null;
-  const feesUsd = Number.isFinite(Number(event.feesUsd))
-    ? Number(event.feesUsd)
-    : null;
+  const feesSol = toFiniteOrNull(event.feesSol);
+  const feesUsd = toFiniteOrNull(event.feesUsd);
 
-  const slippagePct = Number.isFinite(Number(event.slippagePct))
-    ? Number(event.slippagePct)
-    : null;
-  const priceImpactPct = Number.isFinite(Number(event.priceImpactPct))
-    ? Number(event.priceImpactPct)
-    : null;
+  const slippagePct = toFiniteOrNull(event.slippagePct);
+  const priceImpactPct = toFiniteOrNull(event.priceImpactPct);
 
   const program = event.program || null;
 
@@ -1097,27 +1089,42 @@ function recordScTradeEvent(event) {
      )
      ON CONFLICT(txid) DO UPDATE SET
        wallet_id = excluded.wallet_id,
-       wallet_alias = excluded.wallet_alias,
+       wallet_alias = COALESCE(excluded.wallet_alias, wallet_alias),
        coin_mint = excluded.coin_mint,
        side = excluded.side,
        executed_at = excluded.executed_at,
        token_amount = excluded.token_amount,
        sol_amount = excluded.sol_amount,
-       trade_uuid = excluded.trade_uuid,
-       strategy_id = excluded.strategy_id,
-       strategy_name = excluded.strategy_name,
-       price_sol_per_token = excluded.price_sol_per_token,
-       price_usd_per_token = excluded.price_usd_per_token,
-       sol_usd_price = excluded.sol_usd_price,
-       fees_sol = excluded.fees_sol,
-       fees_usd = excluded.fees_usd,
-       slippage_pct = excluded.slippage_pct,
-       price_impact_pct = excluded.price_impact_pct,
-       program = excluded.program,
-       evaluation_payload = excluded.evaluation_payload,
-       decision_payload = excluded.decision_payload,
-       decision_label = excluded.decision_label,
-       decision_reason = excluded.decision_reason,
+       trade_uuid = COALESCE(excluded.trade_uuid, trade_uuid),
+       strategy_id = COALESCE(excluded.strategy_id, strategy_id),
+       strategy_name = COALESCE(excluded.strategy_name, strategy_name),
+       price_sol_per_token = CASE
+         WHEN excluded.price_sol_per_token IS NULL THEN price_sol_per_token
+         ELSE excluded.price_sol_per_token
+       END,
+       price_usd_per_token = CASE
+         WHEN excluded.price_usd_per_token IS NULL THEN price_usd_per_token
+         ELSE excluded.price_usd_per_token
+       END,
+       sol_usd_price = CASE
+         WHEN excluded.sol_usd_price IS NULL THEN sol_usd_price
+         ELSE excluded.sol_usd_price
+       END,
+       fees_sol = CASE
+         WHEN excluded.fees_sol IS NULL THEN fees_sol
+         ELSE excluded.fees_sol
+       END,
+       fees_usd = CASE
+         WHEN excluded.fees_usd IS NULL THEN fees_usd
+         ELSE excluded.fees_usd
+       END,
+       slippage_pct = COALESCE(excluded.slippage_pct, slippage_pct),
+       price_impact_pct = COALESCE(excluded.price_impact_pct, price_impact_pct),
+       program = COALESCE(excluded.program, program),
+       evaluation_payload = COALESCE(excluded.evaluation_payload, evaluation_payload),
+       decision_payload = COALESCE(excluded.decision_payload, decision_payload),
+       decision_label = COALESCE(excluded.decision_label, decision_label),
+       decision_reason = COALESCE(excluded.decision_reason, decision_reason),
        updated_at = excluded.updated_at`
   ).run({
     txid,
@@ -1146,6 +1153,34 @@ function recordScTradeEvent(event) {
     created_at: now,
     updated_at: now,
   });
+}
+
+function derivePriceSolPerToken(event, tokenAmount) {
+  const explicit = Number.isFinite(Number(event.priceSolPerToken))
+    ? Number(event.priceSolPerToken)
+    : null;
+  if (explicit && explicit > 0) return explicit;
+  const solAmount = Number.isFinite(Number(event.solAmount))
+    ? Math.abs(Number(event.solAmount))
+    : null;
+  if (solAmount != null && tokenAmount > 0) {
+    return solAmount / tokenAmount;
+  }
+  return null;
+}
+
+function derivePriceUsdPerToken(event, priceSolPerToken) {
+  const explicit = Number.isFinite(Number(event.priceUsdPerToken))
+    ? Number(event.priceUsdPerToken)
+    : null;
+  if (explicit && explicit > 0) return explicit;
+  const solUsdPrice = Number.isFinite(Number(event.solUsdPrice))
+    ? Number(event.solUsdPrice)
+    : null;
+  if (solUsdPrice != null && priceSolPerToken != null && priceSolPerToken > 0) {
+    return solUsdPrice * priceSolPerToken;
+  }
+  return null;
 }
 
 function applyScTradeEventToPositions(event) {
@@ -1180,6 +1215,8 @@ function applyScTradeEventToPositions(event) {
   }
 
   const now = Date.now();
+  const priceSolPerToken = derivePriceSolPerToken(event, tokenAmount);
+  const priceUsdPerToken = derivePriceUsdPerToken(event, priceSolPerToken);
 
   // Select existing position for this wallet/mint (and trade_uuid if provided).
   let selectSql =
@@ -1218,11 +1255,16 @@ function applyScTradeEventToPositions(event) {
          closed_at,
          last_trade_at,
          last_updated_at,
+         entry_token_amount,
          current_token_amount,
          total_tokens_bought,
          total_tokens_sold,
          strategy_id,
-         strategy_name
+         strategy_name,
+         entry_price_sol,
+         entry_price_usd,
+         last_price_sol,
+         last_price_usd
        ) VALUES (
          @wallet_id,
          @wallet_alias,
@@ -1232,11 +1274,16 @@ function applyScTradeEventToPositions(event) {
          @closed_at,
          @last_trade_at,
          @last_updated_at,
+         @entry_token_amount,
          @current_token_amount,
          @total_tokens_bought,
          @total_tokens_sold,
          @strategy_id,
-         @strategy_name
+         @strategy_name,
+         @entry_price_sol,
+         @entry_price_usd,
+         @last_price_sol,
+         @last_price_usd
        )`
     ).run({
       wallet_id: walletId,
@@ -1247,11 +1294,16 @@ function applyScTradeEventToPositions(event) {
       closed_at: null,
       last_trade_at: executedAt,
       last_updated_at: now,
+      entry_token_amount: currentTokenAmount,
       current_token_amount: currentTokenAmount,
       total_tokens_bought: totalTokensBought,
       total_tokens_sold: totalTokensSold,
       strategy_id: event.strategyId || null,
       strategy_name: event.strategyName || null,
+      entry_price_sol: priceSolPerToken,
+      entry_price_usd: priceUsdPerToken,
+      last_price_sol: priceSolPerToken,
+      last_price_usd: priceUsdPerToken,
     });
     return;
   }
@@ -1275,32 +1327,49 @@ function applyScTradeEventToPositions(event) {
 
   const closedAt = nextCurrent <= 0 ? executedAt : existing.closed_at || null;
 
-db.prepare(
-  `UPDATE sc_positions SET
-     wallet_alias = COALESCE(@wallet_alias, wallet_alias),
-     trade_uuid = COALESCE(@trade_uuid, trade_uuid),
-     last_trade_at = @last_trade_at,
-     last_updated_at = @last_updated_at,
-     current_token_amount = @current_token_amount,
-     total_tokens_bought = @total_tokens_bought,
-     total_tokens_sold = @total_tokens_sold,
-     strategy_id = COALESCE(@strategy_id, strategy_id),
-     strategy_name = COALESCE(@strategy_name, strategy_name),
-     closed_at = @closed_at
-   WHERE position_id = @position_id`
-).run({
-  position_id: existing.position_id,
-  wallet_alias: walletAlias,
-  trade_uuid: tradeUuid,
-  last_trade_at: executedAt,
-  last_updated_at: now,
-  current_token_amount: nextCurrent,
-  total_tokens_bought: nextBought,
-  total_tokens_sold: nextSold,
-  strategy_id: event.strategyId || null,
-  strategy_name: event.strategyName || null,
-  closed_at: closedAt,
-});
+  const entryTokenFallback =
+    Number(existing.entry_token_amount) > 0 ? existing.entry_token_amount : nextBought;
+  const entryPriceSolFallback =
+    Number(existing.entry_price_sol) > 0 ? existing.entry_price_sol : priceSolPerToken;
+  const entryPriceUsdFallback =
+    Number(existing.entry_price_usd) > 0 ? existing.entry_price_usd : priceUsdPerToken;
+
+  db.prepare(
+    `UPDATE sc_positions SET
+       wallet_alias = COALESCE(@wallet_alias, wallet_alias),
+       trade_uuid = COALESCE(@trade_uuid, trade_uuid),
+       last_trade_at = @last_trade_at,
+       last_updated_at = @last_updated_at,
+       current_token_amount = @current_token_amount,
+       total_tokens_bought = @total_tokens_bought,
+       total_tokens_sold = @total_tokens_sold,
+       strategy_id = COALESCE(@strategy_id, strategy_id),
+       strategy_name = COALESCE(@strategy_name, strategy_name),
+       closed_at = @closed_at,
+       entry_token_amount = COALESCE(entry_token_amount, @entry_token_amount),
+       entry_price_sol = COALESCE(entry_price_sol, @entry_price_sol),
+       entry_price_usd = COALESCE(entry_price_usd, @entry_price_usd),
+       last_price_sol = COALESCE(@last_price_sol, last_price_sol),
+       last_price_usd = COALESCE(@last_price_usd, last_price_usd)
+     WHERE position_id = @position_id`
+  ).run({
+    position_id: existing.position_id,
+    wallet_alias: walletAlias,
+    trade_uuid: tradeUuid,
+    last_trade_at: executedAt,
+    last_updated_at: now,
+    current_token_amount: nextCurrent,
+    total_tokens_bought: nextBought,
+    total_tokens_sold: nextSold,
+    strategy_id: event.strategyId || null,
+    strategy_name: event.strategyName || null,
+    closed_at: closedAt,
+    entry_token_amount: entryTokenFallback,
+    entry_price_sol: entryPriceSolFallback,
+    entry_price_usd: entryPriceUsdFallback,
+    last_price_sol: priceSolPerToken,
+    last_price_usd: priceUsdPerToken,
+  });
 }
 
 // === Helper upsert functions for risk and events ===
@@ -1309,7 +1378,7 @@ function upsertCoinRisk(mint, risk) {
 
   const now = Date.now();
 
-  const rugged = Boolean(risk.rugged);
+  const rugged = risk.rugged ? 1 : 0;
   const riskScore = Number.isFinite(risk.score) ? Number(risk.score) : null;
 
   const snipers = risk.snipers || {};
@@ -2948,16 +3017,38 @@ const BootyBox = {
    * Marks a swap as pending to prevent overbuying before confirmation.
    * @param {string} mint - The mint of the coin being bought.
    */
-  markPendingSwap(mint) {
-    pendingSwaps.add(mint);
+  markPendingSwap(mint, walletKey) {
+    const normalizedMint = typeof mint === "string" ? mint.trim() : "";
+    if (!normalizedMint) return;
+    const key =
+      walletKey && typeof walletKey === "string" && walletKey.trim()
+        ? walletKey.trim()
+        : "__global__";
+    let set = pendingSwaps.get(normalizedMint);
+    if (!set) {
+      set = new Set();
+      pendingSwaps.set(normalizedMint, set);
+    }
+    set.add(key);
   },
 
   /**
    * Clears a pending swap once confirmed or failed.
    * @param {string} mint - The mint of the coin that was processed.
    */
-  clearPendingSwap(mint) {
-    pendingSwaps.delete(mint);
+  clearPendingSwap(mint, walletKey) {
+    const normalizedMint = typeof mint === "string" ? mint.trim() : "";
+    if (!normalizedMint) return;
+    const key =
+      walletKey && typeof walletKey === "string" && walletKey.trim()
+        ? walletKey.trim()
+        : "__global__";
+    const set = pendingSwaps.get(normalizedMint);
+    if (!set) return;
+    set.delete(key);
+    if (set.size === 0) {
+      pendingSwaps.delete(normalizedMint);
+    }
   },
 
   /**
@@ -2965,7 +3056,11 @@ const BootyBox = {
    * @returns {number} The count of currently pending swaps.
    */
   getPendingSwapCount() {
-    return pendingSwaps.size;
+    let count = 0;
+    pendingSwaps.forEach((set) => {
+      count += set.size;
+    });
+    return count;
   },
 
   /**
@@ -2974,8 +3069,16 @@ const BootyBox = {
    * @param {string} mint
    * @returns {boolean}
    */
-  isSwapPending(mint) {
-    return pendingSwaps.has(mint);
+  isSwapPending(mint, walletKey) {
+    const normalizedMint = typeof mint === "string" ? mint.trim() : "";
+    if (!normalizedMint) return false;
+    const key =
+      walletKey && typeof walletKey === "string" && walletKey.trim()
+        ? walletKey.trim()
+        : "__global__";
+    const set = pendingSwaps.get(normalizedMint);
+    if (!set) return false;
+    return set.has(key);
   },
 
   /**
@@ -3098,11 +3201,22 @@ const BootyBox = {
       };
     }
 
+    const pendingSwapCount = Array.from(pendingSwaps.values()).reduce(
+      (total, wallets) => total + wallets.size,
+      0
+    );
+    const pendingSwapMints = Array.from(pendingSwaps.entries()).map(
+      ([mint, wallets]) => ({
+        mint,
+        wallets: Array.from(wallets),
+      })
+    );
+
     return {
       coinCount: coinCountRow?.count || 0,
       openPositions: openPositionsRow?.count || 0,
-      pendingSwapCount: pendingSwaps.size,
-      pendingSwapMints: Array.from(pendingSwaps),
+      pendingSwapCount,
+      pendingSwapMints,
       recentEvaluationCount,
       evaluationLookbackMs:
         evaluationLookbackMs > 0 ? evaluationLookbackMs : null,
@@ -3412,7 +3526,7 @@ BootyBox.init = async (options = {}) => {
   defaultWalletPublicKey =
     options.publicKey || options.wallet || options.defaultWallet || null;
   setDefaultWalletPublicKey(defaultWalletPublicKey);
-  logger.info("[BootyBox] SQLite database ready");
+  logger.debug("[BootyBox] SQLite database ready");
 };
 
 BootyBox.engine = "sqlite";
