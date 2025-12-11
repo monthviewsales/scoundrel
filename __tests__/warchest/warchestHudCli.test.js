@@ -54,7 +54,7 @@ describe('warchest HUD CLI', () => {
       'lib',
       'warchest',
       'workers',
-      'warchestHudWorker.js',
+      'warchestService.js',
     );
 
     await hud({ walletSpecs });
