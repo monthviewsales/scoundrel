@@ -11,6 +11,7 @@ const { Keypair } = require('@solana/web3.js');
 
 const workerPath = path.join(__dirname, '..', '..', '..', 'lib', 'warchest', 'workers', 'swapWorker.js');
 const mockExecutor = path.join(__dirname, '..', '..', 'fixtures', 'warchest', 'mockSwapExecutor.js');
+const monitorWorker = path.join(__dirname, '..', '..', 'fixtures', 'warchest', 'mockTxMonitorWorker.js');
 
 process.env.SWAP_WORKER_EXECUTOR = mockExecutor;
 
@@ -40,13 +41,21 @@ describe('swap worker payload validation', () => {
       slippagePercent: 5,
       priorityFee: 'auto',
       useJito: true,
+      priorityFeeLevel: 'medium',
+      txVersion: 'legacy',
+      showQuoteDetails: 'true',
+      debugLogging: 1,
       dryRun: true,
     });
 
     expect(payload.amount).toBe('50%');
     expect(payload.slippagePercent).toBe(5);
     expect(payload.priorityFee).toBe('auto');
+    expect(payload.priorityFeeLevel).toBe('medium');
+    expect(payload.txVersion).toBe('legacy');
     expect(payload.useJito).toBe(true);
+    expect(payload.showQuoteDetails).toBe(true);
+    expect(payload.debugLogging).toBe(true);
     expect(payload.dryRun).toBe(true);
   });
 });
@@ -67,6 +76,7 @@ describe('swap worker IPC forwarding', () => {
       env: {
         SWAP_WORKER_EXECUTOR: mockExecutor,
         SWAP_WORKER_TEST_LOG: logPath,
+        TX_MONITOR_WORKER_PATH: monitorWorker,
       },
       timeoutMs: 5000,
     });
