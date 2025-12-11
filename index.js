@@ -24,7 +24,7 @@ const {
     loadLatestJson,
     normalizeTraderAlias,
 } = require('./lib/persist/jsonArtifacts');
-const warchestModule = require('./lib/cli/warchestCli');
+const warchestModule = require('./lib/cli/walletCli');
 const warchestService = require('./lib/cli/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
@@ -608,26 +608,26 @@ Notes:
     });
     
 program
-    .command('warchest')
-    .description('Manage your Scoundrel warchest wallet registry')
+    .command('wallet')
+    .description('Manage your Scoundrel wallet registry')
     .argument('[subcommand]', 'add|list|remove|set-color')
     .argument('[arg1]', 'First argument for subcommand (e.g., alias)')
     .argument('[arg2]', 'Second argument for subcommand (e.g., color)')
     .option('-s, --solo', 'Select a single wallet interactively (registry-only for now)')
     .addHelpText('after', `
 Examples:
-  $ scoundrel warchest add
-  $ scoundrel warchest list
-  $ scoundrel warchest remove sampleWallet
-  $ scoundrel warchest set-color sampleWallet cyan
-  $ scoundrel warchest -solo
+  $ scoundrel wallet add
+  $ scoundrel wallet list
+  $ scoundrel wallet remove sampleWallet
+  $ scoundrel wallet set-color sampleWallet cyan
+  $ scoundrel wallet -solo
 `)
     .action(async (subcommand, arg1, arg2, cmd) => {
         const args = [];
 
         const opts = cmd.opts ? cmd.opts() : {};
         if (opts.solo) {
-            // warchest CLI expects "-solo" or "--solo" in argv
+            // wallet CLI expects "-solo" or "--solo" in argv
             args.push('-solo');
         }
 
@@ -641,7 +641,7 @@ Examples:
             }
             await warchestRun(args);
         } catch (err) {
-            logger.error('[scoundrel] ❌ warchest command failed:', err?.message || err);
+            logger.error('[scoundrel] ❌ wallet command failed:', err?.message || err);
             process.exitCode = 1;
         } finally {
             try {
