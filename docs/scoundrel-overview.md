@@ -13,18 +13,17 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 - `dossier <wallet>` – harvest + build a profile via `ai/jobs/walletAnalysis.js`; supports `--resend` to rerun the last merged payload without re-harvesting.
 - `autopsy` – interactive; pick a wallet + mint to run the `tradeAutopsy` job and save JSON to `./profiles/autopsy-*.json`.
 - `ask -q <text> [-n <alias>]` – Q&A against `./profiles/<alias>.json`.
-- `warchest [add|list|remove|set-color]` – manage the local wallet registry stored via BootyBox.
+- `warchest [add|list|remove|set-color|options]` – manage the local wallet registry stored via BootyBox.
 - `test` – environment + dependency sanity check (no Jest).
 
 ## Data & AI flow
 1) `lib/solanaTrackerDataClient.js` binds the official `@solana-tracker/data-api` SDK to per-endpoint helpers under `lib/solanaTrackerData/methods/` (each with Jest coverage). RPC helpers live under `lib/solana/rpcMethods/` when raw RPC access is needed.
 2) Harvesters (e.g., `lib/dossier.js`, `lib/autopsy.js`) gather trades, OHLCV, metadata, and assemble merged payloads under `./data/dossier/<alias>/` and `./data/autopsy/<wallet>/<mint>/`.
 3) AI jobs in `ai/jobs/*.js` call `ai/client.js` (Responses API) with strict schemas from `ai/schemas/`; parsed output writes to `./profiles/` and, when configured, to MySQL via BootyBox.
-4) DB access is centralized through the `packages/BootyBox` submodule (adapter chosen via `DB_ENGINE`, default sqlite); higher-level persistors sit in `lib/persist/`.
+4) DB access is centralized through the `db` submodule (adapter chosen via `DB_ENGINE`, default sqlite); higher-level persistors sit in `lib/persist/`.
 
 ## Key directories
 - `index.js` – CLI wiring + help text; keep new commands here consistent with Commander patterns.
-- `commands/` – standalone command handlers (e.g., `warchest.js`).
 - `lib/` – processors (`dossier.js`, `autopsy.js`, `ask.js`, `tuneStrategy.js`), SolanaTracker data/RPC helpers, persistence, logging, ID issuance.
 - `ai/` – OpenAI client, structured-output jobs, and JSON schemas.
 - `profiles/` (generated) – saved dossiers/autopsies; used by `ask`.

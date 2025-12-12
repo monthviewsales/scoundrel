@@ -1,6 +1,6 @@
 'use strict';
 
-const { callResponses, parseResponsesJSON, log } = require('../client');
+const defaultClient = require('../client');
 const tradeAutopsySchema = require('../schemas/trade_autopsy_v2.schema.json');
 
 const SYSTEM = [
@@ -30,28 +30,45 @@ const SYSTEM = [
 const RESPONSE_SCHEMA = tradeAutopsySchema;
 
 /**
- * Run the trade autopsy Responses job.
- *
- * @param {{ payload: Object, model?: string }} params
- * @returns {Promise<Object>}
+ * Create a trade autopsy runner bound to a specific AI client.
+ * @param {{ callResponses: Function, parseResponsesJSON: Function, log: { debug: Function } }} client
+ * @returns {{ analyzeTradeAutopsy: (args: { payload: Object, model?: string }) => Promise<Object> }}
  */
-async function analyzeTradeAutopsy({ payload, model }) {
-  if (!payload) {
-    throw new Error('[tradeAutopsy] missing payload');
+function createTradeAutopsy(client) {
+  const { callResponses, parseResponsesJSON, log } = client || defaultClient;
+
+  /**
+   * Run the trade autopsy Responses job.
+   *
+   * @param {{ payload: Object, model?: string }} params
+   * @returns {Promise<Object>}
+   */
+  async function analyzeTradeAutopsy({ payload, model }) {
+    if (!payload) {
+      throw new Error('[tradeAutopsy] missing payload');
+    }
+
+    const res = await callResponses({
+      system: SYSTEM,
+      model,
+      name: 'trade_autopsy_v2_1',
+      schema: RESPONSE_SCHEMA,
+      user: { campaign: payload },
+      temperature: 0.2,
+    });
+
+    const out = parseResponsesJSON(res);
+    log.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 200));
+    return out;
   }
 
-  const res = await callResponses({
-    system: SYSTEM,
-    model,
-    name: 'trade_autopsy_v2_1',
-    schema: RESPONSE_SCHEMA,
-    user: { campaign: payload },
-    temperature: 0.2,
-  });
-
-  const out = parseResponsesJSON(res);
-  log.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 200));
-  return out;
+  return { analyzeTradeAutopsy };
 }
 
-module.exports = { analyzeTradeAutopsy };
+// Default instance using the shared client for convenience / backward compatibility.
+const { analyzeTradeAutopsy } = createTradeAutopsy(defaultClient);
+
+module.exports = {
+  createTradeAutopsy,
+  analyzeTradeAutopsy,
+};

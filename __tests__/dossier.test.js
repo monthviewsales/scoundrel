@@ -54,7 +54,7 @@ jest.mock('../lib/analysis/techniqueOutcomes', () => ({
 }));
 
 // Mock BootyBox so dossier does not try to initialize a real MySQL connection
-jest.mock('../packages/BootyBox', () => ({
+jest.mock('../db', () => ({
   init: jest.fn(),
   recordWalletDossier: jest.fn(),
   recordDossierRun: jest.fn(),

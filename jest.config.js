@@ -5,17 +5,13 @@ module.exports = {
   collectCoverage: !!process.env.COVERAGE,
   collectCoverageFrom: [
     'lib/**/*.js',
-    'commands/**/*.js',
     'ai/**/*.js',
+    'db/**/*.js',
     '!**/__tests__/**',
-    '!packages/**',
+    '!db/test/**',
     '!node_modules/**',
   ],
+  testPathIgnorePatterns: ['/__tests__/fixtures/'],
   coverageDirectory: 'artifacts/coverage',
   coverageReporters: ['text', 'lcov'],
-  moduleNameMapper: {
-    '^.*\/packages\/BootyBox$': '<rootDir>/__mocks__/BootyBox.js',
-    '^.*\/packages\/BootyBox/src/adapters/mysql$': '<rootDir>/__mocks__/BootyBoxMysqlAdapter.js',
-    '^.*\/packages\/BootyBox/src/adapters/sqlite$': '<rootDir>/__mocks__/BootyBoxSqliteAdapter.js',
-  },
 };

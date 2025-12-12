@@ -1,7 +1,7 @@
 'use strict';
 
 // ai/jobs/walletAnalysis.js
-const { callResponses, parseResponsesJSON, log } = require('../client');
+const defaultClient = require('../client');
 
 const SYSTEM = [
   // === Voice, audience & overall task ===
@@ -117,45 +117,62 @@ const RESPONSE_SCHEMA = {
 };
 
 /**
- * Run the wallet analysis Responses job and normalize the envelope.
- * @param {{ merged: Object, model?: string, purpose?: string }} params
- * @returns {Promise<{ version: string, markdown: string, operator_summary?: Object }>}
+ * Create a wallet analysis runner bound to a specific AI client.
+ * @param {{ callResponses: Function, parseResponsesJSON: Function, log: { debug: Function } }} client
+ * @returns {{ analyzeWallet: (args: { merged: Object, model?: string, purpose?: string }) => Promise<{ version: string, markdown: string, operator_summary?: Object }> }}
  */
-async function analyzeWallet({ merged, model, purpose }) {
-  if (!merged) {
-    throw new Error('[walletAnalysis] missing merged payload');
+function createWalletAnalysis(client) {
+  const { callResponses, parseResponsesJSON, log } = client || defaultClient;
+
+  /**
+   * Run the wallet analysis Responses job and normalize the envelope.
+   * @param {{ merged: Object, model?: string, purpose?: string }} params
+   * @returns {Promise<{ version: string, markdown: string, operator_summary?: Object }>}
+   */
+  async function analyzeWallet({ merged, model, purpose }) {
+    if (!merged) {
+      throw new Error('[walletAnalysis] missing merged payload');
+    }
+
+    const res = await callResponses({
+      system: SYSTEM,
+      model,
+      // temperature: 0.5,
+      top_p: 0.9,
+      // seed: 77,
+      // Provide a minimal JSON schema envelope expected by callResponses (schema mode)
+      name: 'dossier_freeform_v1',
+      schema: RESPONSE_SCHEMA,
+      // Pass the entire merged payload so the model can cite facts/examples freely
+      user: { merged }
+    });
+
+    let out;
+    try {
+      out = parseResponsesJSON(res);
+    } catch (e) {
+      // If the model returned raw markdown text, wrap it into the freeform envelope
+      const text = (res && typeof res === 'string') ? res : '';
+      out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
+    }
+
+    // If parsed but missing the expected envelope, wrap it
+    if (!out || typeof out !== 'object' || !out.markdown) {
+      const text = typeof out === 'string' ? out : JSON.stringify(out || {});
+      out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
+    }
+
+    log.debug('[walletAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
+    return out;
   }
 
-  const res = await callResponses({
-    system: SYSTEM,
-    model,
-    // temperature: 0.5,
-    top_p: 0.9,
-    // seed: 77,
-    // Provide a minimal JSON schema envelope expected by callResponses (schema mode)
-    name: 'dossier_freeform_v1',
-    schema: RESPONSE_SCHEMA,
-    // Pass the entire merged payload so the model can cite facts/examples freely
-    user: { merged }
-  });
-
-  let out;
-  try {
-    out = parseResponsesJSON(res);
-  } catch (e) {
-    // If the model returned raw markdown text, wrap it into the freeform envelope
-    const text = (res && typeof res === 'string') ? res : '';
-    out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
-  }
-
-  // If parsed but missing the expected envelope, wrap it
-  if (!out || typeof out !== 'object' || !out.markdown) {
-    const text = typeof out === 'string' ? out : JSON.stringify(out || {});
-    out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
-  }
-
-  log.debug('[walletAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
-  return out;
+  return { analyzeWallet };
 }
 
-module.exports = { analyzeWallet };
+// Default instance using the shared client for convenience / backward compatibility.
+const { analyzeWallet } = createWalletAnalysis(defaultClient);
+
+module.exports = {
+  createWalletAnalysis,
+  analyzeWallet
+};

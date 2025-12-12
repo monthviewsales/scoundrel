@@ -74,7 +74,7 @@ const mockAddCoin = jest.fn().mockResolvedValue();
 const mockUpsertProfile = jest.fn().mockResolvedValue();
 const mockRecordAutopsy = jest.fn().mockResolvedValue();
 
-jest.mock('../packages/BootyBox', () => ({
+jest.mock('../db', () => ({
   init: mockBootInit,
   getCoinByMint: mockGetCoin,
   addOrUpdateCoin: mockAddCoin,

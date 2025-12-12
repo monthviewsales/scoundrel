@@ -19,14 +19,14 @@ You have access to:
 
 - Code style:
   - **CommonJS** (`require`, `module.exports`), not ESM.
-  - Node 22.x, `mysql2`, `chalk`, `dotenv`, etc.
+  - Node 22.x, `better-sqlite3`, `chalk`, `dotenv`, etc.
   - Use **JSDoc** for public-facing functions.
   - Keep code **lint-friendly** (I use ESLint).
 - This repo **already has**:
   - `lib/solanaTrackerRPCClient.js` — wraps SolanaTracker RPC (HTTP + WebSocket) using `@solana/kit` (Anza).
-  - `lib/db/mysql.js` — MySQL2 connection/pool.
-  - `commands/warchest.js` — CLI command for the “warchest” wallet registry.
-  - `scripts/warchestHudWorker.js` — long-running wallet HUD (we just built this; it currently calls `createSolanaTrackerRPCClient()` and tries to use `rpc.getBalance()` directly).
+  - `db` — MySQL2 connection/pool.
+  - `lib/cli/warchestCli.js` — CLI command for the “warchest” wallet registry.
+  - `scripts/warchestService.js` — long-running wallet HUD (we just built this; it currently calls `createSolanaTrackerRPCClient()` and tries to use `rpc.getBalance()` directly).
 - Do **not** rip out or reinvent my connection logic.  
   Build **on top** of `createSolanaTrackerRPCClient()`.
 
@@ -49,12 +49,12 @@ Before you change anything, open and read:
      - How `rpcSubs` (WebSocket subscriptions) is created.
      - What `createSolanaTrackerRPCClient()` returns.
      - How logging and AbortControllers are handled.
-2. `scripts/warchestHudWorker.js`
+2. `scripts/warchestService.js`
    - Understand:
      - How it calls `createSolanaTrackerRPCClient()`.
      - How it currently uses `rpc` in `fetchSolBalance` / `refreshAllSolBalances`.
      - The `WalletState` structure, especially `startSolBalance`, `solBalance`, `solDelta`.
-3. (Optional but useful) `commands/warchest.js` and `index.js`
+3. (Optional but useful) `lib/cli/warchestCli.js` and `index.js`
    - To get a sense of CLI patterns and how this HUD worker will eventually be launched.
 
 Do **not** start coding until you understand how those pieces fit.
@@ -239,7 +239,7 @@ The initial implementation can be minimal but **must** respect the documented pa
 
 ## 5. Wire the HUD to use `rpcMethods`
 
-Update `scripts/warchestHudWorker.js` to use the new methods library instead of guessing RPC internals.
+Update `scripts/warchestService.js` to use the new methods library instead of guessing RPC internals.
 
 Steps:
 
@@ -340,7 +340,7 @@ At the end, a final “wire-up” commit can adjust HUD or other modules to cons
 
 - Summarize:
   - Files added (e.g., `lib/solana/rpcMethods/index.js`, etc.).
-  - Files modified (especially `scripts/warchestHudWorker.js`).
+  - Files modified (especially `scripts/warchestService.js`).
   - The public API of `createRpcMethods` (list all methods and their signatures).
 - Call out any assumptions you had to make about the SolanaTracker client shape.
 - Confirm that:

@@ -12,7 +12,7 @@ const {
 } = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
-const BootyBox = require('./packages/BootyBox');
+const BootyBox = require('./db');
 const { requestId } = require('./lib/id/issuer');
 const util = require('util');
 const readline = require('readline/promises');
@@ -24,7 +24,7 @@ const {
     loadLatestJson,
     normalizeTraderAlias,
 } = require('./lib/persist/jsonArtifacts');
-const warchestModule = require('./commands/warchest');
+const warchestModule = require('./lib/cli/walletCli');
 const warchestService = require('./lib/cli/warchest');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
@@ -130,7 +130,7 @@ program
     .version(resolveVersion());
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
-program.addHelpText('after', `\nDatabase env:\n  DB_ENGINE=mysql\n  DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_POOL_LIMIT (default 30)\n`);
+program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n  DB_ENGINE                  Optional legacy flag (sqlite only)\n`);
 
 program
     .command('research')
@@ -158,12 +158,21 @@ program
 
         const startTime = parseTs(opts.start);
         const endTime = parseTs(opts.end);
-        const traderName = opts.name || process.env.TEST_TRADER || null;
+        const cliTraderName = opts.name ? String(opts.name).trim() : null;
+        const traderName = cliTraderName || process.env.TEST_TRADER || null;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
 
+        if (cliTraderName) {
+            await walletsDomain.kol.ensureKolWallet({
+                walletAddress: walletId,
+                alias: cliTraderName,
+            });
+        }
+
+        logger.warn('[scoundrel] research is deprecated; use "scoundrel dossier --harvest-only" instead.');
         logger.info(`[scoundrel] Research starting for wallet ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
-            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, featureMintCount });
+            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, featureMintCount, runAnalysis: false });
             const count = (result && typeof result.count === 'number') ? result.count : 0;
             logger.info(`[scoundrel] ✅ harvested ${count} trades from ${walletId}`);
             process.exit(0);
@@ -185,8 +194,9 @@ program
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
+    .option('--harvest-only', 'Harvest trades + chart and write artifacts but skip AI + DB upsert')
     .option('-r, --resend', 'Resend the latest merged file for this trader (-n) to AI without re-harvesting data', false)
-    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n  --harvest-only            Harvest trades + chart and write artifacts but skip AI + DB upsert\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -203,12 +213,46 @@ program
 
         const startTime = parseTs(opts.start);
         const endTime = parseTs(opts.end);
-        const traderName = opts.name || process.env.TEST_TRADER || null;
+        const cliTraderName = opts.name ? String(opts.name).trim() : null;
+        const defaultTraderName = process.env.TEST_TRADER ? String(process.env.TEST_TRADER).trim() : null;
         const limit = opts.limit ? Number(opts.limit) : undefined;
         const featureMintCount = opts.featureMintCount ? Number(opts.featureMintCount) : undefined;
+        const harvestOnly = !!opts.harvestOnly;
+
+        let traderName = cliTraderName || null;
+        if (!cliTraderName && defaultTraderName) {
+            const rl = readline.createInterface({ input, output });
+            try {
+                const modeLabel = harvestOnly ? 'harvest-only (no AI run)' : 'full dossier (AI + DB)';
+                const answerRaw = await rl.question(
+                    `[scoundrel] No --name provided. Use default trader alias "${defaultTraderName}" for wallet ${walletId} in ${modeLabel} mode? [y/N] `
+                );
+                const answer = (answerRaw || '').trim().toLowerCase();
+                if (answer === 'y' || answer === 'yes') {
+                    traderName = defaultTraderName;
+                } else {
+                    logger.info('[scoundrel] Continuing without default trader alias; artifacts will be tagged by wallet only.');
+                }
+            } finally {
+                rl.close();
+            }
+        }
+
+        if (cliTraderName) {
+            await walletsDomain.kol.ensureKolWallet({
+                walletAddress: walletId,
+                alias: cliTraderName,
+            });
+        }
         const alias = normalizeTraderAlias(traderName, walletId);
 
-        logger.info(`[scoundrel] Dossier (simplified) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
+        // Disallow --resend with --harvest-only
+        if (opts.resend && harvestOnly) {
+            logger.error('[scoundrel] Cannot use --resend with --harvest-only; resend always runs AI.');
+            process.exit(1);
+        }
+
+        logger.info(`[scoundrel] Dossier (simplified${harvestOnly ? ', harvest-only' : ''}) for ${walletId}${traderName ? ` (trader: ${traderName})` : ''}…`);
         try {
             // ----- RESEND MODE: reuse latest merged payload and skip harvesting -----
             if (opts.resend) {
@@ -253,7 +297,17 @@ program
             // ----- END RESEND MODE -----
 
             // Single-pass: SolanaTracker fetches + merge + one OpenAI Responses call handled by harvestWallet
-            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount });
+            const runAnalysis = !harvestOnly;
+            const result = await harvestWallet({ wallet: walletId, traderName, startTime, endTime, limit, featureMintCount, runAnalysis });
+
+            // HARVEST-ONLY mode: skip AI and DB upsert, print summary and exit
+            if (harvestOnly) {
+                const count = (result && typeof result.count === 'number') ? result.count : 0;
+                logger.info(`[scoundrel] ✅ harvested ${count} trades (harvest-only) for ${walletId}`);
+                const baseDir = dossierBaseDir(alias);
+                logger.info(`[scoundrel] Artifacts written under ${baseDir}`);
+                process.exit(0);
+            }
 
             // Expect Responses output from harvest step
             if (!result || !result.openAiResult) {
@@ -298,29 +352,16 @@ program
     .action(async () => {
         const rl = readline.createInterface({ input, output });
         try {
-            const walletRows = await walletsDomain.registry.getAllWallets();
-            const options = walletRows.map((w, idx) => `${idx + 1}) ${w.alias} (${shortenPubkey(w.pubkey)})`);
-            options.push(`${walletRows.length + 1}) Other (enter address)`);
+            const selection = await walletsDomain.selection.selectWalletInteractively({
+                promptLabel: 'Which wallet?',
+                allowOther: true,
+                rl,
+            });
 
-            logger.info('Which wallet?');
-            options.forEach((opt) => logger.info(opt));
-            let choice = await rl.question('> ');
-            let walletLabel;
-            let walletAddress;
-
-            const numeric = Number(choice);
-            if (Number.isInteger(numeric) && numeric >= 1 && numeric <= walletRows.length) {
-                const selected = walletRows[numeric - 1];
-                walletLabel = selected.alias;
-                walletAddress = selected.pubkey;
-            } else {
-                if (!walletAddress) {
-                    walletAddress = choice && choice.trim() ? choice.trim() : null;
-                }
-                if (!walletAddress) {
-                    walletAddress = await rl.question('Enter wallet address:\n> ');
-                }
-                walletLabel = 'other';
+            let walletLabel = selection && selection.walletLabel ? selection.walletLabel : 'other';
+            let walletAddress = selection && selection.walletAddress ? selection.walletAddress.trim() : '';
+            if (!walletAddress) {
+                walletAddress = (await rl.question('Enter wallet address:\n> ')).trim();
             }
 
             let mint = await rl.question('Enter mint to trace:\n> ');
@@ -381,87 +422,135 @@ program
         }
     });
 
-// --- swap:config command ---
-const swapConfigCmd = program
-    .command('swap:config')
-    .description('Manage Scoundrel swap configuration (RPC, swap API key, slippage, etc.)')
-    .addHelpText('after', `
-Examples:
-  $ scoundrel swap:config view
-  $ scoundrel swap:config edit
-  $ scoundrel swap:config set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true
-  $ scoundrel swap:config set swapAPIKey YOUR_API_KEY
-`);
-
-swapConfigCmd
-    .command('view')
-    .description('Show current swap config')
-    .action(async () => {
-        try {
-            const configPath = getSwapConfigPath();
-            const cfg = await loadSwapConfig();
-
-            // Redact API key to avoid screen-share leaks
-            const redacted = { ...cfg };
-            if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
-                const tail = redacted.swapAPIKey.slice(-4);
-                redacted.swapAPIKey = `************${tail}`;
-            }
-
-            logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
-            logger.info(JSON.stringify(redacted, null, 2));
-        } catch (err) {
-            logger.error('[scoundrel:swap-config] ❌ failed to load config:', err?.message || err);
-            process.exitCode = 1;
-        }
-    });
-
-swapConfigCmd
-    .command('edit')
-    .description('Edit swap config in your $EDITOR')
-    .action(async () => {
-        try {
-            await editSwapConfig();
-        } catch (err) {
-            logger.error('[scoundrel:swap-config] ❌ failed to edit config:', err?.message || err);
-            process.exitCode = 1;
-        }
-    });
-
-swapConfigCmd
-    .command('set <key> <value>')
-    .description('Set a single swap config key')
-    .action(async (key, value) => {
-        try {
-            const configPath = getSwapConfigPath();
-            const cfg = await loadSwapConfig();
-            const numeric = Number(value);
-            const castValue = Number.isNaN(numeric) ? value : numeric;
-
-            cfg[key] = castValue;
-            await saveSwapConfig(cfg);
-
-            logger.info(`[scoundrel:swap-config] ✅ Updated ${key} → ${castValue} in ${configPath}`);
-        } catch (err) {
-            logger.error('[scoundrel:swap-config] ❌ failed to update config:', err?.message || err);
-            process.exitCode = 1;
-        }
-    });
-
-// --- trade command ---
+// --- swap command ---
 program
-    .command('trade')
-    .argument('<mint>', 'Token mint address to trade')
-    .description('Execute a token trade via the SolanaTracker swap API')
-    .requiredOption('-w, --wallet <aliasOrAddress>', 'Wallet alias or address from the warchest registry')
+    .command('swap')
+    .argument('[mintOrSubcommand]', 'Token mint address to swap, or config subcommand when used with -c')
+    .argument('[configKey]', 'Config key for -c set (e.g., rpcUrl, swapAPIKey)')
+    .argument('[configValue]', 'Config value for -c set')
+    .description('Execute a token swap via the SolanaTracker swap API or manage swap configuration')
+    .option(
+        '-w, --wallet <aliasOrAddress>',
+        'Wallet alias or address from the wallet registry (ignored when using -c/--config)'
+    )
     .option('-b, --buy <amount>', "Spend <amount> SOL (number or '<percent>%') to buy the token")
     .option('-s, --sell <amount>', "Sell <amount> of the token (number, 'auto', or '<percent>%')")
-    .option('--slippage <percent>', 'Override default slippage percent for this trade')
-    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use "auto")')
+    .option('--slippage <percent>', 'Override default slippage percent for this swap')
+    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use \"auto\")')
     .option('--jito', 'Use Jito-style priority fee routing when supported')
     .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel trade 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel trade 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n`)
-    .action(async (mint, opts) => {
+    .option('-c, --config', 'Manage swap configuration instead of executing a swap')
+    .addHelpText('after', `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n\n  # Manage swap configuration\n  $ scoundrel swap -c view\n  $ scoundrel swap -c edit\n  $ scoundrel swap -c set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true\n  $ scoundrel swap -c set swapAPIKey YOUR_API_KEY\n`)
+    .action(async (mintOrSubcommand, configKey, configValue, cmdOrOpts) => {
+        // Commander v14 may pass either (args..., options) or (args..., Command).
+        // If the last parameter has an .opts() function, treat it as the Command instance;
+        // otherwise assume it's already the plain options object.
+        const hasOptsMethod = cmdOrOpts && typeof cmdOrOpts.opts === 'function';
+        const opts = hasOptsMethod ? cmdOrOpts.opts() : (cmdOrOpts || {});
+
+        // Config mode (-c/--config): reuse the previous swap:config workflows
+        if (opts.config) {
+            const sub = mintOrSubcommand || 'view';
+
+            try {
+                if (sub === 'view') {
+                    const configPath = getSwapConfigPath();
+                    const cfg = await loadSwapConfig();
+
+                    // Redact API key to avoid screen-share leaks
+                    const redacted = { ...cfg };
+                    if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
+                        const tail = redacted.swapAPIKey.slice(-4);
+                        redacted.swapAPIKey = `************${tail}`;
+                    }
+
+                    logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
+                    logger.info(JSON.stringify(redacted, null, 2));
+                    return;
+                }
+
+                if (sub === 'edit') {
+                    await editSwapConfig();
+                    return;
+                }
+
+                if (sub === 'set') {
+                    if (!configKey || typeof configValue === 'undefined') {
+                        logger.error('[scoundrel:swap-config] Usage: scoundrel swap -c set <key> <value>');
+                        process.exitCode = 1;
+                        return;
+                    }
+
+                    const configPath = getSwapConfigPath();
+                    const cfg = await loadSwapConfig();
+                    const numeric = Number(configValue);
+                    const castValue = Number.isNaN(numeric) ? configValue : numeric;
+
+                    cfg[configKey] = castValue;
+                    await saveSwapConfig(cfg);
+
+                    logger.info(`[scoundrel:swap-config] ✅ Updated ${configKey} → ${castValue} in ${configPath}`);
+                    return;
+                }
+
+                logger.error(`[scoundrel:swap-config] Unknown config subcommand: ${sub}`);
+                process.exitCode = 1;
+                return;
+            } catch (err) {
+                logger.error('[scoundrel:swap-config] ❌ config operation failed:', err?.message || err);
+                process.exitCode = 1;
+                return;
+            }
+        }
+
+        // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/trade
+        const mint = mintOrSubcommand;
+        if (!mint) {
+            logger.error('[scoundrel] swap requires a mint when not using -c/--config.');
+            process.exit(1);
+        }
+
+        const hasBuy = !!opts.buy;
+        const hasSell = !!opts.sell;
+
+        if (!hasBuy && !hasSell) {
+            logger.error('[scoundrel] swap requires exactly one of -b/--buy or -s/--sell.');
+            process.exit(1);
+        }
+
+        if (hasBuy && hasSell) {
+            logger.error('[scoundrel] swap cannot use both -b/--buy and -s/--sell in the same command.');
+            process.exit(1);
+        }
+
+        // Sell semantics: auto = 100%, bare -s = 100%, "<percent>%" = percent of token balance
+        if (hasSell) {
+            const raw = String(opts.sell).trim();
+            if (!raw || raw.toLowerCase() === 'auto') {
+                // Treat as 100% panic dump; CLI passes a normalized flag for trade implementation.
+                opts.sell = '100%';
+                opts._panic = true;
+            } else if (raw.endsWith('%')) {
+                // Percent-of-balance sell; leave as-is for downstream interpretation.
+                opts.sell = raw;
+            } else {
+                // Numeric amount sell is allowed; leave as-is.
+                opts.sell = raw;
+            }
+        }
+
+        // Buy semantics: "<percent>%" = percent of SOL balance; numeric = SOL amount
+        if (hasBuy) {
+            const raw = String(opts.buy).trim();
+            if (raw.endsWith('%')) {
+                // Percent-of-SOL-balance buy; leave as-is for downstream interpretation.
+                opts.buy = raw;
+            } else {
+                // Numeric amount buy is allowed; leave as-is.
+                opts.buy = raw;
+            }
+        }
+
         try {
             const tradeCli = require('./lib/cli/trade');
             if (typeof tradeCli !== 'function') {
@@ -472,7 +561,7 @@ program
             process.exit(0);
         } catch (err) {
             const msg = err && err.message ? err.message : err;
-            logger.error(`[scoundrel] ❌ trade failed: ${msg}`);
+            logger.error(`[scoundrel] ❌ swap failed: ${msg}`);
             if (err && err.stack && logger.debug) {
                 logger.debug(err.stack);
             }
@@ -567,26 +656,26 @@ Notes:
     });
     
 program
-    .command('warchest')
-    .description('Manage your Scoundrel warchest wallet registry')
+    .command('wallet')
+    .description('Manage your Scoundrel wallet registry')
     .argument('[subcommand]', 'add|list|remove|set-color')
     .argument('[arg1]', 'First argument for subcommand (e.g., alias)')
     .argument('[arg2]', 'Second argument for subcommand (e.g., color)')
     .option('-s, --solo', 'Select a single wallet interactively (registry-only for now)')
     .addHelpText('after', `
 Examples:
-  $ scoundrel warchest add
-  $ scoundrel warchest list
-  $ scoundrel warchest remove warlord
-  $ scoundrel warchest set-color warlord cyan
-  $ scoundrel warchest -solo
+  $ scoundrel wallet add
+  $ scoundrel wallet list
+  $ scoundrel wallet remove sampleWallet
+  $ scoundrel wallet set-color sampleWallet cyan
+  $ scoundrel wallet -solo
 `)
     .action(async (subcommand, arg1, arg2, cmd) => {
         const args = [];
 
         const opts = cmd.opts ? cmd.opts() : {};
         if (opts.solo) {
-            // warchest CLI expects "-solo" or "--solo" in argv
+            // wallet CLI expects "-solo" or "--solo" in argv
             args.push('-solo');
         }
 
@@ -600,7 +689,7 @@ Examples:
             }
             await warchestRun(args);
         } catch (err) {
-            logger.error('[scoundrel] ❌ warchest command failed:', err?.message || err);
+            logger.error('[scoundrel] ❌ wallet command failed:', err?.message || err);
             process.exitCode = 1;
         } finally {
             try {
@@ -617,7 +706,7 @@ Examples:
 
 program
     .command('warchestd')
-    .description('Control the warchest daemon (start, stop, restart, or run a HUD session)')
+    .description('Run the warchest HUD follower or clean up legacy daemon artifacts')
     .argument('<action>', 'start|stop|restart|hud|status')
     .option(
         '--wallet <spec>',
@@ -627,25 +716,25 @@ program
             return previous.concat(value);
         }
     )
-    .option('--hud', 'Start daemon with HUD enabled (for start/restart actions)')
+    .option('--hud', 'Render HUD output (for start/restart actions)')
+    .option('--no-follow-hub', 'Disable following hub status/event files')
+    .option('--hub-events <path>', 'Override hub event file path (default: data/warchest/tx-events.json)')
+    .option('--hub-status <path>', 'Override hub status file path (default: data/warchest/status.json)')
     .addHelpText('after', `
 Examples:
-  # Start warchest daemon in the background
-  $ scoundrel warchestd start --wallet warlord:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
+  # Start HUD follower (foreground) with hub event/status files
+  $ scoundrel warchestd start --wallet sampleWallet:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
 
-  # Start daemon with HUD enabled in the foreground (dev mode)
-  $ scoundrel warchestd start --wallet warlord:DDkF...:orange --hud
+  # Start HUD follower with HUD rendering enabled
+  $ scoundrel warchestd start --wallet sampleWallet:DDkF...:orange --hud
 
-  # One-off HUD session (no PID management)
-  $ scoundrel warchestd hud --wallet warlord:DDkF...:orange
+  # One-off HUD session with selector fallback
+  $ scoundrel warchestd hud --wallet sampleWallet:DDkF...:orange
 
-  # Stop background daemon
+  # Clear legacy PID files
   $ scoundrel warchestd stop
 
-  # Restart daemon with new wallet args
-  $ scoundrel warchestd restart --wallet warlord:DDkF...:orange
-
-  # Show daemon health and latest status snapshot
+  # Show hub/HUD health snapshot
   $ scoundrel warchestd status
 `)
     .action(async (action, opts) => {
@@ -674,22 +763,26 @@ Examples:
                 throw new Error('warchest service module is not available');
             }
 
+            const followHub = opts.followHub !== false;
+            const hubEventsPath = opts.hubEvents;
+            const hubStatusPath = opts.hubStatus;
+
             if (action === 'start') {
                 // Default to starting the daemon headless; enable HUD only when explicitly requested.
                 const hud = !!opts.hud;
-                await warchestService.start({ walletSpecs, hud });
+                await warchestService.start({ walletSpecs, hud, followHub, hubEventsPath, hubStatusPath });
             } else if (action === 'stop') {
                 await warchestService.stop();
             } else if (action === 'restart') {
                 // Default to restarting the daemon headless; enable HUD only when explicitly requested.
                 const hud = !!opts.hud;
-                await warchestService.restart({ walletSpecs, hud });
+                await warchestService.restart({ walletSpecs, hud, followHub, hubEventsPath, hubStatusPath });
             } else if (action === 'hud') {
                 // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
-                warchestService.hud({ walletSpecs });
+                warchestService.hud({ walletSpecs, followHub, hubEventsPath, hubStatusPath });
             } else if (action === 'status') {
                 // Report daemon + health snapshot status without modifying state.
-                await warchestService.status();
+                await warchestService.status({ statusPath: hubStatusPath });
             } else {
                 logger.error(`[scoundrel] Unknown warchestd action: ${action}`);
                 process.exitCode = 1;
@@ -764,29 +857,6 @@ program
             process.exit(0);
         }
     });
-
-// Ensure the warchest daemon is running for most commands.
-program.hook('preAction', async (thisCommand, actionCommand) => {
-    const name = actionCommand && typeof actionCommand.name === 'function'
-        ? actionCommand.name()
-        : undefined;
-
-    // Avoid recursion / conflicts for the service management command itself.
-    if (name === 'warchestd') {
-        return;
-    }
-
-    if (!warchestService || typeof warchestService.ensureDaemonRunning !== 'function') {
-        return;
-    }
-
-    try {
-        await warchestService.ensureDaemonRunning();
-    } catch (err) {
-        const msg = err && err.message ? err.message : err;
-        logger.warn(`[scoundrel] Failed to ensure warchest daemon is running: ${msg}`);
-    }
-});
 
 // Default/help handling is provided by commander
 program.parseAsync(process.argv);

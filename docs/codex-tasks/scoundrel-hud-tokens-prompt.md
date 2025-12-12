@@ -19,7 +19,7 @@ Important project rules:
 
 - Code style:
   - CommonJS (`require`, `module.exports`), not ESM.
-  - Node 22.x, `mysql2`, `chalk`, `dotenv`.
+  - Node 22.x, `better-sqlite3`, `chalk`, `dotenv`.
   - Use JSDoc for any new helper functions you introduce in shared modules.
   - Keep code lint-friendly (ESLint).
 - Do not:
@@ -34,7 +34,7 @@ We already have:
   - `index.js` with `createRpcMethods(rpc, rpcSubs)`.
   - `getSolBalance.js`, `getTokenAccountsByOwnerV2.js`, etc.
   - Internal helpers under `lib/solana/rpcMethods/internal/`.
-- `scripts/warchestHudWorker.js` — HUD worker:
+- `scripts/warchestService.js` — HUD worker:
   - Already shows real SOL balances + Δ since open.
   - Renders a table for tokens but currently shows “(no tokens yet)”.
 
@@ -50,7 +50,7 @@ Before you change anything, inspect:
      - How it unwraps SolanaTracker’s HTTP RPC response.
    - Also open its Jest test under `tests` or `__tests__/solana/rpcMethods/` to see exactly what the method returns (field names like `accounts`, `mint`, `uiAmount`, etc.).
 
-2. `scripts/warchestHudWorker.js`
+2. `scripts/warchestService.js`
    - Understand:
      - The `WalletState` structure (look for its JSDoc).
      - How `buildInitialState()` sets up wallets.
@@ -90,7 +90,7 @@ We will:
 3. Extend WalletState for tokens
 --------------------------------------------------
 
-In `scripts/warchestHudWorker.js`, find the JSDoc for `WalletState`. You should see something like:
+In `scripts/warchestService.js`, find the JSDoc for `WalletState`. You should see something like:
 
 /**
  * @typedef {Object} WalletState
@@ -125,7 +125,7 @@ Then in `buildInitialState(walletSpecs)`:
 4. Add a token refresh helper
 --------------------------------------------------
 
-Still in `scripts/warchestHudWorker.js`, implement a new helper:
+Still in `scripts/warchestService.js`, implement a new helper:
 
 /**
  * Refresh token balances for all wallets and update HUD state.
@@ -207,7 +207,7 @@ Handle errors per wallet:
 5. Add a token refresh timer + env setting
 --------------------------------------------------
 
-At the top of `warchestHudWorker.js`, we already have:
+At the top of `warchestService.js`, we already have:
 
 const HUD_RENDER_INTERVAL_MS = intFromEnv('HUD_RENDER_INTERVAL_MS', 750);
 const HUD_SOL_REFRESH_SEC = intFromEnv('HUD_SOL_REFRESH_SEC', 15);
@@ -270,7 +270,7 @@ Before you consider this task done:
 
 1. Run the HUD worker manually with real wallets that hold SPL tokens, e.g.:
 
-   node scripts/warchestHudWorker.js \
+   node scripts/warchestService.js \
      --wallet warlord:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:green \
      --wallet scooby:D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua:magenta
 
@@ -299,7 +299,7 @@ Document any assumptions about the rpcMethods return shape via comments if neede
 --------------------------------------------------
 
 - Summarize:
-  - What changes you made to `scripts/warchestHudWorker.js`.
+  - What changes you made to `scripts/warchestService.js`.
   - How `refreshAllTokenBalances` works and what it expects from `getTokenAccountsByOwnerV2`.
   - What new env var you added (`HUD_TOKENS_REFRESH_SEC`) and its default.
 - Confirm:
@@ -309,7 +309,7 @@ Document any assumptions about the rpcMethods return shape via comments if neede
 
 Your goal is that, after your changes, I can run:
 
-node scripts/warchestHudWorker.js \
+node scripts/warchestService.js \
   --wallet ScoobyCarolan:D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua:green
 
 …and see real SPL tokens listed under the wallet, with balances and deltas updating over time (no prices or symbols yet).
@@ -329,7 +329,7 @@ This task is **Option A only** — no metadata resolution, no prices, no Data A
 ### Important project rules:
 - Write **CommonJS** (using `require` / `module.exports`).
 - Node 22.x environment.
-- Use `mysql2`, `chalk`, `dotenv` — already installed.
+- Use `better-sqlite3`, `chalk`, `dotenv` — already installed.
 - Use **JSDoc** for any new helper you introduce.
 - Maintain ESLint-friendly code.
 
@@ -346,7 +346,7 @@ This task is **Option A only** — no metadata resolution, no prices, no Data A
   - `getSolBalance.js`
   - `getTokenAccountsByOwnerV2.js`
   - normalization helpers under `internal/`
-- `scripts/warchestHudWorker.js` — the HUD worker script.
+- `scripts/warchestService.js` — the HUD worker script.
   - Already shows **SOL balances + SOL deltas**.
   - Token table still empty.
 
@@ -359,7 +359,7 @@ Before writing anything, study:
 - Learn the **normalized return shape**.
 - Review its associated **Jest test** to understand guaranteed fields.
 
-### 2. `scripts/warchestHudWorker.js`
+### 2. `scripts/warchestService.js`
 Understand:
 - `WalletState` JSDoc
 - `buildInitialState()`
@@ -390,7 +390,7 @@ We will:
 ---
 ## 3. Extend `WalletState` for Tokens
 
-In `scripts/warchestHudWorker.js`, update the `WalletState` typedef to include:
+In `scripts/warchestService.js`, update the `WalletState` typedef to include:
 
 ```js
 @property {Object<string, number>} startTokenBalances
@@ -413,7 +413,7 @@ tokens: [],
 ---
 ## 4. Implement `refreshAllTokenBalances()`
 
-Create this new helper inside `scripts/warchestHudWorker.js`:
+Create this new helper inside `scripts/warchestService.js`:
 
 ```js
 /**
@@ -471,7 +471,7 @@ async function refreshAllTokenBalances(rpcMethods, state) {
 ---
 ## 5. Add Token Refresh Timer and ENV Setting
 
-At the top of `warchestHudWorker.js`, add:
+At the top of `warchestService.js`, add:
 
 ```js
 const HUD_TOKENS_REFRESH_SEC = intFromEnv('HUD_TOKENS_REFRESH_SEC', 30);
@@ -515,7 +515,7 @@ Before finishing:
 1. Run HUD with real wallets containing SPL tokens:
 
 ```bash
-node scripts/warchestHudWorker.js \
+node scripts/warchestService.js \
   --wallet warlord:<PUBKEY>:green \
   --wallet scooby:<PUBKEY>:magenta
 ```
@@ -541,7 +541,7 @@ node scripts/warchestHudWorker.js \
 ## 9. Completion Requirements
 
 When finished:
-- Summarize changes made to `scripts/warchestHudWorker.js`.
+- Summarize changes made to `scripts/warchestService.js`.
 - Explain how `refreshAllTokenBalances` works.
 - Confirm the behavior of `HUD_TOKENS_REFRESH_SEC`.
 - Confirm:
@@ -552,7 +552,7 @@ When finished:
 Your goal is that running:
 
 ```bash
-node scripts/warchestHudWorker.js --wallet mywallet:<PUBKEY>:green
+node scripts/warchestService.js --wallet mywallet:<PUBKEY>:green
 ```
 
 …shows real SPL token balances with deltas updating over time (no symbol or USD yet).

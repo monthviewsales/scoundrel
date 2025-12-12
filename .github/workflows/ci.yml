@@ -19,9 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
-          token: ${{ secrets.SUBMODULES_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -29,20 +27,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install BootyBox dependencies (lowercase path)
-        if: hashFiles('packages/bootybox/package.json') != ''
-        working-directory: packages/bootybox
-        run: npm ci
-      - name: Install BootyBox dependencies (legacy path)
-        if: hashFiles('packages/BootyBox/package.json') != ''
-        working-directory: packages/BootyBox
-        run: npm ci
       - name: Run tests
         run: npm run test:ci
-      - name: Run BootyBox tests
-        run: |
-          if [ -f packages/bootybox/package.json ]; then (cd packages/bootybox && npm test -- --runInBand); fi
-          if [ -f packages/BootyBox/package.json ]; then (cd packages/BootyBox && npm test -- --runInBand); fi
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@v4

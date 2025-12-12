@@ -32,8 +32,8 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 - A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
 - An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
-- A MySQL database
 - Node.js 22 LTS and npm.
+- SQLite accessible to Node (BootyBox stores data in `db/bootybox.db`, override via `BOOTYBOX_SQLITE_PATH`).
 
 ## Testing
 
@@ -43,12 +43,12 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ## Database Access (BootyBox)
 
-BootyBox lives in the `packages/BootyBox` git submodule and exports the full helper surface (coins, positions, sc_* tables, warchest registry) from whichever adapter matches `DB_ENGINE` (`mysql` or `sqlite`, defaulting to sqlite). Import it directly via `require('../packages/BootyBox')` from application modules and tests.
+BootyBox now lives natively under `/db` (no git submodule) and exports the full helper surface (coins, positions, sc_* tables, warchest registry). Import it directly via `require('../db')` from application modules and tests.
 
-- `init()` must run before calling other helpers; it initializes the chosen adapter and schema.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`commands/warchest.js`) and are wrapped under `lib/wallets/registry.js` (BootyBox-backed).
+- `init()` must run before calling other helpers; it initializes the SQLite adapter and schema.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`lib/cli/warchestCli.js`) and are wrapped under `lib/wallets/registry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
-- Loader coverage lives in `__tests__/lib/db/BootyBox.*.test.js`.
+- Loader coverage includes `db/test/*.test.js`, which run alongside the rest of Jest.
 
 If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.
 
@@ -134,7 +134,7 @@ Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC
 For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
 
-The warchest HUD worker (`scripts/warchestHudWorker.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
 - The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
 
 ---
@@ -203,10 +203,10 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
 
-**Quick reference**
-
-- `research <walletId>` — Harvest wallet trades + chart + per-mint user trades; writes merged payload and profile (Responses).
-- `dossier <walletId>` — Same harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`).
+-**Quick reference**
+  
+- `research <walletId>` — (deprecated) Alias for `dossier --harvest-only`; harvests wallet trades + chart + per-mint user trades without calling AI.
+- `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
 - `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap:config <view|edit|set>` — Manage swap config file (RPC URL, swap API key, slippage, priority fee, tx version).
@@ -214,21 +214,30 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `warchest [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
-- `warchestd <action>` — Start/stop/restart the warchest HUD daemon, run HUD foreground, or show status.
+- `warchestd <action>` — Launch the HUD follower in the foreground, clean legacy daemon artifacts, or show hub status.
 - `test` — Environment + dependency smoke test.
 
+## Architecture
+
+- Worker harness + hub live under `lib/warchest/workers/` and `lib/warchest/hubCoordinator.js`, coordinating swap/monitor/HUD jobs via IPC.
+- Hub status + HUD events are written to `data/warchest/status.json` and `data/warchest/tx-events.json`; the HUD follows these files instead of daemon PID files.
+- See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
+
 ### research `<walletId>`
-- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, then runs `analyzeWallet` (Responses).
+- (Deprecated) Thin wrapper around the dossier pipeline; equivalent to running `dossier <walletId> --harvest-only`.
+- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, and writes merged/enriched artifacts when `SAVE_*` toggles are set.
+- Does **not** call OpenAI, write profile JSON under `profiles/<alias>.json`, or upsert wallet analyses; use `dossier` without `--harvest-only` for full AI profiles.
 - Options: `--start <iso|epoch>`, `--end <iso|epoch>`, `--name <alias>`, `--feature-mint-count <num>`.
-- Artifacts: merged payload under `data/dossier/<alias>/merged/merged-*.json`; profile JSON under `profiles/<alias>.json`; DB upsert via BootyBox.
-- Env: `SOLANATRACKER_API_KEY`, `OPENAI_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
+- Env: `SOLANATRACKER_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
 
 ### dossier `<walletId>`
-- Same harvest pipeline as `research` plus:
+- Core harvest pipeline for building wallet dossiers; drives both full AI profiles and harvest-only runs.
   - `--limit <num>` cap trades
   - `--feature-mint-count <num>` override mint sampling
   - `--resend` re-run AI on latest merged payload without new data pulls
-- Writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, persists `sc_profiles` snapshot.
+  - `--harvest-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
+- Default: writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, and persists an `sc_profiles` snapshot.
+- With `--harvest-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
 
 ### autopsy
 - Prompts for HUD wallet (or custom address) + mint, then builds a campaign payload:
@@ -266,9 +275,9 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
 ### warchestd `<start|stop|restart|hud|status>`
-- Daemon/HUD controller around `scripts/warchestHudWorker.js`.
-- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to run interactive HUD.
-- `hud` runs foreground HUD; `status` reads pid/status snapshot and reports health (slot, RPC timings, wallet count).
+- HUD follower controller around `lib/warchest/workers/warchestService.js` (foreground only).
+- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to render the HUD alongside hub status/events.
+- `hud` runs foreground HUD (with selector fallback); `status` reads hub status snapshot and reports health (slot, RPC timings, wallet count).
 
 ### test
 - Verifies `OPENAI_API_KEY` presence, prints core file existence, DB config, and attempts BootyBox ping.
@@ -282,7 +291,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `./profiles/autopsy-<wallet>-<mint>-<ts>.json` — trade autopsy payload + AI output
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 - `./data/autopsy/<wallet>/<mint>/{raw,parsed,enriched}/` — campaign artifacts gated by `SAVE_*`
-- `./data/warchest/{warchest.pid,status.json}` — HUD daemon pid + health snapshot
+- `./data/warchest/{tx-events.json,status.json}` — Hub/HUD event feed + health snapshot
 
 ---
 
