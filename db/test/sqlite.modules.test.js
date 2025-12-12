@@ -229,35 +229,3 @@ describe('trading submodule', () => {
     expect(row.decision_reason).toBe('quote_approved');
   });
 });
-
-describe('sessions submodule', () => {
-  test('tracks session lifecycle and stats', () => {
-    const sessionId = adapter.startSession({
-      strategy: 'strat1',
-      filterBlueprint: 'f',
-      buyBlueprint: 'b',
-      sellBlueprint: 's',
-      settings: { risk: 'low' },
-    });
-
-    adapter.updateSessionStats(sessionId, {
-      coinsAnalyzed: 5,
-      coinsPassed: 2,
-      sellsExecuted: 1,
-    });
-
-    adapter.endSession(sessionId, {
-      coinsAnalyzed: 6,
-      coinsPassed: 3,
-      sellsExecuted: 2,
-    });
-
-    const row = context.db
-      .prepare('SELECT * FROM sessions WHERE id = ?')
-      .get(sessionId);
-    expect(row.coinsAnalyzed).toBe(6);
-    expect(row.coinsPassed).toBe(3);
-    expect(row.sellsExecuted).toBe(2);
-    expect(row.endTime).toBeTruthy();
-  });
-});

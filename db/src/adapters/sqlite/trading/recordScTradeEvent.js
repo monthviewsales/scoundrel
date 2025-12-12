@@ -52,6 +52,13 @@ function recordScTradeEvent(trade) {
   const feesSol = trade.fees_sol ?? trade.feesSol ?? null;
   const feesUsd = trade.fees_usd ?? trade.feesUsd ?? null;
   const solUsdPrice = trade.sol_usd_price ?? trade.solUsdPrice ?? null;
+  const priceSolPerToken = trade.price_sol_per_token ?? trade.priceSolPerToken ?? null;
+  const priceUsdPerToken = trade.price_usd_per_token ?? trade.priceUsdPerToken ?? null;
+  const slippagePct = trade.slippage_pct ?? trade.slippagePct ?? null;
+  const priceImpactPct = trade.price_impact_pct ?? trade.priceImpactPct ?? null;
+  const program = trade.program ?? null;
+  const evaluationPayload = trade.evaluation_payload ?? trade.evaluationPayload ?? null;
+  const decisionPayload = trade.decision_payload ?? trade.decisionPayload ?? null;
 
   // Optional metadata
   const txid = trade.txid ?? null;
@@ -83,7 +90,8 @@ function recordScTradeEvent(trade) {
   }
 
   // Insert trade
-  const stmt = db.prepare(
+  // If txid is present, UPSERT by txid and preserve existing non-null fields when duplicates omit them.
+  const stmtUpsertByTxid = db.prepare(
     `
     INSERT INTO sc_trades (
       wallet_id,
@@ -96,6 +104,13 @@ function recordScTradeEvent(trade) {
       executed_at,
       token_amount,
       sol_amount,
+      price_sol_per_token,
+      price_usd_per_token,
+      slippage_pct,
+      price_impact_pct,
+      program,
+      evaluation_payload,
+      decision_payload,
       fees_sol,
       fees_usd,
       sol_usd_price,
@@ -116,6 +131,98 @@ function recordScTradeEvent(trade) {
       @executed_at,
       @token_amount,
       @sol_amount,
+      @price_sol_per_token,
+      @price_usd_per_token,
+      @slippage_pct,
+      @price_impact_pct,
+      @program,
+      @evaluation_payload,
+      @decision_payload,
+      @fees_sol,
+      @fees_usd,
+      @sol_usd_price,
+      @strategy_id,
+      @strategy_name,
+      @decision_label,
+      @decision_reason,
+      @created_at,
+      @updated_at
+    )
+    ON CONFLICT(txid) DO UPDATE SET
+      wallet_id = COALESCE(excluded.wallet_id, sc_trades.wallet_id),
+      wallet_alias = COALESCE(excluded.wallet_alias, sc_trades.wallet_alias),
+      session_id = COALESCE(excluded.session_id, sc_trades.session_id),
+      trade_uuid = COALESCE(excluded.trade_uuid, sc_trades.trade_uuid),
+      coin_mint = COALESCE(excluded.coin_mint, sc_trades.coin_mint),
+      side = COALESCE(excluded.side, sc_trades.side),
+      executed_at = MAX(sc_trades.executed_at, excluded.executed_at),
+      token_amount = COALESCE(excluded.token_amount, sc_trades.token_amount),
+      sol_amount = COALESCE(excluded.sol_amount, sc_trades.sol_amount),
+      price_sol_per_token = COALESCE(excluded.price_sol_per_token, sc_trades.price_sol_per_token),
+      price_usd_per_token = COALESCE(excluded.price_usd_per_token, sc_trades.price_usd_per_token),
+      slippage_pct = COALESCE(excluded.slippage_pct, sc_trades.slippage_pct),
+      price_impact_pct = COALESCE(excluded.price_impact_pct, sc_trades.price_impact_pct),
+      program = COALESCE(excluded.program, sc_trades.program),
+      evaluation_payload = COALESCE(excluded.evaluation_payload, sc_trades.evaluation_payload),
+      decision_payload = COALESCE(excluded.decision_payload, sc_trades.decision_payload),
+      fees_sol = COALESCE(excluded.fees_sol, sc_trades.fees_sol),
+      fees_usd = COALESCE(excluded.fees_usd, sc_trades.fees_usd),
+      sol_usd_price = COALESCE(excluded.sol_usd_price, sc_trades.sol_usd_price),
+      strategy_id = COALESCE(excluded.strategy_id, sc_trades.strategy_id),
+      strategy_name = COALESCE(excluded.strategy_name, sc_trades.strategy_name),
+      decision_label = COALESCE(excluded.decision_label, sc_trades.decision_label),
+      decision_reason = COALESCE(excluded.decision_reason, sc_trades.decision_reason),
+      updated_at = excluded.updated_at
+  `
+  );
+
+  const stmtInsertNoTxid = db.prepare(
+    `
+    INSERT INTO sc_trades (
+      wallet_id,
+      wallet_alias,
+      session_id,
+      trade_uuid,
+      coin_mint,
+      txid,
+      side,
+      executed_at,
+      token_amount,
+      sol_amount,
+      price_sol_per_token,
+      price_usd_per_token,
+      slippage_pct,
+      price_impact_pct,
+      program,
+      evaluation_payload,
+      decision_payload,
+      fees_sol,
+      fees_usd,
+      sol_usd_price,
+      strategy_id,
+      strategy_name,
+      decision_label,
+      decision_reason,
+      created_at,
+      updated_at
+    ) VALUES (
+      @wallet_id,
+      @wallet_alias,
+      @session_id,
+      @trade_uuid,
+      @coin_mint,
+      @txid,
+      @side,
+      @executed_at,
+      @token_amount,
+      @sol_amount,
+      @price_sol_per_token,
+      @price_usd_per_token,
+      @slippage_pct,
+      @price_impact_pct,
+      @program,
+      @evaluation_payload,
+      @decision_payload,
       @fees_sol,
       @fees_usd,
       @sol_usd_price,
@@ -140,6 +247,13 @@ function recordScTradeEvent(trade) {
     executed_at: executedAt,
     token_amount: tokenAmount,
     sol_amount: solAmount,
+    price_sol_per_token: priceSolPerToken,
+    price_usd_per_token: priceUsdPerToken,
+    slippage_pct: slippagePct,
+    price_impact_pct: priceImpactPct,
+    program,
+    evaluation_payload: evaluationPayload ? JSON.stringify(evaluationPayload) : null,
+    decision_payload: decisionPayload ? JSON.stringify(decisionPayload) : null,
     fees_sol: feesSol,
     fees_usd: feesUsd,
     sol_usd_price: solUsdPrice,
@@ -151,7 +265,7 @@ function recordScTradeEvent(trade) {
     updated_at: now,
   };
 
-  const info = stmt.run(params);
+  const info = txid ? stmtUpsertByTxid.run(params) : stmtInsertNoTxid.run(params);
 
   // Keep sc_positions in sync using the current legacy applier until we extract it.
   try {
@@ -174,10 +288,10 @@ function recordScTradeEvent(trade) {
     logger?.warn?.(`[BootyBox] applyScTradeEventToPositions failed: ${err?.message || err}`);
   }
 
-  // Return best-effort inserted trade row
-  const row = db
-    .prepare('SELECT * FROM sc_trades WHERE id = ?')
-    .get(info.lastInsertRowid);
+  // Return best-effort inserted/updated trade row
+  const row = txid
+    ? db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(txid)
+    : db.prepare('SELECT * FROM sc_trades WHERE id = ?').get(info.lastInsertRowid);
 
   return row || { id: info.lastInsertRowid, ...params };
 }

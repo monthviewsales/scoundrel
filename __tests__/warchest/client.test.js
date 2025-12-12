@@ -91,7 +91,7 @@ describe('warchest client setup', () => {
     jest.resetModules();
     jest.doMock('../../db', () => ({
       init: jest.fn().mockResolvedValue(),
-      recordScTradeEvent: jest.fn(),
+      recordScTradeEvent: null,
       applyScTradeEventToPositions: null,
     }));
     jest.doMock('../../lib/solanaTrackerRPCClient', () => ({
