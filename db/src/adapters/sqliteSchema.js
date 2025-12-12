@@ -32,69 +32,6 @@ db.exec(`
     strictSocials    TEXT         -- JSON string of strictSocials
   );
 
-  CREATE TABLE IF NOT EXISTS positions (
-    coin_mint        TEXT PRIMARY KEY,
-    trade_uuid       TEXT,
-    entryPrice       REAL,        -- SOL per token (legacy)
-    entryPriceUSD    REAL,        -- USD per token
-    highestPrice     REAL,        -- SOL per token (legacy)
-    amount           REAL,
-    sl               REAL,        -- stop-loss percentage (legacy)
-    previousRsi      REAL,
-    timestamp        INTEGER,
-    lastValidated    INTEGER,
-    entryAmt         REAL,        -- tokens at entry
-    holdingAmt       REAL,        -- current tokens held
-    walletId         INTEGER,     -- FK to sc_wallets.wallet_id
-    walletAlias      TEXT,        -- denormalized alias
-    entryPriceSol    REAL,        -- canonical SOL entry price
-    currentPriceSol  REAL,        -- latest SOL price
-    currentPriceUsd  REAL,        -- latest USD price
-    highestPriceSol  REAL,        -- canonical SOL high watermark
-    source           TEXT,        -- bot/human origin tag
-    lastUpdated      INTEGER      -- last refresh timestamp (ms)
-  );
-
-  CREATE TABLE IF NOT EXISTS buys (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    coin_mint       TEXT,
-    trade_uuid      TEXT,
-    price           REAL,        -- SOL/token at buy
-    priceUsd        REAL,        -- USD/token at buy
-    qty             REAL,
-    timestamp       INTEGER,
-    txid            TEXT UNIQUE,
-    fees            INTEGER,     -- lamports
-    feesUsd         REAL,        -- USD fees
-    solUsdPrice     REAL,
-    slippage        REAL,
-    priceImpact     REAL,
-    hiddenTax       REAL,
-    executionPrice  REAL,
-    currentPrice    REAL
-  );
-
-  CREATE TABLE IF NOT EXISTS sells (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    coin_mint       TEXT,
-    trade_uuid      TEXT,
-    price           REAL,        -- SOL/token at sell
-    priceUsd        REAL,        -- USD/token at sell
-    qty             REAL,
-    timestamp       INTEGER,
-    txid            TEXT UNIQUE,
-    pnl             REAL,        -- USD realized
-    pnlPct          REAL,
-    fees            INTEGER,     -- lamports
-    feesUsd         REAL,        -- USD fees
-    solUsdPrice     REAL,
-    slippage        REAL,
-    priceImpact     REAL,
-    hiddenTax       REAL,
-    executionPrice  REAL,
-    currentPrice    REAL
-  );
-
   CREATE TABLE IF NOT EXISTS pools (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     coin_mint        TEXT,
@@ -176,74 +113,6 @@ db.exec(`
     FOREIGN KEY (coin_mint) REFERENCES coins(mint)
   );
 
-  CREATE TABLE IF NOT EXISTS chart_data (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    coin_mint  TEXT,
-    timestamp  INTEGER,
-    open       REAL,
-    close      REAL,
-    low        REAL,
-    high       REAL,
-    volume     REAL,
-    FOREIGN KEY (coin_mint) REFERENCES coins(mint)
-  );
-
-  CREATE TABLE IF NOT EXISTS indicators (
-    coin_mint  TEXT PRIMARY KEY,
-    price      REAL,
-    rsi        REAL,
-    emaShort   REAL,
-    emaMedium  REAL,
-    bb_middle  REAL,
-    bb_upper   REAL,
-    bb_lower   REAL,
-    bb_pb      REAL,
-    trendBias  BOOLEAN,
-    FOREIGN KEY (coin_mint) REFERENCES coins(mint)
-  );
-
-  CREATE TABLE IF NOT EXISTS pnl (
-    coin_mint           TEXT PRIMARY KEY,
-    holding             REAL    DEFAULT 0,
-    held                REAL    DEFAULT 0,
-    sold                REAL    DEFAULT 0,
-    sold_usd            REAL    DEFAULT 0,
-    realized            REAL    DEFAULT 0,
-    unrealized          REAL    DEFAULT 0,
-    fees_sol            REAL    DEFAULT 0,
-    fees_usd            REAL    DEFAULT 0,
-    total               REAL    DEFAULT 0,
-    total_sold          REAL    DEFAULT 0,
-    total_invested      REAL    DEFAULT 0,
-    average_buy_amount  REAL    DEFAULT 0,
-    current_value       REAL    DEFAULT 0,
-    cost_basis          REAL    DEFAULT 0,
-    first_trade_time    INTEGER,
-    last_buy_time       INTEGER,
-    last_sell_time      INTEGER,
-    last_trade_time     INTEGER,
-    buy_transactions    INTEGER DEFAULT 0,
-    sell_transactions   INTEGER DEFAULT 0,
-    total_transactions  INTEGER DEFAULT 0,
-    lastUpdated         INTEGER,
-    FOREIGN KEY (coin_mint) REFERENCES coins(mint)
-  );
-
-  CREATE TABLE IF NOT EXISTS trades (
-    trade_uuid  TEXT,
-    tx          TEXT PRIMARY KEY,
-    mint        TEXT,
-    wallet      TEXT,
-    amount      REAL,
-    priceUsd    REAL,
-    volume      REAL,
-    volumeSol   REAL,
-    type        TEXT,
-    time        INTEGER,
-    program     TEXT,
-    pools       TEXT
-  );
-
   -- Unified trade events table for Scoundrel HUD / Warchest
   CREATE TABLE IF NOT EXISTS sc_trades (
     id                    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,6 +139,9 @@ db.exec(`
     decision_payload      TEXT,
     decision_label        TEXT,
     decision_reason       TEXT,
+    session_id            INTEGER,
+    created_at            INTEGER,
+    updated_at            INTEGER,
     UNIQUE(txid)
   );
 
@@ -298,46 +170,19 @@ db.exec(`
     UNIQUE(wallet_id, coin_mint, trade_uuid)
   );
 
-  CREATE TABLE IF NOT EXISTS pending_trade_uuids (
-    mint        TEXT PRIMARY KEY,
-    trade_uuid  TEXT,
-    created_at  INTEGER
-  );
-
-  -- Catalog of encountered markets (deduped)
-  CREATE TABLE IF NOT EXISTS markets (
-    name       TEXT PRIMARY KEY,
-    firstSeen  INTEGER,
-    lastSeen   INTEGER,
-    seenCount  INTEGER DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    strategy TEXT,
-    filterBlueprint TEXT,
-    buyBlueprint TEXT,
-    sellBlueprint TEXT,
-    settings TEXT,
-    startTime INTEGER,
-    endTime INTEGER,
-    coinsAnalyzed INTEGER,
-    coinsPassed INTEGER,
-    sellsExecuted INTEGER
-  );
-
-  CREATE TABLE IF NOT EXISTS evaluations (
-    eval_id TEXT PRIMARY KEY,
-    timestamp INTEGER,
-    tokenSymbol TEXT,
-    mint TEXT,
-    strategy TEXT,
-    evalType TEXT,
-    decision INTEGER,
-    reason TEXT,
-    blueprintCatalog TEXT,
-    blueprintActive TEXT,
-    gateResults TEXT
+  CREATE TABLE IF NOT EXISTS sc_sessions (
+    session_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    service           TEXT NOT NULL,               -- e.g. 'warchest'
+    started_at        INTEGER NOT NULL,            -- ms epoch
+    started_slot      INTEGER,
+    started_block     INTEGER,
+    ended_at          INTEGER,                     -- ms epoch
+    ended_slot        INTEGER,
+    ended_block       INTEGER,
+    ended_reason      TEXT,
+    host              TEXT,
+    pid               INTEGER,
+    meta_json         TEXT                          -- JSON blob for anything else
   );
 
   CREATE TABLE IF NOT EXISTS sc_wallets (
@@ -464,13 +309,266 @@ db.exec(`
     last_seen_at    TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS sc_pnl (
+  wallet_id            INTEGER NOT NULL,
+  wallet_alias         TEXT,
+  coin_mint            TEXT NOT NULL,
+  total_tokens_bought  REAL    DEFAULT 0,
+  total_tokens_sold    REAL    DEFAULT 0,
+  total_sol_spent      REAL    DEFAULT 0,
+  total_sol_received   REAL    DEFAULT 0,
+  fees_sol             REAL    DEFAULT 0,
+  fees_usd             REAL    DEFAULT 0,
+  avg_cost_sol         REAL    DEFAULT 0,        -- weighted avg cost per token (SOL)
+  avg_cost_usd         REAL    DEFAULT 0,        -- weighted avg cost per token (USD)
+  realized_sol         REAL    DEFAULT 0,
+  realized_usd         REAL    DEFAULT 0,
+  first_trade_at       INTEGER,
+  last_trade_at        INTEGER,
+  last_updated_at      INTEGER,
+  PRIMARY KEY (wallet_id, coin_mint)
+);
+
+  -- Aggregated PnL totals per wallet + mint + trade_uuid (position-run rollups)
+  CREATE TABLE IF NOT EXISTS sc_pnl_positions (
+    wallet_id            INTEGER NOT NULL,
+    wallet_alias         TEXT,
+    coin_mint            TEXT NOT NULL,
+    trade_uuid           TEXT NOT NULL,            -- position-run identifier (first buy -> last sell)
+    total_tokens_bought  REAL    DEFAULT 0,
+    total_tokens_sold    REAL    DEFAULT 0,
+    total_sol_spent      REAL    DEFAULT 0,
+    total_sol_received   REAL    DEFAULT 0,
+    fees_sol             REAL    DEFAULT 0,
+    fees_usd             REAL    DEFAULT 0,
+    avg_cost_sol         REAL    DEFAULT 0,
+    avg_cost_usd         REAL    DEFAULT 0,
+    realized_sol         REAL    DEFAULT 0,
+    realized_usd         REAL    DEFAULT 0,
+    first_trade_at       INTEGER,
+    last_trade_at        INTEGER,
+    last_updated_at      INTEGER,
+    PRIMARY KEY (wallet_id, coin_mint, trade_uuid)
+  );
+
+  CREATE VIEW IF NOT EXISTS sc_pnl_live AS
+    SELECT
+      p.wallet_id,
+      COALESCE(p.wallet_alias, pn.wallet_alias) AS wallet_alias,
+      p.coin_mint,
+      pn.total_tokens_bought,
+      pn.total_tokens_sold,
+      pn.total_sol_spent,
+      pn.total_sol_received,
+      pn.fees_sol,
+      pn.fees_usd,
+      pn.avg_cost_sol,
+      pn.avg_cost_usd,
+      pn.realized_sol,
+      pn.realized_usd,
+      p.current_token_amount,
+      c.priceSol AS coin_price_sol,
+      c.priceUsd AS coin_price_usd,
+      (p.current_token_amount * c.priceSol) AS unrealized_sol,
+      (p.current_token_amount * c.priceUsd) AS unrealized_usd,
+      (pn.realized_sol + (p.current_token_amount * c.priceSol)) AS total_sol,
+      (pn.realized_usd + (p.current_token_amount * c.priceUsd)) AS total_usd,
+      pn.first_trade_at,
+      pn.last_trade_at,
+      pn.last_updated_at
+    FROM sc_positions p
+    LEFT JOIN sc_pnl pn
+      ON pn.wallet_id = p.wallet_id AND pn.coin_mint = p.coin_mint
+    LEFT JOIN coins c
+      ON c.mint = p.coin_mint;
+
+  CREATE VIEW IF NOT EXISTS sc_pnl_positions_live AS
+    SELECT
+      p.wallet_id,
+      COALESCE(p.wallet_alias, pn.wallet_alias) AS wallet_alias,
+      p.coin_mint,
+      p.trade_uuid,
+      pn.total_tokens_bought,
+      pn.total_tokens_sold,
+      pn.total_sol_spent,
+      pn.total_sol_received,
+      pn.fees_sol,
+      pn.fees_usd,
+      pn.avg_cost_sol,
+      pn.avg_cost_usd,
+      pn.realized_sol,
+      pn.realized_usd,
+      p.current_token_amount,
+      c.priceSol AS coin_price_sol,
+      c.priceUsd AS coin_price_usd,
+      (p.current_token_amount * c.priceSol) AS unrealized_sol,
+      (p.current_token_amount * c.priceUsd) AS unrealized_usd,
+      (pn.realized_sol + (p.current_token_amount * c.priceSol)) AS total_sol,
+      (pn.realized_usd + (p.current_token_amount * c.priceUsd)) AS total_usd,
+      pn.first_trade_at,
+      pn.last_trade_at,
+      pn.last_updated_at
+    FROM sc_positions p
+    LEFT JOIN sc_pnl_positions pn
+      ON pn.wallet_id = p.wallet_id AND pn.coin_mint = p.coin_mint AND pn.trade_uuid = p.trade_uuid
+    LEFT JOIN coins c
+      ON c.mint = p.coin_mint
+    WHERE p.trade_uuid IS NOT NULL;
+
+  CREATE TRIGGER IF NOT EXISTS trg_sc_pnl_buy
+  AFTER INSERT ON sc_trades
+  WHEN NEW.side = 'buy'
+  BEGIN
+    INSERT INTO sc_pnl (
+      wallet_id, wallet_alias, coin_mint,
+      total_tokens_bought, total_sol_spent,
+      fees_sol, fees_usd,
+      avg_cost_sol, avg_cost_usd,
+      realized_sol, realized_usd,
+      first_trade_at, last_trade_at, last_updated_at
+    ) VALUES (
+      NEW.wallet_id, NEW.wallet_alias, NEW.coin_mint,
+      COALESCE(NEW.token_amount, 0), COALESCE(NEW.sol_amount, 0),
+      COALESCE(NEW.fees_sol, 0), COALESCE(NEW.fees_usd, 0),
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN COALESCE(NEW.sol_amount, 0) / NEW.token_amount ELSE 0 END,
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN (COALESCE(NEW.sol_amount, 0) / NEW.token_amount) * COALESCE(NEW.sol_usd_price, 0) ELSE 0 END,
+      0, 0,
+      NEW.executed_at, NEW.executed_at, NEW.executed_at
+    )
+    ON CONFLICT(wallet_id, coin_mint) DO UPDATE SET
+      wallet_alias        = COALESCE(excluded.wallet_alias, sc_pnl.wallet_alias),
+      total_tokens_bought = sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0),
+      total_sol_spent     = sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0),
+      fees_sol            = sc_pnl.fees_sol + COALESCE(excluded.fees_sol, 0),
+      fees_usd            = sc_pnl.fees_usd + COALESCE(excluded.fees_usd, 0),
+      avg_cost_sol        = CASE
+                              WHEN (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
+                              THEN (sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0))
+                                  / (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
+                              ELSE sc_pnl.avg_cost_sol
+                            END,
+      avg_cost_usd        = CASE
+                              WHEN (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
+                              THEN ((sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0)) * COALESCE(NEW.sol_usd_price, 0))
+                                  / (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
+                              ELSE sc_pnl.avg_cost_usd
+                            END,
+      first_trade_at      = COALESCE(sc_pnl.first_trade_at, excluded.first_trade_at),
+      last_trade_at       = MAX(sc_pnl.last_trade_at, excluded.last_trade_at),
+      last_updated_at     = excluded.last_updated_at;
+
+    -- Position-run rollup (only when a trade_uuid is present)
+    INSERT INTO sc_pnl_positions (
+      wallet_id, wallet_alias, coin_mint, trade_uuid,
+      total_tokens_bought, total_sol_spent,
+      fees_sol, fees_usd,
+      avg_cost_sol, avg_cost_usd,
+      realized_sol, realized_usd,
+      first_trade_at, last_trade_at, last_updated_at
+    )
+    SELECT
+      NEW.wallet_id, NEW.wallet_alias, NEW.coin_mint, NEW.trade_uuid,
+      COALESCE(NEW.token_amount, 0), COALESCE(NEW.sol_amount, 0),
+      COALESCE(NEW.fees_sol, 0), COALESCE(NEW.fees_usd, 0),
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN COALESCE(NEW.sol_amount, 0) / NEW.token_amount ELSE 0 END,
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN (COALESCE(NEW.sol_amount, 0) / NEW.token_amount) * COALESCE(NEW.sol_usd_price, 0) ELSE 0 END,
+      0, 0,
+      NEW.executed_at, NEW.executed_at, NEW.executed_at
+    WHERE NEW.trade_uuid IS NOT NULL
+    ON CONFLICT(wallet_id, coin_mint, trade_uuid) DO UPDATE SET
+      wallet_alias        = COALESCE(excluded.wallet_alias, sc_pnl_positions.wallet_alias),
+      total_tokens_bought = sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0),
+      total_sol_spent     = sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0),
+      fees_sol            = sc_pnl_positions.fees_sol + COALESCE(excluded.fees_sol, 0),
+      fees_usd            = sc_pnl_positions.fees_usd + COALESCE(excluded.fees_usd, 0),
+      avg_cost_sol        = CASE
+                              WHEN (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
+                              THEN (sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0))
+                                   / (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
+                              ELSE sc_pnl_positions.avg_cost_sol
+                            END,
+      avg_cost_usd        = CASE
+                              WHEN (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
+                              THEN ((sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0)) * COALESCE(NEW.sol_usd_price, 0))
+                                   / (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
+                              ELSE sc_pnl_positions.avg_cost_usd
+                            END,
+      first_trade_at      = COALESCE(sc_pnl_positions.first_trade_at, excluded.first_trade_at),
+      last_trade_at       = MAX(sc_pnl_positions.last_trade_at, excluded.last_trade_at),
+      last_updated_at     = excluded.last_updated_at;
+  END;
+
+  CREATE TRIGGER IF NOT EXISTS trg_sc_pnl_sell
+  AFTER INSERT ON sc_trades
+  WHEN NEW.side = 'sell'
+  BEGIN
+    INSERT INTO sc_pnl (
+      wallet_id, wallet_alias, coin_mint,
+      total_tokens_sold, total_sol_received,
+      fees_sol, fees_usd,
+      realized_sol, realized_usd,
+      first_trade_at, last_trade_at, last_updated_at
+    ) VALUES (
+      NEW.wallet_id, NEW.wallet_alias, NEW.coin_mint,
+      COALESCE(NEW.token_amount, 0), COALESCE(NEW.sol_amount, 0),
+      COALESCE(NEW.fees_sol, 0), COALESCE(NEW.fees_usd, 0),
+      COALESCE(NEW.sol_amount, 0), COALESCE(NEW.sol_amount, 0) * COALESCE(NEW.sol_usd_price, 0),
+      NEW.executed_at, NEW.executed_at, NEW.executed_at
+    )
+    ON CONFLICT(wallet_id, coin_mint) DO UPDATE SET
+      wallet_alias        = COALESCE(excluded.wallet_alias, sc_pnl.wallet_alias),
+      total_tokens_sold   = sc_pnl.total_tokens_sold + COALESCE(excluded.total_tokens_sold, 0),
+      total_sol_received  = sc_pnl.total_sol_received + COALESCE(excluded.total_sol_received, 0),
+      fees_sol            = sc_pnl.fees_sol + COALESCE(excluded.fees_sol, 0),
+      fees_usd            = sc_pnl.fees_usd + COALESCE(excluded.fees_usd, 0),
+      realized_sol        = sc_pnl.realized_sol + (
+                            COALESCE(NEW.sol_amount, 0) - (COALESCE(NEW.token_amount, 0) * COALESCE(sc_pnl.avg_cost_sol, 0))
+                          ),
+      realized_usd        = sc_pnl.realized_usd + (
+                            (COALESCE(NEW.sol_amount, 0) - (COALESCE(NEW.token_amount, 0) * COALESCE(sc_pnl.avg_cost_sol, 0)))
+                            * COALESCE(NEW.sol_usd_price, 0)
+                          ),
+      first_trade_at      = COALESCE(sc_pnl.first_trade_at, excluded.first_trade_at),
+      last_trade_at       = MAX(sc_pnl.last_trade_at, excluded.last_trade_at),
+      last_updated_at     = excluded.last_updated_at;
+
+    -- Position-run rollup (only when a trade_uuid is present)
+    INSERT INTO sc_pnl_positions (
+      wallet_id, wallet_alias, coin_mint, trade_uuid,
+      total_tokens_sold, total_sol_received,
+      fees_sol, fees_usd,
+      realized_sol, realized_usd,
+      first_trade_at, last_trade_at, last_updated_at
+    )
+    SELECT
+      NEW.wallet_id, NEW.wallet_alias, NEW.coin_mint, NEW.trade_uuid,
+      COALESCE(NEW.token_amount, 0), COALESCE(NEW.sol_amount, 0),
+      COALESCE(NEW.fees_sol, 0), COALESCE(NEW.fees_usd, 0),
+      COALESCE(NEW.sol_amount, 0), COALESCE(NEW.sol_amount, 0) * COALESCE(NEW.sol_usd_price, 0),
+      NEW.executed_at, NEW.executed_at, NEW.executed_at
+    WHERE NEW.trade_uuid IS NOT NULL
+    ON CONFLICT(wallet_id, coin_mint, trade_uuid) DO UPDATE SET
+      wallet_alias        = COALESCE(excluded.wallet_alias, sc_pnl_positions.wallet_alias),
+      total_tokens_sold   = sc_pnl_positions.total_tokens_sold + COALESCE(excluded.total_tokens_sold, 0),
+      total_sol_received  = sc_pnl_positions.total_sol_received + COALESCE(excluded.total_sol_received, 0),
+      fees_sol            = sc_pnl_positions.fees_sol + COALESCE(excluded.fees_sol, 0),
+      fees_usd            = sc_pnl_positions.fees_usd + COALESCE(excluded.fees_usd, 0),
+      realized_sol        = sc_pnl_positions.realized_sol + (
+                            COALESCE(NEW.sol_amount, 0) - (COALESCE(NEW.token_amount, 0) * COALESCE(sc_pnl_positions.avg_cost_sol, 0))
+                          ),
+      realized_usd        = sc_pnl_positions.realized_usd + (
+                            (COALESCE(NEW.sol_amount, 0) - (COALESCE(NEW.token_amount, 0) * COALESCE(sc_pnl_positions.avg_cost_sol, 0)))
+                            * COALESCE(NEW.sol_usd_price, 0)
+                          ),
+      first_trade_at      = COALESCE(sc_pnl_positions.first_trade_at, excluded.first_trade_at),
+      last_trade_at       = MAX(sc_pnl_positions.last_trade_at, excluded.last_trade_at),
+      last_updated_at     = excluded.last_updated_at;
+  END;
+
   -- Helpful indexes for frequent lookups/cleanup
   CREATE INDEX IF NOT EXISTS idx_coins_status ON coins(status);
   CREATE INDEX IF NOT EXISTS idx_coins_lastUpdated ON coins(lastUpdated);
-  CREATE INDEX IF NOT EXISTS idx_positions_lastValidated ON positions(lastValidated);
   CREATE INDEX IF NOT EXISTS idx_pools_coin_mint ON pools(coin_mint);
-  CREATE INDEX IF NOT EXISTS idx_trades_mint ON trades(mint);
-  CREATE INDEX IF NOT EXISTS idx_trades_wallet ON trades(wallet);
   CREATE INDEX IF NOT EXISTS idx_coins_buyScore ON coins(buyScore);
   CREATE INDEX IF NOT EXISTS idx_coins_status_buy_lastUpdated
     ON coins(status, buyScore, lastUpdated);
@@ -498,6 +596,28 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sc_trade_autopsies_mint
     ON sc_trade_autopsies (mint);
+
+  CREATE INDEX IF NOT EXISTS idx_sc_trades_wallet_session
+  ON sc_trades (wallet_id, session_id);
+
+CREATE INDEX IF NOT EXISTS idx_sc_trades_session
+  ON sc_trades (session_id);
+
+  CREATE INDEX IF NOT EXISTS idx_sc_pnl_wallet_mint
+  ON sc_pnl (wallet_id, coin_mint);
+
+CREATE INDEX IF NOT EXISTS idx_sc_trades_wallet_executed
+  ON sc_trades (wallet_id, executed_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_sc_trades_trade_uuid
+    ON sc_trades (trade_uuid);
+
+  CREATE INDEX IF NOT EXISTS idx_sc_pnl_positions_wallet_mint_uuid
+    ON sc_pnl_positions (wallet_id, coin_mint, trade_uuid);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_sc_positions_open_wallet_mint
+ON sc_positions(wallet_id, coin_mint)
+WHERE closed_at IS NULL;
 `);
 
 
@@ -507,6 +627,7 @@ ensureColumn(db, "pools", "txns_total", "INTEGER");
 ensureColumn(db, "pools", "volume_quote", "REAL");
 ensureColumn(db, "pools", "volume24h_quote", "REAL");
 ensureColumn(db, "pools", "deployer", "TEXT");
+
 ensureColumn(db, "coins", "priceSol", "REAL");
 ensureColumn(db, "coins", "priceUsd", "REAL");
 ensureColumn(db, "coins", "liquiditySol", "REAL");
@@ -560,44 +681,31 @@ ensureColumn(db, "risk", "feesTotalSolDelta", "REAL");
 ensureColumn(db, "risk", "riskScoreDelta", "REAL");
 ensureColumn(db, "risk", "risksJson", "TEXT");
 
-ensureColumn(db, "positions", "trade_uuid", "TEXT");
-ensureColumn(db, "positions", "entryAmt", "REAL");
-ensureColumn(db, "positions", "holdingAmt", "REAL");
-ensureColumn(db, "positions", "walletId", "INTEGER");
-ensureColumn(db, "positions", "walletAlias", "TEXT");
-ensureColumn(db, "positions", "entryPriceSol", "REAL");
-ensureColumn(db, "positions", "currentPriceSol", "REAL");
-ensureColumn(db, "positions", "currentPriceUsd", "REAL");
-ensureColumn(db, "positions", "highestPriceSol", "REAL");
-ensureColumn(db, "positions", "source", "TEXT");
-ensureColumn(db, "positions", "lastUpdated", "INTEGER");
-ensureColumn(db, "buys", "trade_uuid", "TEXT");
-ensureColumn(db, "buys", "solUsdPrice", "REAL");
-ensureColumn(db, "buys", "slippage", "REAL");
-ensureColumn(db, "buys", "priceImpact", "REAL");
-ensureColumn(db, "buys", "hiddenTax", "REAL");
-ensureColumn(db, "buys", "executionPrice", "REAL");
-ensureColumn(db, "buys", "currentPrice", "REAL");
-ensureColumn(db, "sells", "trade_uuid", "TEXT");
-ensureColumn(db, "sells", "solUsdPrice", "REAL");
-ensureColumn(db, "sells", "slippage", "REAL");
-ensureColumn(db, "sells", "priceImpact", "REAL");
-ensureColumn(db, "sells", "hiddenTax", "REAL");
-ensureColumn(db, "sells", "executionPrice", "REAL");
-ensureColumn(db, "sells", "currentPrice", "REAL");
-ensureColumn(db, "indicators", "emaShort", "REAL");
-ensureColumn(db, "indicators", "emaMedium", "REAL");
-ensureColumn(db, "indicators", "macd", "REAL");
-ensureColumn(db, "trades", "trade_uuid", "TEXT");
-ensureColumn(db, "evaluations", "blueprintCatalog", "TEXT");
-ensureColumn(db, "evaluations", "blueprintActive", "TEXT");
-ensureColumn(db, "evaluations", "gateResults", "TEXT");
+
 ensureColumn(db, "sc_wallets", "usage_type", "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn(db, "sc_wallets", "is_default_funding", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "auto_attach_warchest", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "strategy_id", "TEXT");
+
 ensureColumn(db, "sc_trades", "created_at", "INTEGER");
 ensureColumn(db, "sc_trades", "updated_at", "INTEGER");
+ensureColumn(db, "sc_trades", "session_id", "INTEGER");
+ensureColumn(db, "sc_trades", "trade_uuid", "TEXT");
+
+ensureColumn(db, "sc_pnl_positions", "wallet_alias", "TEXT");
+ensureColumn(db, "sc_pnl_positions", "total_tokens_bought", "REAL");
+ensureColumn(db, "sc_pnl_positions", "total_tokens_sold", "REAL");
+ensureColumn(db, "sc_pnl_positions", "total_sol_spent", "REAL");
+ensureColumn(db, "sc_pnl_positions", "total_sol_received", "REAL");
+ensureColumn(db, "sc_pnl_positions", "fees_sol", "REAL");
+ensureColumn(db, "sc_pnl_positions", "fees_usd", "REAL");
+ensureColumn(db, "sc_pnl_positions", "avg_cost_sol", "REAL");
+ensureColumn(db, "sc_pnl_positions", "avg_cost_usd", "REAL");
+ensureColumn(db, "sc_pnl_positions", "realized_sol", "REAL");
+ensureColumn(db, "sc_pnl_positions", "realized_usd", "REAL");
+ensureColumn(db, "sc_pnl_positions", "first_trade_at", "INTEGER");
+ensureColumn(db, "sc_pnl_positions", "last_trade_at", "INTEGER");
+ensureColumn(db, "sc_pnl_positions", "last_updated_at", "INTEGER");
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sc_wallets_usage_type
@@ -609,25 +717,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sc_wallets_auto_attach
     ON sc_wallets (auto_attach_warchest);
 `);
-
-const uuidRows = db
-  .prepare(
-    "SELECT coin_mint, trade_uuid FROM positions WHERE trade_uuid IS NOT NULL"
-  )
-  .all();
-for (const row of uuidRows) {
-  tradeUuidMap.set(row.coin_mint, row.trade_uuid);
-}
-const pendingUuidRows = db
-  .prepare(
-    "SELECT mint, trade_uuid FROM pending_trade_uuids WHERE trade_uuid IS NOT NULL"
-  )
-  .all();
-for (const row of pendingUuidRows) {
-  if (!tradeUuidMap.has(row.mint)) {
-    tradeUuidMap.set(row.mint, row.trade_uuid);
-  }
-}
 }
 
 module.exports = { ensureSqliteSchema };
