@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
 
 async function main() {
