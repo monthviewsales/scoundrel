@@ -170,6 +170,15 @@ db.exec(`
     UNIQUE(wallet_id, coin_mint, trade_uuid)
   );
 
+  -- Pending position-run UUIDs for cases where sc_positions is not created yet (e.g. out-of-order writes)
+  CREATE TABLE IF NOT EXISTS pending_trade_uuids (
+    wallet_id    INTEGER,          -- nullable for back-compat / unknown wallet context
+    mint         TEXT NOT NULL,
+    trade_uuid   TEXT NOT NULL,
+    created_at   INTEGER NOT NULL,
+    UNIQUE(wallet_id, mint)
+  );
+
   CREATE TABLE IF NOT EXISTS sc_sessions (
     session_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     service           TEXT NOT NULL,               -- e.g. 'warchest'
@@ -615,6 +624,9 @@ CREATE INDEX IF NOT EXISTS idx_sc_trades_wallet_executed
   CREATE INDEX IF NOT EXISTS idx_sc_pnl_positions_wallet_mint_uuid
     ON sc_pnl_positions (wallet_id, coin_mint, trade_uuid);
 
+  CREATE INDEX IF NOT EXISTS idx_pending_trade_uuids_created_at
+    ON pending_trade_uuids (created_at);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_sc_positions_open_wallet_mint
 ON sc_positions(wallet_id, coin_mint)
 WHERE closed_at IS NULL;
@@ -691,6 +703,11 @@ ensureColumn(db, "sc_trades", "created_at", "INTEGER");
 ensureColumn(db, "sc_trades", "updated_at", "INTEGER");
 ensureColumn(db, "sc_trades", "session_id", "INTEGER");
 ensureColumn(db, "sc_trades", "trade_uuid", "TEXT");
+
+ensureColumn(db, "pending_trade_uuids", "wallet_id", "INTEGER");
+ensureColumn(db, "pending_trade_uuids", "mint", "TEXT NOT NULL");
+ensureColumn(db, "pending_trade_uuids", "trade_uuid", "TEXT NOT NULL");
+ensureColumn(db, "pending_trade_uuids", "created_at", "INTEGER NOT NULL");
 
 ensureColumn(db, "sc_pnl_positions", "wallet_alias", "TEXT");
 ensureColumn(db, "sc_pnl_positions", "total_tokens_bought", "REAL");
