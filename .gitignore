@@ -101,3 +101,7 @@ profiles/
 data/
 
 autopsy/
+
+db/db_backup.zip
+
+db/scoundrel.db

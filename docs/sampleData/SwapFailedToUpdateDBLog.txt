@@ -1,0 +1,588 @@
+☁  scoundrel [bootyboxv4] ⚡  scoundrel swap G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump -b .01                                             
+2025-12-13 14:00:33 info: [scoundrel:swap] Select a wallet to trade with:
+2025-12-13 14:00:33 info: 1) warlord [default] (DDkF...E9ZR)
+> 1
+2025-12-13 14:00:35 info: [scoundrel:swap] Using wallet warlord
+2025-12-13 14:00:35 debug: [scoundrel:swap] priorityFee undefined and no valid config default; using solana-swap default behavior
+2025-12-13 14:00:35 debug: [scoundrel:swap] jito flag undefined and no config default; using solana-swap default behavior
+[scoundrel:swap] 🚀 BUY queued | wallet=warlord | mint=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump | amount=0.01 (SOL → Token) | slippage=20% | priority=low
+2025-12-13 14:00:35 info: [worker] start {"worker":"worker","event":"start","requestId":"f4d31594447c0bd5","payload":{"side":"buy","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","amount":0.01,"walletAlias":"warlord","walletId":1,"walletPubkey":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","showQuoteDetails":true,"debugLogging":true,"dryRun":false,"panic":false}}
+2025-12-13 14:00:35 debug: [swapEngine] Marked pending swap for mint
+2025-12-13 14:00:35 debug: [swapEngine] swap config txVersion=v0 priorityFeeLevel=low debug=on showQuote=on
+[tokenInfoService.ensureTokenInfo] start { mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump' }
+[tokenInfoService.ensureTokenInfo] BootyBox ready? true
+[tokenInfoService.ensureTokenInfo] cached coin lookup result undefined
+[tokenInfoService.ensureTokenInfo] fetching token information from SolanaTracker
+[scoundrel][DataClient][DEBUG] 2025-12-13T19:00:35.540Z data api call {"op":"getTokenInformation","attempt":1}
+[tokenInfoService.ensureTokenInfo] raw token info from SolanaTracker {
+  token: {
+    name: 'Devilon',
+    symbol: 'DEVILON',
+    mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+    uri: 'https://ipfs-forward.solanatracker.io/ipfs/bafkreicc62zipfzmau2m6c6pcl45un6yl3vklz3fepldp6bgay6vr5akne',
+    decimals: 6,
+    isMutable: false,
+    image: 'https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreibljwhy4lupgtssh53alyo2h6qw4ru7tv7wwk3en25dfvzr5fojf4',
+    description: '',
+    twitter: 'https://x.com/i/communities/1999857215864279308/',
+    telegram: null,
+    website: null,
+    showName: 'true',
+    video: '',
+    createdOn: 'https://pump.fun',
+    hasFileMetaData: true,
+    strictSocials: { twitter: 'https://x.com/i/communities/1999857215864279308/' },
+    creation: {
+      creator: 'FDg1sGapgH19zMbP9vA8SQ9VxxDusQMQWbkpd2EpnaPf',
+      created_tx: 'JDhTbo3QTuDpoPxn9AZyysUWZcB7ytUuzPD1LJa2W2ycVjq5Vko46azj92RseQJ78XtidGfPhFvgVWNXUdvPAMz',
+      created_time: 1765638264
+    }
+  },
+  pools: [
+    {
+      poolId: 'C63GvW5b9a3FHptgqrhdhttqjdo74GkrUJoyhKRcUjJN',
+      liquidity: [Object],
+      price: [Object],
+      tokenSupply: 999999924.217631,
+      lpBurn: 100,
+      tokenAddress: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      marketCap: [Object],
+      decimals: 6,
+      security: [Object],
+      quoteToken: 'So11111111111111111111111111111111111111112',
+      market: 'pumpfun-amm',
+      'pumpfun-amm': [Object],
+      deployer: 'C5bHSGTVmpdaKJPwVTBJurtQAMhNiFjAo4P8PML3TU7A',
+      lastUpdated: 1765652435615,
+      createdAt: 1765638399145,
+      txns: [Object],
+      bundleId: 'fc2b84cc7bfd4122fddd1840e324ff4a0221e893882ac64fd2eb1221667fb452'
+    },
+    {
+      poolId: '5RZ8d8KWnGRUQiY3ubhPbn5XBWT1Gr1ahHQzrsRNYagx',
+      liquidity: [Object],
+      price: [Object],
+      tokenSupply: 999999924.217631,
+      lpBurn: 0,
+      tokenAddress: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      marketCap: [Object],
+      market: 'meteora-dlmm',
+      quoteToken: 'So11111111111111111111111111111111111111112',
+      decimals: 6,
+      security: [Object],
+      lastUpdated: 1765652434035,
+      createdAt: 1765639778582,
+      deployer: 'Cgy82y8igrfdHuVtwMo2FcDR1q4hDSTNQxJXwAWcxBR4',
+      txns: [Object],
+      bundleId: 'fc2b84cc7bfd4122fddd1840e324ff4a0221e893882ac64fd2eb1221667fb452'
+    },
+    {
+      poolId: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      liquidity: [Object],
+      price: [Object],
+      tokenSupply: 1000000000,
+      lpBurn: 100,
+      tokenAddress: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      marketCap: [Object],
+      decimals: 6,
+      security: [Object],
+      quoteToken: 'So11111111111111111111111111111111111111112',
+      market: 'pumpfun',
+      deployer: 'FDg1sGapgH19zMbP9vA8SQ9VxxDusQMQWbkpd2EpnaPf',
+      pumpfun: [Object],
+      curvePercentage: 100,
+      curve: '94tB4AyGsFzYvCYEBy6rATwg6nQNnpsm6aaM8s3gQgfg',
+      lastUpdated: 1765638478668,
+      createdAt: 1765638264232,
+      txns: [Object],
+      bundleId: 'fc2b84cc7bfd4122fddd1840e324ff4a0221e893882ac64fd2eb1221667fb452'
+    }
+  ],
+  events: {
+    '1m': { priceChangePercentage: 0.2516686043281 },
+    '5m': { priceChangePercentage: -22.397076889977 },
+    '15m': { priceChangePercentage: -11.056256979392 },
+    '30m': { priceChangePercentage: -19.711712401461 },
+    '1h': { priceChangePercentage: -39.304457380561 },
+    '2h': { priceChangePercentage: 83.628069499789 },
+    '3h': { priceChangePercentage: 2.8328512760657 },
+    '4h': { priceChangePercentage: 179.81685913638 },
+    '5h': { priceChangePercentage: 179.81685913638 },
+    '6h': { priceChangePercentage: 179.81685913638 },
+    '12h': { priceChangePercentage: 179.81685913638 },
+    '24h': { priceChangePercentage: 179.81685913638 }
+  },
+  risk: {
+    snipers: {
+      count: 23,
+      totalBalance: 1862265.10655,
+      totalPercentage: 0.1862,
+      wallets: [Array]
+    },
+    insiders: { count: 0, totalBalance: 0, totalPercentage: 0, wallets: [] },
+    top10: 16.7396,
+    dev: { percentage: 0.0662, amount: 661623.935782 },
+    fees: {
+      jito: 0.221829141,
+      network: 0.642638094,
+      nextblock: 0.015000002,
+      trojan: 0.195470206,
+      axiom: 3.583464203,
+      'helius-sender': 0.035004372,
+      '0slot': 0.149919164,
+      bloom: 0.026560236,
+      photon: 0.071444847,
+      padre: 0.078121386,
+      maestro: 0.031860302,
+      bullx: 0.178127201,
+      soltradingbot: 0.073850841,
+      totalTrading: 4.238899222,
+      totalTips: 1.064390773,
+      total: 5.303289995
+    },
+    rugged: false,
+    risks: [ [Object] ],
+    score: 4
+  },
+  buys: 1046,
+  sells: 533,
+  txns: 1579,
+  holders: 1211
+}
+[tokenInfoService.ensureTokenInfo] full payload constructed for BootyBox {
+  mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+  token: {
+    name: 'Devilon',
+    symbol: 'DEVILON',
+    mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+    uri: 'https://ipfs-forward.solanatracker.io/ipfs/bafkreicc62zipfzmau2m6c6pcl45un6yl3vklz3fepldp6bgay6vr5akne',
+    decimals: 6,
+    isMutable: false,
+    image: 'https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreibljwhy4lupgtssh53alyo2h6qw4ru7tv7wwk3en25dfvzr5fojf4',
+    description: '',
+    twitter: 'https://x.com/i/communities/1999857215864279308/',
+    telegram: null,
+    website: null,
+    showName: 'true',
+    video: '',
+    createdOn: 'https://pump.fun',
+    hasFileMetaData: true,
+    strictSocials: { twitter: 'https://x.com/i/communities/1999857215864279308/' },
+    creation: {
+      creator: 'FDg1sGapgH19zMbP9vA8SQ9VxxDusQMQWbkpd2EpnaPf',
+      created_tx: 'JDhTbo3QTuDpoPxn9AZyysUWZcB7ytUuzPD1LJa2W2ycVjq5Vko46azj92RseQJ78XtidGfPhFvgVWNXUdvPAMz',
+      created_time: 1765638264
+    }
+  },
+  pools: [
+    {
+      poolId: 'C63GvW5b9a3FHptgqrhdhttqjdo74GkrUJoyhKRcUjJN',
+      liquidity: [Object],
+      price: [Object],
+      tokenSupply: 999999924.217631,
+      lpBurn: 100,
+      tokenAddress: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      marketCap: [Object],
+      decimals: 6,
+      security: [Object],
+      quoteToken: 'So11111111111111111111111111111111111111112',
+      market: 'pumpfun-amm',
+      'pumpfun-amm': [Object],
+      deployer: 'C5bHSGTVmpdaKJPwVTBJurtQAMhNiFjAo4P8PML3TU7A',
+      lastUpdated: 1765652435615,
+      createdAt: 1765638399145,
+      txns: [Object],
+      bundleId: 'fc2b84cc7bfd4122fddd1840e324ff4a0221e893882ac64fd2eb1221667fb452'
+    },
+    {
+      poolId: '5RZ8d8KWnGRUQiY3ubhPbn5XBWT1Gr1ahHQzrsRNYagx',
+      liquidity: [Object],
+      price: [Object],
+      tokenSupply: 999999924.217631,
+      lpBurn: 0,
+      tokenAddress: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      marketCap: [Object],
+      market: 'meteora-dlmm',
+      quoteToken: 'So11111111111111111111111111111111111111112',
+      decimals: 6,
+      security: [Object],
+      lastUpdated: 1765652434035,
+      createdAt: 1765639778582,
+      deployer: 'Cgy82y8igrfdHuVtwMo2FcDR1q4hDSTNQxJXwAWcxBR4',
+      txns: [Object],
+      bundleId: 'fc2b84cc7bfd4122fddd1840e324ff4a0221e893882ac64fd2eb1221667fb452'
+    },
+    {
+      poolId: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      liquidity: [Object],
+      price: [Object],
+      tokenSupply: 1000000000,
+      lpBurn: 100,
+      tokenAddress: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+      marketCap: [Object],
+      decimals: 6,
+      security: [Object],
+      quoteToken: 'So11111111111111111111111111111111111111112',
+      market: 'pumpfun',
+      deployer: 'FDg1sGapgH19zMbP9vA8SQ9VxxDusQMQWbkpd2EpnaPf',
+      pumpfun: [Object],
+      curvePercentage: 100,
+      curve: '94tB4AyGsFzYvCYEBy6rATwg6nQNnpsm6aaM8s3gQgfg',
+      lastUpdated: 1765638478668,
+      createdAt: 1765638264232,
+      txns: [Object],
+      bundleId: 'fc2b84cc7bfd4122fddd1840e324ff4a0221e893882ac64fd2eb1221667fb452'
+    }
+  ],
+  events: {
+    '1m': { priceChangePercentage: 0.2516686043281 },
+    '5m': { priceChangePercentage: -22.397076889977 },
+    '15m': { priceChangePercentage: -11.056256979392 },
+    '30m': { priceChangePercentage: -19.711712401461 },
+    '1h': { priceChangePercentage: -39.304457380561 },
+    '2h': { priceChangePercentage: 83.628069499789 },
+    '3h': { priceChangePercentage: 2.8328512760657 },
+    '4h': { priceChangePercentage: 179.81685913638 },
+    '5h': { priceChangePercentage: 179.81685913638 },
+    '6h': { priceChangePercentage: 179.81685913638 },
+    '12h': { priceChangePercentage: 179.81685913638 },
+    '24h': { priceChangePercentage: 179.81685913638 }
+  },
+  risk: {
+    snipers: {
+      count: 23,
+      totalBalance: 1862265.10655,
+      totalPercentage: 0.1862,
+      wallets: [Array]
+    },
+    insiders: { count: 0, totalBalance: 0, totalPercentage: 0, wallets: [] },
+    top10: 16.7396,
+    dev: { percentage: 0.0662, amount: 661623.935782 },
+    fees: {
+      jito: 0.221829141,
+      network: 0.642638094,
+      nextblock: 0.015000002,
+      trojan: 0.195470206,
+      axiom: 3.583464203,
+      'helius-sender': 0.035004372,
+      '0slot': 0.149919164,
+      bloom: 0.026560236,
+      photon: 0.071444847,
+      padre: 0.078121386,
+      maestro: 0.031860302,
+      bullx: 0.178127201,
+      soltradingbot: 0.073850841,
+      totalTrading: 4.238899222,
+      totalTips: 1.064390773,
+      total: 5.303289995
+    },
+    rugged: false,
+    risks: [ [Object] ],
+    score: 4
+  },
+  buys: 1046,
+  sells: 533,
+  txns: 1579,
+  holders: 1211,
+  symbol: 'DEVILON',
+  name: 'Devilon',
+  decimals: 6
+}
+[tokenInfoService.ensureTokenInfo] writing payload to BootyBox
+[2025-12-13T19:00:35.898Z] [BootyBox] info: [BootyBox] Saved raw token info to /Users/scoobycarolan/Projects/scoundrel/data/bootybox/BootyBoxInput-2025-12-13T19-00-35-897Z.json
+[tokenInfoService.ensureTokenInfo] BootyBox write success
+2025-12-13 14:00:35 debug: [swapEngine] Preparing BUY on G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump | amount=0.01 | wallet=DDkF...E9ZR
+2025-12-13 14:00:35 debug: [swapEngine] Using RPC URL https://rpc-mainnet.solanatracker.io/?api_key=50985673-3bc4-4f8e-b5cd-aa9522cfcc4e with API key present
+2025-12-13 14:00:35 debug: [swapEngine] getSwapInstructions side=buy from=So11111111111111111111111111111111111111112 to=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump amount=0.01 slippage=20% priorityFee=undefined priorityFeeLevel=low txVersion=v0
+[SolanaTracker] Swap URL: https://swap-v2.solanatracker.io/swap?from=So11111111111111111111111111111111111111112&to=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump&fromAmount=0.01&slippage=20&payer=DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR&priorityFeeLevel=low&txVersion=v0
+2025-12-13 14:00:36 debug: [swapEngine] Full swap response: {
+  "txn": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAIErWQHzU641UVL4bZr9C1WPH4XdysBIzAmYw+rDeaIffg/hYk9kFQrQZzO2tDcZqSE48iUIjkUzjiHnE4JDpu9fb6UEFaBgBEwFJunyshjE0wC7rR0NbRnUTJL3GXBahcDLnwRqOiz07iErT6kv2dAPpPsLP8/TYeQK5TkflgNepjpLsINFahLkAY+R2Ssv4PItm7mrujGZaTKPIIN8rAAr+5axqdFgL7QlbWd1MeRBJ2RG0xK1UTH1m9+VGfXdphXfYW/w8uDBDOj3QZ1nJ/u9s81G8TrIopMXKLwskEjXxRTysjs8Wm7iEkEQroFmSzcp6IM7mU//IfMoIrJiaWbouj17sSflitwSymj4NDfsLhw/mCDek+WPkXiikY3ar3tHckTqsxtTKjKPbH2pLnBv/5pI6U0fpVoF2XlF8lG3N3jJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FnhGZbp1Rl7loHRy5ZAYUnxpuLeNOLEc9GpIXLRmowDXwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKmYTkxlSV7zz0oy8+J3SBmR9YhyjSY1CEYp3bJEJfxbrXqxcKPoCFHFLQ6RUF2nWfV3m5Icc+SAvImqqvyiCrQBQSRuzH14/oHkF3OkaWVBmTeSOgdkR5ffbz61FEJgEMsMNf+pBVqOVo2o97wHVhUnTPHJLKQfQACcUWqkFMJ8cA/F55L8P97hEWKT0QRaplNvGr7sqqNVSmE37JDOEWQ7BwoGAAEACwwNAQEKBgACABMMDQEBCgYAAxQTDA0BAQwCAAIMAgAAAAAbtwAAAAAADQECAREOGwASFQwEABYLEwECBQYUAw0NDAoXFQcPCAkQESwRd5QjeykMFlDDAAAAAAAAGAAAAGYGPRIB2uvq9H0fAQIAAAAAG7cAAAAAAA0DAgAAAQkBKym+orXrVKdsfBkHhsYKHigxRbRAPbMts9qvQx6OspYBBgUPDgUDBA==",
+  "rate": {
+    "amountIn": 0.01,
+    "amountOut": 8608.775668808297,
+    "minAmountOut": 8608.775668808297,
+    "currentPrice": 0.0000011267572037154454,
+    "executionPrice": 9.014057629723562e-7,
+    "price": {
+      "quote": 0.0000011267572037154454,
+      "usd": 0.000149148805956571
+    },
+    "priceImpact": 0.01,
+    "fee": 0.000005,
+    "baseCurrency": {
+      "mint": "So11111111111111111111111111111111111111112",
+      "decimals": 9
+    },
+    "quoteCurrency": {
+      "mint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+      "decimals": 6
+    },
+    "platformFee": 50000,
+    "platformFeeUI": 0.00005,
+    "maxAmountIn": 0.012
+  },
+  "timeTaken": 0.341,
+  "type": "v0"
+}
+2025-12-13 14:00:36 debug: [swapEngine] Quote ready: 0.01 SOL → 8,608.775669 tokens | price=0.000001162 SOL/token | impact=0.01%
+2025-12-13 14:00:39 debug: [swapEngine] performSwapWithDetails result: {
+  "signature": "kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf"
+}
+2025-12-13 14:00:39 info: [swapEngine] 💰 Swap submitted: txid=kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf | side=buy | tokens=8608.775668808297 | sol=-0.01 | fees=0.000005 | priceImpact=0.01%
+2025-12-13 14:00:39 info: [txMonitor] start {"worker":"txMonitor","event":"start","requestId":"a86573d1da7e4f73","payload":{"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","wallet":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","walletAlias":"warlord","walletId":1,"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","side":"buy","size":0.01,"slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","showQuoteDetails":true,"debugLogging":true,"swapQuote":{"side":"buy","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","requestedAmount":0.01,"slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","useJito":false,"debugLogging":true,"showQuoteDetails":true,"tokensReceivedDecimal":8608.775668808297,"solReceivedDecimal":-0.01,"totalFees":0.000005,"priceImpact":0.01,"quote":{"amountIn":0.01,"amountOut":8608.775668808297,"minAmountOut":8608.775668808297,"currentPrice":0.0000011267572037154454,"executionPrice":9.014057629723562e-7,"price":{"quote":0.0000011267572037154454,"usd":0.000149148805956571},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"quoteCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"platformFee":50000,"platformFeeUI":0.00005,"maxAmountIn":0.012}}}}
+2025-12-13 14:00:39 debug: [txMonitor][metrics] {"worker":"txMonitor","event":"start","requestId":"a86573d1da7e4f73","payload":{"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","wallet":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","walletAlias":"warlord","walletId":1,"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","side":"buy","size":0.01,"slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","showQuoteDetails":true,"debugLogging":true,"swapQuote":{"side":"buy","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","requestedAmount":0.01,"slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","useJito":false,"debugLogging":true,"showQuoteDetails":true,"tokensReceivedDecimal":8608.775668808297,"solReceivedDecimal":-0.01,"totalFees":0.000005,"priceImpact":0.01,"quote":{"amountIn":0.01,"amountOut":8608.775668808297,"minAmountOut":8608.775668808297,"currentPrice":0.0000011267572037154454,"executionPrice":9.014057629723562e-7,"price":{"quote":0.0000011267572037154454,"usd":0.000149148805956571},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"quoteCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"platformFee":50000,"platformFeeUI":0.00005,"maxAmountIn":0.012}}}}
+2025-12-13 14:00:39 info: [txMonitor][trace] signature:subscribe:start {"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","commitment":"confirmed","transport":"signature"}
+2025-12-13 14:00:40 info: [txMonitor][trace] signature:subscribe:ready {"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","commitment":"confirmed","transport":"signature","subscriptionId":null}
+2025-12-13 14:00:40 info: [txMonitor][trace] signature:event {"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","slot":386476967,"status":"confirmed"}
+2025-12-13 14:00:40 info: [txMonitor][trace] fetch:start {"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","commitment":"confirmed"}
+2025-12-13 14:00:41 info: [txMonitor][trace] fetch:done {"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","slot":386476960}
+2025-12-13 14:00:41 info: [txMonitor][trace] monitor:final {"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","status":"confirmed","slot":386476960,"signatureSubscriber":true}
+2025-12-13 14:00:41 debug: [txMonitor] ✅ kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf confirmed
+2025-12-13 14:00:41 info: [txInsightService] Recovered price for kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf: 0.0000013836224173288564 SOL per unit of G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump
+2025-12-13 14:00:41 debug: [txMonitor][ScTradeEvent] {
+  "txid": "kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf",
+  "walletId": 1,
+  "walletAlias": "warlord",
+  "coinMint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+  "side": "buy",
+  "executedAt": 1765652437000,
+  "tokenAmount": 8608.775668,
+  "solAmount": -0.011911295,
+  "priceSolPerToken": 0.0000013836224173288564,
+  "priceUsdPerToken": 0.000149148805956571,
+  "solUsdPrice": 132.36995997430293,
+  "feesSol": 0.000005,
+  "feesUsd": 0.0006618497998715147,
+  "slippagePct": 20,
+  "priceImpactPct": 0.01,
+  "program": "swapEngine",
+  "decisionPayload": {
+    "swapQuote": {
+      "side": "buy",
+      "mint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+      "requestedAmount": 0.01,
+      "slippagePercent": 20,
+      "priorityFeeLevel": "low",
+      "txVersion": "v0",
+      "useJito": false,
+      "debugLogging": true,
+      "showQuoteDetails": true,
+      "tokensReceivedDecimal": 8608.775668808297,
+      "solReceivedDecimal": -0.01,
+      "totalFees": 0.000005,
+      "priceImpact": 0.01,
+      "quote": {
+        "amountIn": 0.01,
+        "amountOut": 8608.775668808297,
+        "minAmountOut": 8608.775668808297,
+        "currentPrice": 0.0000011267572037154454,
+        "executionPrice": 9.014057629723562e-7,
+        "price": {
+          "quote": 0.0000011267572037154454,
+          "usd": 0.000149148805956571
+        },
+        "priceImpact": 0.01,
+        "fee": 0.000005,
+        "baseCurrency": {
+          "mint": "So11111111111111111111111111111111111111112",
+          "decimals": 9
+        },
+        "quoteCurrency": {
+          "mint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+          "decimals": 6
+        },
+        "platformFee": 50000,
+        "platformFeeUI": 0.00005,
+        "maxAmountIn": 0.012
+      }
+    }
+  }
+}
+2025-12-13 14:00:41 error: [txMonitor] Failed to record sc_trades row for kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf: ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint
+2025-12-13 14:00:41 info: [txMonitor] success {"worker":"txMonitor","event":"success","requestId":"a86573d1da7e4f73","durationMs":1656,"result":{"status":"confirmed","err":null,"slot":386476960,"insight":{"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","walletAddress":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6,"side":"buy","tokenDeltaNet":8608.775668,"tokenDeltaIn":8608.775668,"tokenDeltaOut":0,"solDeltaNet":-0.011911295,"solDeltaIn":0,"solDeltaOut":0.011911295,"priceSolPerToken":0.0000013836224173288564,"executedAt":null,"feeLamports":5000,"feeSol":0.000005}}}
+2025-12-13 14:00:41 debug: [txMonitor][metrics] {"worker":"txMonitor","event":"success","requestId":"a86573d1da7e4f73","durationMs":1656,"result":{"status":"confirmed","err":null,"slot":386476960,"insight":{"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","walletAddress":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6,"side":"buy","tokenDeltaNet":8608.775668,"tokenDeltaIn":8608.775668,"tokenDeltaOut":0,"solDeltaNet":-0.011911295,"solDeltaIn":0,"solDeltaOut":0.011911295,"priceSolPerToken":0.0000013836224173288564,"executedAt":null,"feeLamports":5000,"feeSol":0.000005}}}
+2025-12-13 14:00:41 info: [txMonitor] cleanup {"worker":"txMonitor","event":"cleanup","requestId":"a86573d1da7e4f73"}
+2025-12-13 14:00:41 debug: [txMonitor][metrics] {"worker":"txMonitor","event":"cleanup","requestId":"a86573d1da7e4f73"}
+2025-12-13 14:00:41 info: [worker] success {"worker":"worker","event":"success","requestId":"f4d31594447c0bd5","durationMs":6259,"result":{"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","side":"buy","tokensReceivedDecimal":8608.775668808297,"solReceivedDecimal":-0.01,"totalFees":0.000005,"priceImpact":0.01,"quote":{"amountIn":0.01,"amountOut":8608.775668808297,"minAmountOut":8608.775668808297,"currentPrice":0.0000011267572037154454,"executionPrice":9.014057629723562e-7,"price":{"quote":0.0000011267572037154454,"usd":0.000149148805956571},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"quoteCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"platformFee":50000,"platformFeeUI":0.00005,"maxAmountIn":0.012},"swapResponse":{"txn":"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAIErWQHzU641UVL4bZr9C1WPH4XdysBIzAmYw+rDeaIffg/hYk9kFQrQZzO2tDcZqSE48iUIjkUzjiHnE4JDpu9fb6UEFaBgBEwFJunyshjE0wC7rR0NbRnUTJL3GXBahcDLnwRqOiz07iErT6kv2dAPpPsLP8/TYeQK5TkflgNepjpLsINFahLkAY+R2Ssv4PItm7mrujGZaTKPIIN8rAAr+5axqdFgL7QlbWd1MeRBJ2RG0xK1UTH1m9+VGfXdphXfYW/w8uDBDOj3QZ1nJ/u9s81G8TrIopMXKLwskEjXxRTysjs8Wm7iEkEQroFmSzcp6IM7mU//IfMoIrJiaWbouj17sSflitwSymj4NDfsLhw/mCDek+WPkXiikY3ar3tHckTqsxtTKjKPbH2pLnBv/5pI6U0fpVoF2XlF8lG3N3jJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+FnhGZbp1Rl7loHRy5ZAYUnxpuLeNOLEc9GpIXLRmowDXwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKmYTkxlSV7zz0oy8+J3SBmR9YhyjSY1CEYp3bJEJfxbrXqxcKPoCFHFLQ6RUF2nWfV3m5Icc+SAvImqqvyiCrQBQSRuzH14/oHkF3OkaWVBmTeSOgdkR5ffbz61FEJgEMsMNf+pBVqOVo2o97wHVhUnTPHJLKQfQACcUWqkFMJ8cA/F55L8P97hEWKT0QRaplNvGr7sqqNVSmE37JDOEWQ7BwoGAAEACwwNAQEKBgACABMMDQEBCgYAAxQTDA0BAQwCAAIMAgAAAAAbtwAAAAAADQECAREOGwASFQwEABYLEwECBQYUAw0NDAoXFQcPCAkQESwRd5QjeykMFlDDAAAAAAAAGAAAAGYGPRIB2uvq9H0fAQIAAAAAG7cAAAAAAA0DAgAAAQkBKym+orXrVKdsfBkHhsYKHigxRbRAPbMts9qvQx6OspYBBgUPDgUDBA==","rate":{"amountIn":0.01,"amountOut":8608.775668808297,"minAmountOut":8608.775668808297,"currentPrice":0.0000011267572037154454,"executionPrice":9.014057629723562e-7,"price":{"quote":0.0000011267572037154454,"usd":0.000149148805956571},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"quoteCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"platformFee":50000,"platformFeeUI":0.00005,"maxAmountIn":0.012},"timeTaken":0.341,"type":"v0"},"signature":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","slot":null,"walletPubkey":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","walletAlias":"warlord","walletId":1,"timing":{"startedAt":1765652435399,"endedAt":1765652439622,"durationMs":4223},"monitor":{"status":"confirmed","err":null,"slot":386476960,"insight":{"txid":"kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf","walletAddress":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6,"side":"buy","tokenDeltaNet":8608.775668,"tokenDeltaIn":8608.775668,"tokenDeltaOut":0,"solDeltaNet":-0.011911295,"solDeltaIn":0,"solDeltaOut":0.011911295,"priceSolPerToken":0.0000013836224173288564,"executedAt":null,"feeLamports":5000,"feeSol":0.000005}}}}
+2025-12-13 14:00:41 info: [worker] cleanup {"worker":"worker","event":"cleanup","requestId":"f4d31594447c0bd5"}
+[scoundrel:swap] 🛰️ Submitted transaction kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf; awaiting confirmation…
+2025-12-13 14:00:41 info: 
+[scoundrel] ✅ buy swap confirmed
+2025-12-13 14:00:41 info:   txid: kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf
+2025-12-13 14:00:41 info:   explorer: https://solscan.io/tx/kMa3wcdxMZKXnXXKujZMeNdx5L4dS1BSdnDDRqkeytaFcNdFcWbqRuiYxfRCJMsRP9CdvdHhgE8MasPgHdfVopf
+2025-12-13 14:00:41 info:   worker duration: 4223ms
+2025-12-13 14:00:41 info:   tokens: 8608.775668808297
+2025-12-13 14:00:41 info:   sol: -0.01
+2025-12-13 14:00:41 info:   totalFees (SOL): 0.000005
+2025-12-13 14:00:41 info:   priceImpact: 0.01
+2025-12-13 14:00:41 info:   quote:
+
+
+☁  scoundrel [bb4-codexrevenge] ⚡  node index.js swap G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump -s 100%                                 
+2025-12-13 14:05:20 info: [scoundrel:swap] Select a wallet to trade with:
+2025-12-13 14:05:20 info: 1) warlord [default] (DDkF...E9ZR)
+> 1
+2025-12-13 14:05:22 info: [scoundrel:swap] Using wallet warlord
+2025-12-13 14:05:22 debug: [scoundrel:swap] priorityFee undefined and no valid config default; using solana-swap default behavior
+2025-12-13 14:05:22 debug: [scoundrel:swap] jito flag undefined and no config default; using solana-swap default behavior
+[scoundrel:swap] 🚀 SELL queued | wallet=warlord | mint=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump | amount=100% (Token → SOL) | slippage=20% | priority=low
+2025-12-13 14:05:22 info: [worker] start {"worker":"worker","event":"start","requestId":"e47f5af1425e8777","payload":{"side":"sell","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","amount":"100%","walletAlias":"warlord","walletId":1,"walletPubkey":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","showQuoteDetails":true,"debugLogging":true,"dryRun":false,"panic":false}}
+2025-12-13 14:05:22 debug: [swapEngine] Marked pending swap for mint
+2025-12-13 14:05:22 debug: [swapEngine] swap config txVersion=v0 priorityFeeLevel=low debug=on showQuote=on
+[tokenInfoService.ensureTokenInfo] start { mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump' }
+[tokenInfoService.ensureTokenInfo] BootyBox ready? true
+[tokenInfoService.ensureTokenInfo] cached coin lookup result {
+  mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+  symbol: 'DEVILON',
+  name: 'Devilon',
+  decimals: 6,
+  image: 'https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreibljwhy4lupgtssh53alyo2h6qw4ru7tv7wwk3en25dfvzr5fojf4',
+  uri: 'https://ipfs-forward.solanatracker.io/ipfs/bafkreicc62zipfzmau2m6c6pcl45un6yl3vklz3fepldp6bgay6vr5akne',
+  marketCap: 155315.32468559052,
+  status: 'incomplete',
+  lastUpdated: 1765652435897,
+  lastEvaluated: 0,
+  price: 0.0000011733427772124893,
+  liquidity: 158.62895548,
+  buyScore: 0,
+  priceSol: 0.0000011733427772124893,
+  priceUsd: 0.00015531533645575464,
+  liquiditySol: 158.62895548,
+  liquidityUsd: 41995.416975306165,
+  marketCapSol: 1173.342688293794,
+  marketCapUsd: 155315.32468559052,
+  tokenCreatedAt: 1765638264000,
+  firstSeenAt: 1765652435897,
+  strictSocials: '{"twitter":"https://x.com/i/communities/1999857215864279308/"}'
+}
+[tokenInfoService.ensureTokenInfo] cached DB metadata is sufficient; no API fetch needed {
+  mint: 'G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump',
+  symbol: 'DEVILON',
+  name: 'Devilon'
+}
+2025-12-13 14:05:22 debug: [swapEngine] Preparing SELL on G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump | amount=100% | wallet=DDkF...E9ZR
+2025-12-13 14:05:22 debug: [swapEngine] Using RPC URL https://rpc-mainnet.solanatracker.io/?api_key=50985673-3bc4-4f8e-b5cd-aa9522cfcc4e with API key present
+2025-12-13 14:05:22 debug: [swapEngine] getSwapInstructions side=sell from=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump to=So11111111111111111111111111111111111111112 amount=100% slippage=20% priorityFee=undefined priorityFeeLevel=low txVersion=v0
+[SolanaTracker] Swap URL: https://swap-v2.solanatracker.io/swap?from=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump&to=So11111111111111111111111111111111111111112&fromAmount=100%25&slippage=20&payer=DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR&priorityFeeLevel=low&txVersion=v0
+2025-12-13 14:05:24 debug: [swapEngine] Full swap response: {
+  "txn": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAIELWQHzU641UVL4bZr9C1WPH4XdysBIzAmYw+rDeaIffg/hYk9kFQrQZzO2tDcZqSE48iUIjkUzjiHnE4JDpu9fb6UEFaBgBEwFJunyshjE0wC7rR0NbRnUTJL3GXBahcDLnwRqOiz07iErT6kv2dAPpPsLP8/TYeQK5TkflgNepjpLsINFahLkAY+R2Ssv4PItm7mrujGZaTKPIIN8rAAr+5axqdFgL7QlbWd1MeRBJ2RG0xK1UTH1m9+VGfXdphXfYW/w8uDBDOj3QZ1nJ/u9s81G8TrIopMXKLwskEjXxRTysjs8Wm7iEkEQroFmSzcp6IM7mU//IfMoIrJiaWbouMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WeEZlunVGXuWgdHLlkBhSfGm4t404sRz0akhctGajANfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqZhOTGVJXvPPSjLz4ndIGZH1iHKNJjUIRindskQl/FuterFwo+gIUcUtDpFQXadZ9Xebkhxz5IC8iaqq/KIKtAFBJG7MfXj+geQXc6RpZUGZN5I6B2RHl99vPrUUQmAQyww1/6kFWo5Wjaj3vAdWFSdM8ckspB9AAJxRaqQUwnxwy9P0AZXhnLmWrqxgcdVH0d9wLAnI+YVPwIo62f9vaAwHCAYAAQAJCgsBAQgGAAIAEQoLAQEIBgADEhEKCwEBCgIAAgwCAAAAECcAAAAAAAALAQIBEQwZABATCgQAFAkRAQIFBhIDCwsKCBUTBw0ODywRd5QjeykMFiaeAAAAAAAAGAAAADPmhaQBf4Ot9H0fAQIAAADPjXsAAAAAAAsDAgAAAQkBKym+orXrVKdsfBkHhsYKHigxRbRAPbMts9qvQx6OspYBBgUPDgUDBA==",
+  "rate": {
+    "amountIn": 8608.775668,
+    "amountOut": 0.00809723154602708,
+    "minAmountOut": 0.00809723154602708,
+    "currentPrice": 9.696688251136785e-7,
+    "executionPrice": 7.757350600909427e-7,
+    "price": {
+      "quote": 9.696688251136785e-7,
+      "usd": 0.00012838357374318893
+    },
+    "priceImpact": 0.01,
+    "fee": 0.000005,
+    "baseCurrency": {
+      "mint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+      "decimals": 6
+    },
+    "quoteCurrency": {
+      "mint": "So11111111111111111111111111111111111111112",
+      "decimals": 9
+    },
+    "platformFee": 40486,
+    "platformFeeUI": 0.000040486,
+    "maxAmountIn": 8608.775668
+  },
+  "timeTaken": 0.361,
+  "type": "v0"
+}
+2025-12-13 14:05:24 debug: [swapEngine] Quote ready: 8,608.775668 tokens → 0.008097 SOL | price=1,063,175.187601485 SOL/token | impact=0.01%
+2025-12-13 14:05:27 debug: [swapEngine] performSwapWithDetails result: {
+  "signature": "65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4"
+}
+2025-12-13 14:05:27 info: [swapEngine] 💰 Swap submitted: txid=65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4 | side=sell | tokens=-8608.775668 | sol=0.00809723154602708 | fees=0.000005 | priceImpact=0.01%
+2025-12-13 14:05:27 info: [txMonitor] start {"worker":"txMonitor","event":"start","requestId":"da38913fdb24e23f","payload":{"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","wallet":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","walletAlias":"warlord","walletId":1,"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","side":"sell","size":"100%","slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","showQuoteDetails":true,"debugLogging":true,"swapQuote":{"side":"sell","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","requestedAmount":"100%","slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","useJito":false,"debugLogging":true,"showQuoteDetails":true,"tokensReceivedDecimal":-8608.775668,"solReceivedDecimal":0.00809723154602708,"totalFees":0.000005,"priceImpact":0.01,"quote":{"amountIn":8608.775668,"amountOut":0.00809723154602708,"minAmountOut":0.00809723154602708,"currentPrice":9.696688251136785e-7,"executionPrice":7.757350600909427e-7,"price":{"quote":9.696688251136785e-7,"usd":0.00012838357374318893},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"quoteCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"platformFee":40486,"platformFeeUI":0.000040486,"maxAmountIn":8608.775668}}}}
+2025-12-13 14:05:27 debug: [txMonitor][metrics] {"worker":"txMonitor","event":"start","requestId":"da38913fdb24e23f","payload":{"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","wallet":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","walletAlias":"warlord","walletId":1,"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","side":"sell","size":"100%","slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","showQuoteDetails":true,"debugLogging":true,"swapQuote":{"side":"sell","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","requestedAmount":"100%","slippagePercent":20,"priorityFeeLevel":"low","txVersion":"v0","useJito":false,"debugLogging":true,"showQuoteDetails":true,"tokensReceivedDecimal":-8608.775668,"solReceivedDecimal":0.00809723154602708,"totalFees":0.000005,"priceImpact":0.01,"quote":{"amountIn":8608.775668,"amountOut":0.00809723154602708,"minAmountOut":0.00809723154602708,"currentPrice":9.696688251136785e-7,"executionPrice":7.757350600909427e-7,"price":{"quote":9.696688251136785e-7,"usd":0.00012838357374318893},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"quoteCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"platformFee":40486,"platformFeeUI":0.000040486,"maxAmountIn":8608.775668}}}}
+2025-12-13 14:05:27 info: [txMonitor][trace] signature:subscribe:start {"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","commitment":"confirmed","transport":"signature"}
+2025-12-13 14:05:28 info: [txMonitor][trace] signature:subscribe:ready {"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","commitment":"confirmed","transport":"signature","subscriptionId":null}
+2025-12-13 14:05:28 info: [txMonitor][trace] signature:event {"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","slot":386477703,"status":"confirmed"}
+2025-12-13 14:05:28 info: [txMonitor][trace] fetch:start {"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","commitment":"confirmed"}
+2025-12-13 14:05:28 info: [txMonitor][trace] fetch:done {"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","slot":386477697}
+2025-12-13 14:05:28 info: [txMonitor][trace] monitor:final {"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","status":"confirmed","slot":386477697,"signatureSubscriber":true}
+2025-12-13 14:05:28 debug: [txMonitor] ✅ 65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4 confirmed
+2025-12-13 14:05:28 info: [txInsightService] Recovered price for 65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4: 9.761644772830198e-7 SOL per unit of G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump
+2025-12-13 14:05:28 debug: [txMonitor][ScTradeEvent] {
+  "txid": "65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4",
+  "walletId": 1,
+  "walletAlias": "warlord",
+  "coinMint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+  "side": "sell",
+  "executedAt": 1765652725000,
+  "tokenAmount": 8608.775668,
+  "solAmount": 0.008403581,
+  "priceSolPerToken": 9.761644772830198e-7,
+  "priceUsdPerToken": 0.00012838357374318893,
+  "solUsdPrice": 132.39940319638302,
+  "feesSol": 0.000005,
+  "feesUsd": 0.0006619970159819151,
+  "slippagePct": 20,
+  "priceImpactPct": 0.01,
+  "program": "swapEngine",
+  "decisionPayload": {
+    "swapQuote": {
+      "side": "sell",
+      "mint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+      "requestedAmount": "100%",
+      "slippagePercent": 20,
+      "priorityFeeLevel": "low",
+      "txVersion": "v0",
+      "useJito": false,
+      "debugLogging": true,
+      "showQuoteDetails": true,
+      "tokensReceivedDecimal": -8608.775668,
+      "solReceivedDecimal": 0.00809723154602708,
+      "totalFees": 0.000005,
+      "priceImpact": 0.01,
+      "quote": {
+        "amountIn": 8608.775668,
+        "amountOut": 0.00809723154602708,
+        "minAmountOut": 0.00809723154602708,
+        "currentPrice": 9.696688251136785e-7,
+        "executionPrice": 7.757350600909427e-7,
+        "price": {
+          "quote": 9.696688251136785e-7,
+          "usd": 0.00012838357374318893
+        },
+        "priceImpact": 0.01,
+        "fee": 0.000005,
+        "baseCurrency": {
+          "mint": "G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump",
+          "decimals": 6
+        },
+        "quoteCurrency": {
+          "mint": "So11111111111111111111111111111111111111112",
+          "decimals": 9
+        },
+        "platformFee": 40486,
+        "platformFeeUI": 0.000040486,
+        "maxAmountIn": 8608.775668
+      }
+    }
+  }
+}
+[2025-12-13T19:05:28.890Z] [BootyBox] warn: [BootyBox] recordScTradeEvent: created new trade_uuid for sell with no open position-run: wallet_id=1 mint=G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump
+2025-12-13 14:05:28 error: [txMonitor] Failed to record sc_trades row for 65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4: ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint
+2025-12-13 14:05:28 info: [txMonitor] success {"worker":"txMonitor","event":"success","requestId":"da38913fdb24e23f","durationMs":1377,"result":{"status":"confirmed","err":null,"slot":386477697,"insight":{"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","walletAddress":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6,"side":"sell","tokenDeltaNet":-8608.775668,"tokenDeltaIn":0,"tokenDeltaOut":8608.775668,"solDeltaNet":0.008403581,"solDeltaIn":0.008403581,"solDeltaOut":0,"priceSolPerToken":9.761644772830198e-7,"executedAt":null,"feeLamports":5000,"feeSol":0.000005}}}
+2025-12-13 14:05:28 debug: [txMonitor][metrics] {"worker":"txMonitor","event":"success","requestId":"da38913fdb24e23f","durationMs":1377,"result":{"status":"confirmed","err":null,"slot":386477697,"insight":{"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","walletAddress":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6,"side":"sell","tokenDeltaNet":-8608.775668,"tokenDeltaIn":0,"tokenDeltaOut":8608.775668,"solDeltaNet":0.008403581,"solDeltaIn":0.008403581,"solDeltaOut":0,"priceSolPerToken":9.761644772830198e-7,"executedAt":null,"feeLamports":5000,"feeSol":0.000005}}}
+2025-12-13 14:05:28 info: [txMonitor] cleanup {"worker":"txMonitor","event":"cleanup","requestId":"da38913fdb24e23f"}
+2025-12-13 14:05:28 debug: [txMonitor][metrics] {"worker":"txMonitor","event":"cleanup","requestId":"da38913fdb24e23f"}
+2025-12-13 14:05:28 info: [worker] success {"worker":"worker","event":"success","requestId":"e47f5af1425e8777","durationMs":6113,"result":{"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","side":"sell","tokensReceivedDecimal":-8608.775668,"solReceivedDecimal":0.00809723154602708,"totalFees":0.000005,"priceImpact":0.01,"quote":{"amountIn":8608.775668,"amountOut":0.00809723154602708,"minAmountOut":0.00809723154602708,"currentPrice":9.696688251136785e-7,"executionPrice":7.757350600909427e-7,"price":{"quote":9.696688251136785e-7,"usd":0.00012838357374318893},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"quoteCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"platformFee":40486,"platformFeeUI":0.000040486,"maxAmountIn":8608.775668},"swapResponse":{"txn":"AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAIELWQHzU641UVL4bZr9C1WPH4XdysBIzAmYw+rDeaIffg/hYk9kFQrQZzO2tDcZqSE48iUIjkUzjiHnE4JDpu9fb6UEFaBgBEwFJunyshjE0wC7rR0NbRnUTJL3GXBahcDLnwRqOiz07iErT6kv2dAPpPsLP8/TYeQK5TkflgNepjpLsINFahLkAY+R2Ssv4PItm7mrujGZaTKPIIN8rAAr+5axqdFgL7QlbWd1MeRBJ2RG0xK1UTH1m9+VGfXdphXfYW/w8uDBDOj3QZ1nJ/u9s81G8TrIopMXKLwskEjXxRTysjs8Wm7iEkEQroFmSzcp6IM7mU//IfMoIrJiaWbouMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WeEZlunVGXuWgdHLlkBhSfGm4t404sRz0akhctGajANfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqZhOTGVJXvPPSjLz4ndIGZH1iHKNJjUIRindskQl/FuterFwo+gIUcUtDpFQXadZ9Xebkhxz5IC8iaqq/KIKtAFBJG7MfXj+geQXc6RpZUGZN5I6B2RHl99vPrUUQmAQyww1/6kFWo5Wjaj3vAdWFSdM8ckspB9AAJxRaqQUwnxwy9P0AZXhnLmWrqxgcdVH0d9wLAnI+YVPwIo62f9vaAwHCAYAAQAJCgsBAQgGAAIAEQoLAQEIBgADEhEKCwEBCgIAAgwCAAAAECcAAAAAAAALAQIBEQwZABATCgQAFAkRAQIFBhIDCwsKCBUTBw0ODywRd5QjeykMFiaeAAAAAAAAGAAAADPmhaQBf4Ot9H0fAQIAAADPjXsAAAAAAAsDAgAAAQkBKym+orXrVKdsfBkHhsYKHigxRbRAPbMts9qvQx6OspYBBgUPDgUDBA==","rate":{"amountIn":8608.775668,"amountOut":0.00809723154602708,"minAmountOut":0.00809723154602708,"currentPrice":9.696688251136785e-7,"executionPrice":7.757350600909427e-7,"price":{"quote":9.696688251136785e-7,"usd":0.00012838357374318893},"priceImpact":0.01,"fee":0.000005,"baseCurrency":{"mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6},"quoteCurrency":{"mint":"So11111111111111111111111111111111111111112","decimals":9},"platformFee":40486,"platformFeeUI":0.000040486,"maxAmountIn":8608.775668},"timeTaken":0.361,"type":"v0"},"signature":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","slot":null,"walletPubkey":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","walletAlias":"warlord","walletId":1,"timing":{"startedAt":1765652722829,"endedAt":1765652727181,"durationMs":4352},"monitor":{"status":"confirmed","err":null,"slot":386477697,"insight":{"txid":"65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4","walletAddress":"DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR","mint":"G9hN5mDneKsPvEU8DwxtTbwEt2JFL7VpUSQ3sqgLpump","decimals":6,"side":"sell","tokenDeltaNet":-8608.775668,"tokenDeltaIn":0,"tokenDeltaOut":8608.775668,"solDeltaNet":0.008403581,"solDeltaIn":0.008403581,"solDeltaOut":0,"priceSolPerToken":9.761644772830198e-7,"executedAt":null,"feeLamports":5000,"feeSol":0.000005}}}}
+2025-12-13 14:05:28 info: [worker] cleanup {"worker":"worker","event":"cleanup","requestId":"e47f5af1425e8777"}
+[scoundrel:swap] 🛰️ Submitted transaction 65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4; awaiting confirmation…
+2025-12-13 14:05:28 info: 
+[scoundrel] ✅ sell swap confirmed
+2025-12-13 14:05:28 info:   txid: 65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4
+2025-12-13 14:05:28 info:   explorer: https://solscan.io/tx/65R9xAHfMae2MjPgdvS2n4kjTGM2LTvRAdCRaGvrjH9p7BAWvncUZguRxDTwQC57jLBkJNRQx8ey1PCb81gVxsk4
+2025-12-13 14:05:28 info:   worker duration: 4352ms
+2025-12-13 14:05:28 info:   tokens: -8608.775668
+2025-12-13 14:05:28 info:   sol: 0.00809723154602708
+2025-12-13 14:05:28 info:   totalFees (SOL): 0.000005
+2025-12-13 14:05:28 info:   priceImpact: 0.01
+2025-12-13 14:05:28 info:   quote:
