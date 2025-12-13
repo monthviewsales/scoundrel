@@ -13,14 +13,11 @@ describe('BootyBox adapter selection (sqlite)', () => {
   };
 
   afterEach(() => {
-    delete process.env.DB_ENGINE;
     jest.resetModules();
     jest.clearAllMocks();
   });
 
   test('defaults to sqlite adapter', () => {
-    delete process.env.DB_ENGINE;
-
     const BootyBox = loadBootyBox();
     const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 
@@ -28,9 +25,7 @@ describe('BootyBox adapter selection (sqlite)', () => {
     expect(BootyBox.engine).toBe('sqlite');
   });
 
-  test('falls back to sqlite on unknown engine', () => {
-    process.env.DB_ENGINE = 'postgres';
-
+  test('always loads sqlite adapter', () => {
     const BootyBox = loadBootyBox();
     const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 

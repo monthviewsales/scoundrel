@@ -11,17 +11,10 @@ describe('BootyBox adapter selection', () => {
   };
 
   afterEach(() => {
-    delete process.env.DB_ENGINE;
     jest.resetModules();
   });
 
-  test('loads SQLite when DB_ENGINE is unset', () => {
-    const BootyBox = loadBootyBox();
-    expect(BootyBox.engine).toBe('sqlite');
-  });
-
-  test('falls back to SQLite when DB_ENGINE is unsupported', () => {
-    process.env.DB_ENGINE = 'postgres';
+  test('loads SQLite adapter', () => {
     const BootyBox = loadBootyBox();
     expect(BootyBox.engine).toBe('sqlite');
   });

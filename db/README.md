@@ -1,4 +1,4 @@
-# BootyBox (SQLite-only)
+# BootyBox (SQLite)
 
 BootyBox is the shared persistence layer for the VAULT77 bots. The SQLite file lives at `db/bootybox.db` by default (the old `db/db/bootybox.db` location is migrated automatically). It now lives natively inside Scoundrel under `db/` and runs exclusively on SQLite.
 
@@ -6,7 +6,7 @@ BootyBox is the shared persistence layer for the VAULT77 bots. The SQLite file l
 - SQLite adapter split into submodules (wallets, profiles, coins, trading, sessions) under `src/adapters/sqlite/`.
 - Schema bootstrap + migrations for SQLite in `migrations/sqlite/`.
 - Env override `BOOTYBOX_SQLITE_PATH` to point tests or apps at a custom database file.
-- Graceful warnings when `DB_ENGINE` is set to anything other than `sqlite`.
+- No MySQL support or fallbacks.
 
 ## Quick start
 ```bash
@@ -17,7 +17,7 @@ npm test   # runs the full Scoundrel suite, including BootyBox tests
 
 Using the adapter:
 ```js
-const BootyBox = require('./db'); // DB_ENGINE is ignored unless it is not sqlite
+const BootyBox = require('./db');
 
 (async () => {
   await BootyBox.init({
@@ -43,10 +43,9 @@ runMigrations({ sqlite: sqliteDb, logger: console });
 
 ## Tests
 - `test/sqlite.modules.test.js` exercises each SQLite submodule (wallets, profiles, coins, trading, sessions).
-- `test/adapterSelection.test.js` ensures the entrypoint always resolves to the SQLite adapter.
 
 ## Repository layout
-- `src/index.js` – entry that forces SQLite and logs a warning when another engine is requested.
+- `src/index.js` – entry that exports the SQLite adapter.
 - `src/adapters/sqlite/` – context, submodules, and the refactored adapter surface.
 - `migrations/sqlite/` – active migrations.
 - `test/` – Jest suites for the SQLite adapter surface.
