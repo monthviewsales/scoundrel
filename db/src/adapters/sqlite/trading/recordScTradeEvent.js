@@ -33,6 +33,10 @@ function recordScTradeEvent(trade) {
 
   const now = Date.now();
 
+  if (process.env.SC_SQLITE_DIAGNOSTICS === '1') {
+    logger?.debug?.(`[BootyBox][recordScTradeEvent] file=${__filename}`);
+  }
+
   // Required-ish fields
   const walletId = trade.wallet_id ?? trade.walletId;
   const walletAlias = trade.wallet_alias ?? trade.walletAlias ?? null;
@@ -46,7 +50,10 @@ function recordScTradeEvent(trade) {
   }
 
   // Normalize numerics (allow null)
-  const executedAt = trade.executed_at ?? trade.executedAt ?? now;
+  const executedAtCandidate = trade.executed_at ?? trade.executedAt;
+  const executedAt = Number.isFinite(Number(executedAtCandidate)) && Number(executedAtCandidate) > 0
+    ? Number(executedAtCandidate)
+    : now;
   const tokenAmount = trade.token_amount ?? trade.tokenAmount ?? null;
   const solAmount = trade.sol_amount ?? trade.solAmount ?? null;
   const feesSol = trade.fees_sol ?? trade.feesSol ?? null;
@@ -62,6 +69,11 @@ function recordScTradeEvent(trade) {
 
   // Optional metadata
   const txid = trade.txid ?? null;
+  if (!txid) {
+    throw new Error(
+      `[BootyBox] recordScTradeEvent requires txid (sc_trades.txid is NOT NULL + UNIQUE). wallet_id=${walletId} mint=${coinMint} side=${side}`
+    );
+  }
   const strategyId = trade.strategy_id ?? trade.strategyId ?? null;
   const strategyName = trade.strategy_name ?? trade.strategyName ?? null;
   const decisionLabel = trade.decision_label ?? trade.decisionLabel ?? null;
@@ -148,7 +160,7 @@ function recordScTradeEvent(trade) {
       @created_at,
       @updated_at
     )
-    ON CONFLICT(txid) DO UPDATE SET
+    ON CONFLICT DO UPDATE SET
       wallet_id = COALESCE(excluded.wallet_id, sc_trades.wallet_id),
       wallet_alias = COALESCE(excluded.wallet_alias, sc_trades.wallet_alias),
       session_id = COALESCE(excluded.session_id, sc_trades.session_id),
@@ -176,65 +188,14 @@ function recordScTradeEvent(trade) {
   `
   );
 
-  const stmtInsertNoTxid = db.prepare(
-    `
-    INSERT INTO sc_trades (
-      wallet_id,
-      wallet_alias,
-      session_id,
-      trade_uuid,
-      coin_mint,
-      txid,
-      side,
-      executed_at,
-      token_amount,
-      sol_amount,
-      price_sol_per_token,
-      price_usd_per_token,
-      slippage_pct,
-      price_impact_pct,
-      program,
-      evaluation_payload,
-      decision_payload,
-      fees_sol,
-      fees_usd,
-      sol_usd_price,
-      strategy_id,
-      strategy_name,
-      decision_label,
-      decision_reason,
-      created_at,
-      updated_at
-    ) VALUES (
-      @wallet_id,
-      @wallet_alias,
-      @session_id,
-      @trade_uuid,
-      @coin_mint,
-      @txid,
-      @side,
-      @executed_at,
-      @token_amount,
-      @sol_amount,
-      @price_sol_per_token,
-      @price_usd_per_token,
-      @slippage_pct,
-      @price_impact_pct,
-      @program,
-      @evaluation_payload,
-      @decision_payload,
-      @fees_sol,
-      @fees_usd,
-      @sol_usd_price,
-      @strategy_id,
-      @strategy_name,
-      @decision_label,
-      @decision_reason,
-      @created_at,
-      @updated_at
-    )
-  `
-  );
+  if (process.env.SC_SQLITE_DIAGNOSTICS === '1') {
+    try {
+      // better-sqlite3 exposes the SQL text via `statement.source`.
+      logger?.debug?.(`[BootyBox][recordScTradeEvent] upsert SQL: ${stmtUpsertByTxid.source}`);
+    } catch (e) {
+      logger?.debug?.(`[BootyBox][recordScTradeEvent] unable to read statement.source: ${e?.message || e}`);
+    }
+  }
 
   const params = {
     wallet_id: walletId,
@@ -265,7 +226,7 @@ function recordScTradeEvent(trade) {
     updated_at: now,
   };
 
-  const info = txid ? stmtUpsertByTxid.run(params) : stmtInsertNoTxid.run(params);
+  const info = stmtUpsertByTxid.run(params);
 
   // Keep sc_positions in sync using the current legacy applier until we extract it.
   try {
@@ -289,9 +250,7 @@ function recordScTradeEvent(trade) {
   }
 
   // Return best-effort inserted/updated trade row
-  const row = txid
-    ? db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(txid)
-    : db.prepare('SELECT * FROM sc_trades WHERE id = ?').get(info.lastInsertRowid);
+  const row = db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(txid);
 
   return row || { id: info.lastInsertRowid, ...params };
 }

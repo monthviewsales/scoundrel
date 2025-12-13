@@ -632,6 +632,10 @@ ON sc_positions(wallet_id, coin_mint)
 WHERE closed_at IS NULL;
 `);
 
+  // Ensure txid is unique for UPSERTs. Older DB files may have been created before UNIQUE(txid) existed.
+  // This is safe to run repeatedly; it will no-op if already present.
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_trades_txid ON sc_trades(txid)');
+
 
 ensureColumn(db, "pools", "txns_buys", "INTEGER");
 ensureColumn(db, "pools", "txns_sells", "INTEGER");
