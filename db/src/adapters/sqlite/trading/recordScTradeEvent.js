@@ -11,6 +11,18 @@ const {
 // Apply trade events to positions using the new trading-domain applier.
 const applyScTradeEventToPositions = require('./applyScTradeEventToPositions');
 
+let ensuredTxidIndex = false;
+
+function ensureTxidIndex() {
+  if (ensuredTxidIndex) return;
+  try {
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_trades_txid ON sc_trades(txid)');
+    ensuredTxidIndex = true;
+  } catch (err) {
+    logger?.warn?.(`[BootyBox] ensureTxidIndex failed: ${err?.message || err}`);
+  }
+}
+
 /**
  * Record a trade event into sc_trades and update sc_positions.
  *
@@ -115,6 +127,7 @@ function recordScTradeEvent(trade) {
 
   // Insert trade
   // If txid is present, UPSERT by txid and preserve existing non-null fields when duplicates omit them.
+  ensureTxidIndex();
   const stmtUpsertByTxid = db.prepare(
     `
     INSERT INTO sc_trades (
@@ -172,7 +185,7 @@ function recordScTradeEvent(trade) {
       @created_at,
       @updated_at
     )
-    ON CONFLICT DO UPDATE SET
+    ON CONFLICT(txid) DO UPDATE SET
       wallet_id = COALESCE(excluded.wallet_id, sc_trades.wallet_id),
       wallet_alias = COALESCE(excluded.wallet_alias, sc_trades.wallet_alias),
       session_id = COALESCE(excluded.session_id, sc_trades.session_id),
@@ -238,7 +251,28 @@ function recordScTradeEvent(trade) {
     updated_at: now,
   };
 
-  const info = stmtUpsertByTxid.run(params);
+  let info;
+  try {
+    info = stmtUpsertByTxid.run(params);
+  } catch (err) {
+    // If the DB file was created before UNIQUE(txid) existed, attempt to fix and retry once.
+    if (String(err?.message || '').includes('ON CONFLICT clause does not match')) {
+      logger?.warn?.(
+        `[BootyBox] sc_trades upsert failed (missing UNIQUE(txid)?). Attempting to create index and retry: ${err?.message || err}`
+      );
+      ensureTxidIndex();
+      try {
+        info = stmtUpsertByTxid.run(params);
+      } catch (retryErr) {
+        logger?.warn?.(
+          `[BootyBox] sc_trades upsert retry failed: ${retryErr?.message || retryErr}`
+        );
+        throw retryErr;
+      }
+    } else {
+      throw err;
+    }
+  }
 
   // Keep sc_positions in sync using the new trading-domain applier.
   try {
