@@ -8,9 +8,8 @@ const {
   setTradeUuid,
 } = require('../context');
 
-// For now we still reuse the legacy position applier until we extract it too.
-// This keeps behavior consistent while we peel the monolith apart.
-const legacy = require('../legacyAdapter');
+// Apply trade events to positions using the new trading-domain applier.
+const applyScTradeEventToPositions = require('./applyScTradeEventToPositions');
 
 /**
  * Record a trade event into sc_trades and update sc_positions.
@@ -35,6 +34,19 @@ function recordScTradeEvent(trade) {
 
   if (process.env.SC_SQLITE_DIAGNOSTICS === '1') {
     logger?.debug?.(`[BootyBox][recordScTradeEvent] file=${__filename}`);
+    try {
+      const dbList = db.pragma('database_list');
+      logger?.debug?.(`[BootyBox][recordScTradeEvent] database_list=${JSON.stringify(dbList)}`);
+    } catch (e) {
+      logger?.debug?.(`[BootyBox][recordScTradeEvent] database_list failed: ${e?.message || e}`);
+    }
+
+    try {
+      const idxList = db.pragma("index_list('sc_trades')");
+      logger?.debug?.(`[BootyBox][recordScTradeEvent] sc_trades index_list=${JSON.stringify(idxList)}`);
+    } catch (e) {
+      logger?.debug?.(`[BootyBox][recordScTradeEvent] sc_trades index_list failed: ${e?.message || e}`);
+    }
   }
 
   // Required-ish fields
@@ -228,10 +240,10 @@ function recordScTradeEvent(trade) {
 
   const info = stmtUpsertByTxid.run(params);
 
-  // Keep sc_positions in sync using the current legacy applier until we extract it.
+  // Keep sc_positions in sync using the new trading-domain applier.
   try {
-    if (typeof legacy.applyScTradeEventToPositions === 'function') {
-      legacy.applyScTradeEventToPositions({
+    if (typeof applyScTradeEventToPositions === 'function') {
+      applyScTradeEventToPositions({
         ...trade,
         wallet_id: walletId,
         wallet_alias: walletAlias,
