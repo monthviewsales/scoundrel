@@ -54,7 +54,7 @@ describe('WalletManagerV2', () => {
     jest.clearAllMocks();
   });
 
-  it('continues applying positions when trade recording fails', async () => {
+  it('logs an error when trade recording fails but does not crash processing', async () => {
     const erroringBooty = {
       recordScTradeEvent: jest.fn(() => {
         throw new Error('db down');
@@ -66,12 +66,12 @@ describe('WalletManagerV2', () => {
     await manager.processSignature('sig-123');
 
     expect(bootyBox.recordScTradeEvent).toHaveBeenCalledTimes(1);
-    expect(bootyBox.applyScTradeEventToPositions).toHaveBeenCalledTimes(1);
+    expect(bootyBox.applyScTradeEventToPositions).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
   });
 
-  it('logs and skips when BootyBox persistence helpers are missing', async () => {
-    const { manager } = buildManager({ applyScTradeEventToPositions: undefined });
+  it('logs and skips when BootyBox.recordScTradeEvent is missing', async () => {
+    const { manager } = buildManager({ recordScTradeEvent: undefined });
 
     await manager.processSignature('sig-456');
 
