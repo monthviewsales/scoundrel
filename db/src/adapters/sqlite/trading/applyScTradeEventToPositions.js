@@ -1,5 +1,3 @@
-
-
 'use strict';
 
 const { db, logger } = require('../context');
@@ -29,7 +27,7 @@ function calcTradePriceSol(solAmount, tokenAmount) {
   const tok = toNum(tokenAmount);
   if (!sol || !tok) return null;
   if (tok === 0) return null;
-  return sol / tok;
+  return Math.abs(sol) / tok;
 }
 
 function calcTradePriceUsd(solAmount, tokenAmount, solUsdPrice) {
@@ -59,6 +57,10 @@ function applyScTradeEventToPositions(trade) {
 
   const now = Date.now();
 
+  if (process.env.SC_SQLITE_DIAGNOSTICS === '1') {
+    logger?.debug?.(`[BootyBox][applyScTradeEventToPositions] trade=${JSON.stringify(trade)}`);
+  }
+
   const walletId = trade.wallet_id ?? trade.walletId;
   const walletAlias = trade.wallet_alias ?? trade.walletAlias ?? null;
   const coinMint = trade.coin_mint ?? trade.coinMint;
@@ -71,7 +73,10 @@ function applyScTradeEventToPositions(trade) {
     );
   }
 
-  const executedAt = trade.executed_at ?? trade.executedAt ?? now;
+  const executedAtCandidate = trade.executed_at ?? trade.executedAt;
+  const executedAt = Number.isFinite(Number(executedAtCandidate)) && Number(executedAtCandidate) > 0
+    ? Number(executedAtCandidate)
+    : now;
   const tokenAmount = toNum(trade.token_amount ?? trade.tokenAmount) || 0;
   const solAmount = toNum(trade.sol_amount ?? trade.solAmount) || 0;
   const solUsdPrice = toNum(trade.sol_usd_price ?? trade.solUsdPrice);
@@ -84,7 +89,7 @@ function applyScTradeEventToPositions(trade) {
   const lastPriceUsd = calcTradePriceUsd(solAmount, tokenAmount, solUsdPrice);
 
   const getOpen = db.prepare(
-    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at IS NULL'
+    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND (closed_at IS NULL OR closed_at = 0)'
   );
 
   const insertOpen = db.prepare(
@@ -117,7 +122,7 @@ function applyScTradeEventToPositions(trade) {
       @strategy_id,
       @strategy_name,
       @open_at,
-      NULL,
+      @closed_at,
       @last_trade_at,
       @last_updated_at,
       @entry_token_amount,
@@ -178,6 +183,7 @@ function applyScTradeEventToPositions(trade) {
         strategy_id: strategyId,
         strategy_name: strategyName,
         open_at: executedAt,
+        closed_at: 0,
         last_trade_at: executedAt,
         last_updated_at: now,
         entry_token_amount: isBuy ? tokenAmount : null,
@@ -236,6 +242,8 @@ function applyScTradeEventToPositions(trade) {
     const eps = 1e-9;
     const cur = toNum(newCurrent) || 0;
     if (cur <= eps) {
+      // Clamp to zero on close to avoid negative dust / out-of-order sells leaving negatives behind.
+      db.prepare('UPDATE sc_positions SET current_token_amount = 0 WHERE position_id = ?').run(open.position_id);
       closeOpen.run(executedAt, now, open.position_id);
     }
 
@@ -245,7 +253,7 @@ function applyScTradeEventToPositions(trade) {
   try {
     return tx();
   } catch (err) {
-    logger?.warn?.(`[BootyBox] applyScTradeEventToPositions error: ${err?.message || err}`);
+    logger?.warn?.(`[BootyBox] applyScTradeEventToPositions error: ${err?.stack || err?.message || err}`);
     throw err;
   }
 }
