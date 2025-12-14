@@ -7,6 +7,7 @@ let ink;
 const {
   createChainStatus,
   createRpcLatencyBar,
+  createSessionStatus,
   createWalletCard,
   createRecentActivityList,
 } = require("../../lib/hud/warchestInkApp");
@@ -41,6 +42,22 @@ describe("warchest Ink components", () => {
     expect(lastFrame()).toContain("SOL RPC: 11ms");
     expect(lastFrame()).toContain("Tokens RPC: 25ms");
     expect(lastFrame()).toContain("Data API: 9ms");
+  });
+
+  test("SessionStatus renders session ID and duration", () => {
+    const SessionStatus = createSessionStatus(ink);
+    const now = Date.now();
+    const session = {
+      sessionId: 42,
+      startedAt: now - 90_000,
+      lastRefreshAt: now - 500,
+    };
+
+    const { lastFrame } = render(h(SessionStatus, { session, now }));
+
+    expect(lastFrame()).toContain("Session: 42");
+    expect(lastFrame()).toMatch(/1m\s+30s/);
+    expect(lastFrame()).toContain("Last refresh 500ms ago");
   });
 
   test("WalletCard renders stable tokens with USD estimates and pagination notice", () => {
