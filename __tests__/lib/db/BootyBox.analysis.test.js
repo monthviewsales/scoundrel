@@ -14,13 +14,11 @@ describe('BootyBox adapter selection', () => {
   };
 
   afterEach(() => {
-    delete process.env.DB_ENGINE;
     jest.resetModules();
     jest.clearAllMocks();
   });
 
   test('always resolves to sqlite adapter', () => {
-    process.env.DB_ENGINE = 'not-sqlite';
     const BootyBox = loadBootyBox();
     const sqliteAdapter = require('../../../db/src/adapters/sqlite');
 

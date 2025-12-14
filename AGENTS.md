@@ -161,3 +161,8 @@ await close();
 Failure to do so will leave open WS handles and prevent Scoundrel's daemon from exiting.
 
 ---
+
+### Warchest Sessions
+
+- Long-running warchest workers must keep `sc_sessions` accurate: close stale records using `data/warchest/status.json`, start a new session only after the RPC client is healthy, heartbeat via `BootyBox.updateSessionStats`, and end the session on every shutdown path.
+- `data/warchest/status.json` should now include `health.session` (session id, slots, block times) so CLI commands and crash recovery logic can read it without poking the database directly.

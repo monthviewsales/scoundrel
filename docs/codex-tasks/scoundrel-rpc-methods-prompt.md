@@ -24,7 +24,7 @@ You have access to:
   - Keep code **lint-friendly** (I use ESLint).
 - This repo **already has**:
   - `lib/solanaTrackerRPCClient.js` — wraps SolanaTracker RPC (HTTP + WebSocket) using `@solana/kit` (Anza).
-  - `db` — MySQL2 connection/pool.
+  - `db` — SQLite-backed BootyBox helpers (see `db/src/adapters/sqlite`).
   - `lib/cli/warchestCli.js` — CLI command for the “warchest” wallet registry.
   - `scripts/warchestService.js` — long-running wallet HUD (we just built this; it currently calls `createSolanaTrackerRPCClient()` and tries to use `rpc.getBalance()` directly).
 - Do **not** rip out or reinvent my connection logic.  

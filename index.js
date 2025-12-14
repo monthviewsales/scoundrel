@@ -130,7 +130,7 @@ program
     .version(resolveVersion());
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
-program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n  DB_ENGINE                  Optional legacy flag (sqlite only)\n`);
+program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n`);
 
 program
     .command('research')
@@ -796,7 +796,7 @@ Examples:
 program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
-    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
+    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`)
     .action(async () => {
     console.log('[test] starting test action');
     const hasKey = !!process.env.OPENAI_API_KEY;
@@ -819,28 +819,20 @@ program
         });
 
         // DB diagnostics
-        const {
-            DB_ENGINE = 'sqlite',
-            DB_HOST = 'localhost',
-            DB_PORT = '3306',
-            DB_NAME = '(unset)',
-            DB_USER = '(unset)',
-            DB_POOL_LIMIT = '30',
-        } = process.env;
+        const { BOOTYBOX_SQLITE_PATH = join(__dirname, 'db', 'bootybox.db') } = process.env;
 
         logger.info('\n[db] configuration:');
-        logger.info(`  Engine   : ${DB_ENGINE}`);
-        logger.info(`  Host     : ${DB_HOST}:${DB_PORT}`);
-        logger.info(`  Database : ${DB_NAME}`);
-        logger.info(`  User     : ${DB_USER}`);
-        logger.info(`  Pool     : ${DB_POOL_LIMIT}`);
+        logger.info(`  Engine   : sqlite`);
+        logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
 
         try {
             if (typeof BootyBox.init === 'function') {
                 await BootyBox.init();
             }
-            await BootyBox.ping();
-            logger.info('[db] ✅ connected');
+            if (typeof BootyBox.ping === 'function') {
+                await BootyBox.ping();
+            }
+            logger.info('[db] ✅ sqlite reachable');
         } catch (e) {
             const msg = e && e.message ? e.message : e;
             logger.info(`[db] ❌ connection failed: ${msg}`);

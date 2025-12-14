@@ -136,7 +136,7 @@ Before writing code, open and understand:
 
 ### 1.4 DB layer / coins table
 
-- How MySQL (or BootyBox) is used
+- How BootyBox (SQLite) is used
 - How the `coins` table is defined and accessed
   - Fetch by mint
   - Insert / upsert token metadata
@@ -731,7 +731,7 @@ Before writing or changing code, **open and read** these files and follow their 
      - Any candle / OHLCV wrappers
 
 4. **DB layer / `coins` table**
-   - How MySQL / BootyBox access is structured
+   - How BootyBox (SQLite) access is structured
    - How the `coins` table is defined and accessed (by mint, insert/upsert metadata)
 
 5. **`ai/jobs/*`**
