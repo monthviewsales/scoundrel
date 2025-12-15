@@ -4,6 +4,8 @@ const legacy = require('./legacyAdapter');
 const recordScTradeEvent = require('./trading/recordScTradeEvent');
 const applyScTradeEventToPositions = require('./trading/applyScTradeEventToPositions');
 const ensureOpenPositionRun = require('./trading/ensureOpenPositionRun');
+const recordPastTradeEvent = require('./trading/recordPastTradeEvent');
+const getTradesByTradeUuid = require('./trading/getTradesByTradeUuid');
 
 const chalk = require('chalk');
 const { logger } = require('./context');
@@ -16,8 +18,6 @@ function removed(fnName) {
 }
 
 module.exports = {
-  applyScTradeEventToPositions,
-  ensureOpenPositionRun,
   bulkResyncPositions: legacy.bulkResyncPositions,
   clearPendingSwap: legacy.clearPendingSwap,
   clearTradeUuid: legacy.clearTradeUuid,
@@ -32,15 +32,19 @@ module.exports = {
   getTradeUuid: legacy.getTradeUuid,
   insertTrades: legacy.insertTrades,
   isSwapPending: legacy.isSwapPending,
-  logBuy: removed('logBuy'),
   logEvaluation: legacy.logEvaluation,
-  logSell: removed('logSell'),
   markPendingSwap: legacy.markPendingSwap,
-  recordScTradeEvent,
   removePosition: legacy.removePosition,
   setTradeUuid: legacy.setTradeUuid,
   updateHighestPrice: legacy.updateHighestPrice,
-  updatePnL: removed('updatePnL'),
   updatePreviousRsi: legacy.updatePreviousRsi,
   addPosition: legacy.addPosition,
+  logBuy: removed('logBuy'),
+  logSell: removed('logSell'),
+  updatePnL: removed('updatePnL'),
+  applyScTradeEventToPositions,
+  ensureOpenPositionRun,
+  recordScTradeEvent,
+  getTradesByTradeUuid,
+  recordPastTradeEvent,
 };
