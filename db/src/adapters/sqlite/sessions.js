@@ -10,6 +10,7 @@ const updateSessionStats = require('./session/updateSessionStats');
 const getPnlAggregates = require('./session/getPnlAggregates');
 const getActiveSession = require('./session/getActiveSession');
 const getActiveSessionId = require('./session/getActiveSessionId');
+const getPastSessionId = require('./session/getPastSessionId');
 
 // Back-compat aliases (older code may still reference these names)
 const stopSession = endSession;
@@ -23,6 +24,7 @@ module.exports = {
   getPnlAggregates,
   getActiveSession,
   getActiveSessionId,
+  getPastSessionId,
 
   // aliases
   stopSession,
