@@ -42,7 +42,7 @@ describe('walletRegistry', () => {
       },
     ]);
 
-    const { getAllWallets } = require('../lib/warchest/walletRegistry');
+    const { getAllWallets } = require('../lib/wallets/walletRegistry');
     const rows = await getAllWallets();
 
     expect(mockInit).toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe('walletRegistry', () => {
 
   test('getWalletByAlias returns null when not found', async () => {
     mockGet.mockResolvedValue(null);
-    const { getWalletByAlias } = require('../lib/warchest/walletRegistry');
+    const { getWalletByAlias } = require('../lib/wallets/walletRegistry');
     const row = await getWalletByAlias('missing');
 
     expect(mockInit).toHaveBeenCalled();
@@ -79,7 +79,7 @@ describe('walletRegistry', () => {
       updatedAt: 'now',
     });
 
-    const { getWalletByAlias } = require('../lib/warchest/walletRegistry');
+    const { getWalletByAlias } = require('../lib/wallets/walletRegistry');
     const row = await getWalletByAlias('bravo');
 
     expect(row).toMatchObject({
