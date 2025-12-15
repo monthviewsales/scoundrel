@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const getActiveSessionId = require('../session/getActiveSessionId');
 const {
   db,
   logger,
@@ -102,7 +103,10 @@ function recordScTradeEvent(trade) {
   const strategyName = trade.strategy_name ?? trade.strategyName ?? null;
   const decisionLabel = trade.decision_label ?? trade.decisionLabel ?? null;
   const decisionReason = trade.decision_reason ?? trade.decisionReason ?? null;
-  const sessionId = trade.session_id ?? trade.sessionId ?? null;
+  let sessionId = trade.session_id ?? trade.sessionId ?? null;
+  if (!sessionId) {
+    sessionId = getActiveSessionId({ service: 'warchest-service' });
+  }
 
   // Position-run id
   let tradeUuid = trade.trade_uuid ?? trade.tradeUuid ?? null;

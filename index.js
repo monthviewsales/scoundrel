@@ -130,7 +130,7 @@ program
     .version(resolveVersion());
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
-program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n  DB_ENGINE                  Optional legacy flag (sqlite only)\n`);
+program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n`);
 
 program
     .command('research')
@@ -348,10 +348,17 @@ program
 program
     .command('autopsy')
     .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
-    .addHelpText('after', `\nFlow:\n  • Choose a HUD wallet or enter another address.\n  • Enter the token mint to analyze.\n  • Saves autopsy JSON to ./profiles/autopsy-<wallet>-<symbol>-<ts>.json and prints the AI narrative.\n\nExample:\n  $ scoundrel autopsy\n`)
-    .action(async () => {
+    .option('--trade-uuid <uuid>', 'Run autopsy by trade_uuid (loads trades from DB and enriches with SolanaTracker context)')
+    .addHelpText('after', `\nFlow:\n  • Default (interactive): choose a HUD wallet (or enter another address) and enter the token mint to analyze.\n  • DB mode (--trade-uuid): load all sc_trades rows for a trade_uuid and assemble the autopsy payload from DB + SolanaTracker context.\n\nOutput:\n  • Prints the AI narrative to the console.\n  • Persists the autopsy payload + response to the DB.\n\nExamples:\n  $ scoundrel autopsy\n  $ scoundrel autopsy --trade-uuid <TRADE_UUID>\n\nNotes:\n  • --trade-uuid is intended for analyzing a single position-run / campaign already recorded in sc_trades.\n`)
+    .action(async (opts) => {
         const rl = readline.createInterface({ input, output });
         try {
+            const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
+            if (tradeUuid) {
+                const result = await runAutopsy({ tradeUuid });
+                process.exitCode = result ? 0 : 0;
+                return;
+            }
             const selection = await walletsDomain.selection.selectWalletInteractively({
                 promptLabel: 'Which wallet?',
                 allowOther: true,
@@ -374,13 +381,12 @@ program
             }
 
             const result = await runAutopsy({ walletLabel, walletAddress, mint });
-            if (!result) {
-                process.exit(0);
-            }
-            process.exit(0);
+            process.exitCode = result ? 0 : 0;
+            return;
         } catch (err) {
             logAutopsyError(err);
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         } finally {
             rl.close();
             try { await BootyBox.close(); } catch (_) {}
@@ -796,7 +802,7 @@ Examples:
 program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
-    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
+    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`)
     .action(async () => {
     console.log('[test] starting test action');
     const hasKey = !!process.env.OPENAI_API_KEY;
@@ -819,28 +825,20 @@ program
         });
 
         // DB diagnostics
-        const {
-            DB_ENGINE = 'sqlite',
-            DB_HOST = 'localhost',
-            DB_PORT = '3306',
-            DB_NAME = '(unset)',
-            DB_USER = '(unset)',
-            DB_POOL_LIMIT = '30',
-        } = process.env;
+        const { BOOTYBOX_SQLITE_PATH = join(__dirname, 'db', 'bootybox.db') } = process.env;
 
         logger.info('\n[db] configuration:');
-        logger.info(`  Engine   : ${DB_ENGINE}`);
-        logger.info(`  Host     : ${DB_HOST}:${DB_PORT}`);
-        logger.info(`  Database : ${DB_NAME}`);
-        logger.info(`  User     : ${DB_USER}`);
-        logger.info(`  Pool     : ${DB_POOL_LIMIT}`);
+        logger.info(`  Engine   : sqlite`);
+        logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
 
         try {
             if (typeof BootyBox.init === 'function') {
                 await BootyBox.init();
             }
-            await BootyBox.ping();
-            logger.info('[db] ✅ connected');
+            if (typeof BootyBox.ping === 'function') {
+                await BootyBox.ping();
+            }
+            logger.info('[db] ✅ sqlite reachable');
         } catch (e) {
             const msg = e && e.message ? e.message : e;
             logger.info(`[db] ❌ connection failed: ${msg}`);

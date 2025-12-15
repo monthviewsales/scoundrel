@@ -180,19 +180,41 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS sc_sessions (
-    session_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    service           TEXT NOT NULL,               -- e.g. 'warchest'
-    started_at        INTEGER NOT NULL,            -- ms epoch
-    started_slot      INTEGER,
-    started_block     INTEGER,
-    ended_at          INTEGER,                     -- ms epoch
-    ended_slot        INTEGER,
-    ended_block       INTEGER,
-    ended_reason      TEXT,
-    host              TEXT,
-    pid               INTEGER,
-    meta_json         TEXT                          -- JSON blob for anything else
+    session_id              INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- service-level identity
+    service                 TEXT NOT NULL,          -- e.g. 'warchest-service'
+    service_instance_id     TEXT NOT NULL,          -- UUID per process start
+
+    -- lifecycle anchors
+    started_at              INTEGER NOT NULL,       -- ms epoch
+    start_slot              INTEGER NOT NULL,
+    start_block_time        INTEGER,
+
+    ended_at                INTEGER,                -- ms epoch
+    end_slot                INTEGER,
+    end_block_time          INTEGER,
+    end_reason              TEXT,                   -- 'clean' | 'crash' | 'restart'
+
+    -- explicit refresh / heartbeat (called by Warchest service)
+    last_refresh_at         INTEGER,
+    last_refresh_slot       INTEGER,
+    last_refresh_block_time INTEGER,
+
+    -- session rollups (updated by updateSessionStats)
+    trades_count            INTEGER DEFAULT 0,
+    fees_usd                REAL    DEFAULT 0,
+    buys_usd                REAL    DEFAULT 0,
+    sells_usd               REAL    DEFAULT 0,
+
+    created_at              INTEGER,
+    updated_at              INTEGER,
+    meta_json               TEXT
   );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS uniq_sc_sessions_one_open
+    ON sc_sessions(service)
+    WHERE ended_at IS NULL;
 
   CREATE TABLE IF NOT EXISTS sc_wallets (
     wallet_id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -697,11 +719,23 @@ ensureColumn(db, "risk", "feesTotalSolDelta", "REAL");
 ensureColumn(db, "risk", "riskScoreDelta", "REAL");
 ensureColumn(db, "risk", "risksJson", "TEXT");
 
-
 ensureColumn(db, "sc_wallets", "usage_type", "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn(db, "sc_wallets", "is_default_funding", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "auto_attach_warchest", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "strategy_id", "TEXT");
+
+ensureColumn(db, 'sc_sessions', 'service_instance_id', 'TEXT');
+ensureColumn(db, 'sc_sessions', 'start_slot', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'start_block_time', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'end_slot', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'end_block_time', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'last_refresh_at', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'last_refresh_slot', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'last_refresh_block_time', 'INTEGER');
+ensureColumn(db, 'sc_sessions', 'trades_count', 'INTEGER DEFAULT 0');
+ensureColumn(db, 'sc_sessions', 'fees_usd', 'REAL DEFAULT 0');
+ensureColumn(db, 'sc_sessions', 'buys_usd', 'REAL DEFAULT 0');
+ensureColumn(db, 'sc_sessions', 'sells_usd', 'REAL DEFAULT 0');
 
 ensureColumn(db, "sc_trades", "created_at", "INTEGER");
 ensureColumn(db, "sc_trades", "updated_at", "INTEGER");

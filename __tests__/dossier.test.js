@@ -53,7 +53,7 @@ jest.mock('../lib/analysis/techniqueOutcomes', () => ({
   buildFromMintMap: (...args) => mockBuildTechniqueFeaturesFromMintMap(...args),
 }));
 
-// Mock BootyBox so dossier does not try to initialize a real MySQL connection
+// Mock BootyBox so dossier does not try to initialize a real DB connection
 jest.mock('../db', () => ({
   init: jest.fn(),
   recordWalletDossier: jest.fn(),
