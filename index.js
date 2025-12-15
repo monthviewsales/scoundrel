@@ -356,10 +356,8 @@ program
             const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
             if (tradeUuid) {
                 const result = await runAutopsy({ tradeUuid });
-                if (!result) {
-                    process.exit(0);
-                }
-                process.exit(0);
+                process.exitCode = result ? 0 : 0;
+                return;
             }
             const selection = await walletsDomain.selection.selectWalletInteractively({
                 promptLabel: 'Which wallet?',
@@ -383,13 +381,12 @@ program
             }
 
             const result = await runAutopsy({ walletLabel, walletAddress, mint });
-            if (!result) {
-                process.exit(0);
-            }
-            process.exit(0);
+            process.exitCode = result ? 0 : 0;
+            return;
         } catch (err) {
             logAutopsyError(err);
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         } finally {
             rl.close();
             try { await BootyBox.close(); } catch (_) {}
