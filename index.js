@@ -348,10 +348,19 @@ program
 program
     .command('autopsy')
     .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
-    .addHelpText('after', `\nFlow:\n  • Choose a HUD wallet or enter another address.\n  • Enter the token mint to analyze.\n  • Saves autopsy JSON to ./profiles/autopsy-<wallet>-<symbol>-<ts>.json and prints the AI narrative.\n\nExample:\n  $ scoundrel autopsy\n`)
-    .action(async () => {
+    .option('--trade-uuid <uuid>', 'Run autopsy by trade_uuid (loads trades from DB and enriches with SolanaTracker context)')
+    .addHelpText('after', `\nFlow:\n  • Default (interactive): choose a HUD wallet (or enter another address) and enter the token mint to analyze.\n  • DB mode (--trade-uuid): load all sc_trades rows for a trade_uuid and assemble the autopsy payload from DB + SolanaTracker context.\n\nOutput:\n  • Prints the AI narrative to the console.\n  • Persists the autopsy payload + response to the DB.\n\nExamples:\n  $ scoundrel autopsy\n  $ scoundrel autopsy --trade-uuid <TRADE_UUID>\n\nNotes:\n  • --trade-uuid is intended for analyzing a single position-run / campaign already recorded in sc_trades.\n`)
+    .action(async (opts) => {
         const rl = readline.createInterface({ input, output });
         try {
+            const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
+            if (tradeUuid) {
+                const result = await runAutopsy({ tradeUuid });
+                if (!result) {
+                    process.exit(0);
+                }
+                process.exit(0);
+            }
             const selection = await walletsDomain.selection.selectWalletInteractively({
                 promptLabel: 'Which wallet?',
                 allowOther: true,
