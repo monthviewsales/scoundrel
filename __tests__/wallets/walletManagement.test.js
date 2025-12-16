@@ -14,7 +14,7 @@ const mockRegistry = {
   deleteWallet: jest.fn(),
 };
 
-jest.mock('../../lib/wallets/registry', () => mockRegistry);
+jest.mock('../../lib/wallets/walletRegistry', () => mockRegistry);
 
 const mockSelection = {
   selectWalletInteractively: jest.fn(),

@@ -25,14 +25,19 @@ const mockWriteJsonArtifact = jest.fn(() => path.join('/tmp/dossier', 'dummy.jso
 
 jest.mock('../lib/persist/jsonArtifacts', () => ({
   ...jest.requireActual('../lib/persist/jsonArtifacts'),
-  dossierBaseDir: jest.fn(() => '/tmp/dossier'),
-  formatRunId: jest.fn(() => 'test-run-id'),
-  getArtifactConfig: jest.fn(() => ({
-    env: 'test',
-    saveRaw: false,
-    saveEnriched: false,
+  // Under the new writer model, CLI code calls artifacts.write(stage, prefix, data).
+  // We keep using a single mockWriteJsonArtifact to assert the write intent.
+  createArtifactWriter: jest.fn(({ runId }) => ({
+    baseDir: '/tmp/dossier',
+    runId: runId || 'test-run-id',
+    write: (stage, prefix, data) =>
+      mockWriteJsonArtifact(
+        '/tmp/dossier',
+        [stage],
+        `${prefix}-${runId || 'test-run-id'}.json`,
+        data,
+      ),
   })),
-  removeArtifacts: jest.fn(),
   writeJsonArtifact: mockWriteJsonArtifact,
 }));
 
@@ -187,11 +192,11 @@ describe('harvestWallet (dossier)', () => {
     expect(mockGetUserTokenTrades).toHaveBeenCalledWith(MINT, WALLET);
     expect(mockClose).toHaveBeenCalledTimes(1);
 
-    // We always write the merged artifact once
+    // Under the new artifact model, dossier writes the prompt payload (merged input) to the prompt stage
     expect(mockWriteJsonArtifact).toHaveBeenCalledWith(
       expect.stringContaining('/tmp/dossier'),
-      ['merged'],
-      expect.stringMatching(/^merged-/),
+      ['prompt'],
+      expect.stringMatching(/^prompt-/),
       expect.any(Object),
     );
   });

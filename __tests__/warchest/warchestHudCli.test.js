@@ -24,7 +24,7 @@ jest.mock('../../lib/logger', () => ({
 
 // HUD resolution path uses these modules when walletSpecs are absent.
 jest.mock('../../lib/wallets', () => ({ selection: {} }));
-jest.mock('../../lib/wallets/registry', () => ({
+jest.mock('../../lib/wallets/walletRegistry', () => ({
   listAutoAttachedWarchestWallets: jest.fn().mockResolvedValue([]),
   getDefaultFundingWallet: jest.fn().mockResolvedValue(null),
 }));

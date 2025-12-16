@@ -32,7 +32,7 @@ jest.mock('../../lib/solana/rpcMethods', () => ({
   createRpcMethods: jest.fn(() => ({ id: 'rpc-methods' })),
 }));
 
-jest.mock('../../lib/warchest/walletResolver', () => ({
+jest.mock('../../lib/wallets/resolver', () => ({
   resolveWalletSpecsWithRegistry: mockResolveWalletSpecsWithRegistry,
 }));
 
@@ -103,7 +103,7 @@ describe('warchest client setup', () => {
     jest.doMock('../../lib/solana/rpcMethods', () => ({
       createRpcMethods: jest.fn(() => ({})),
     }));
-    jest.doMock('../../lib/warchest/walletResolver', () => ({
+    jest.doMock('../../lib/wallets/resolver', () => ({
       resolveWalletSpecsWithRegistry: jest.fn(async (specs) => specs),
     }));
 
