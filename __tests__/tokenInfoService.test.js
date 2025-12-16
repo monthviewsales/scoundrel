@@ -26,7 +26,6 @@ const loadService = () => {
 describe('tokenInfoService.ensureTokenInfo', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete process.env.DB_ENGINE;
   });
 
   test('returns cached coin when BootyBox is ready', async () => {

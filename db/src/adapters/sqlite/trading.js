@@ -1,9 +1,23 @@
 'use strict';
 
 const legacy = require('./legacyAdapter');
+const recordScTradeEvent = require('./trading/recordScTradeEvent');
+const applyScTradeEventToPositions = require('./trading/applyScTradeEventToPositions');
+const ensureOpenPositionRun = require('./trading/ensureOpenPositionRun');
+const recordPastTradeEvent = require('./trading/recordPastTradeEvent');
+const getTradesByTradeUuid = require('./trading/getTradesByTradeUuid');
+
+const chalk = require('chalk');
+const { logger } = require('./context');
+
+function removed(fnName) {
+  return function removedFunction() {
+    logger?.warn?.(chalk.bgRed(`[BootyBox] ${fnName} has been removed and is unsupported`));
+    return undefined;
+  };
+}
 
 module.exports = {
-  applyScTradeEventToPositions: legacy.applyScTradeEventToPositions,
   bulkResyncPositions: legacy.bulkResyncPositions,
   clearPendingSwap: legacy.clearPendingSwap,
   clearTradeUuid: legacy.clearTradeUuid,
@@ -18,15 +32,19 @@ module.exports = {
   getTradeUuid: legacy.getTradeUuid,
   insertTrades: legacy.insertTrades,
   isSwapPending: legacy.isSwapPending,
-  logBuy: legacy.logBuy,
   logEvaluation: legacy.logEvaluation,
-  logSell: legacy.logSell,
   markPendingSwap: legacy.markPendingSwap,
-  recordScTradeEvent: legacy.recordScTradeEvent,
   removePosition: legacy.removePosition,
   setTradeUuid: legacy.setTradeUuid,
   updateHighestPrice: legacy.updateHighestPrice,
-  updatePnL: legacy.updatePnL,
   updatePreviousRsi: legacy.updatePreviousRsi,
   addPosition: legacy.addPosition,
+  logBuy: removed('logBuy'),
+  logSell: removed('logSell'),
+  updatePnL: removed('updatePnL'),
+  applyScTradeEventToPositions,
+  ensureOpenPositionRun,
+  recordScTradeEvent,
+  getTradesByTradeUuid,
+  recordPastTradeEvent,
 };

@@ -130,7 +130,7 @@ program
     .version(resolveVersion());
 
 program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
-program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n  DB_ENGINE                  Optional legacy flag (sqlite only)\n`);
+program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n`);
 
 program
     .command('research')
@@ -192,11 +192,12 @@ program
     .option('-s, --start <isoOrEpoch>', 'Start time (ISO or epoch seconds)')
     .option('-e, --end <isoOrEpoch>', 'End time (ISO or epoch seconds)')
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
+    .option('--track-kol', 'If set, upsert this wallet into sc_wallets as a tracked KOL using --name as the alias')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
     .option('--harvest-only', 'Harvest trades + chart and write artifacts but skip AI + DB upsert')
     .option('-r, --resend', 'Resend the latest merged file for this trader (-n) to AI without re-harvesting data', false)
-    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n  --harvest-only            Harvest trades + chart and write artifacts but skip AI + DB upsert\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/ (also enables an interactive KOL tracking prompt)\n  --track-kol               Non-interactive: upsert the wallet into sc_wallets as a tracked KOL (requires -n/--name)\n                             (if omitted but -n is provided, Scoundrel will ask [y/N] whether to track)\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n  --harvest-only            Harvest trades + chart and write artifacts but skip AI + DB upsert\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -238,11 +239,37 @@ program
             }
         }
 
-        if (cliTraderName) {
+        const trackKol = !!opts.trackKol;
+
+        // KOL tracking:
+        // - If --track-kol is set, do it non-interactively (requires -n/--name).
+        // - If a CLI name is provided without --track-kol, ask the user whether to track.
+        if (trackKol) {
+            if (!cliTraderName) {
+                logger.error('[scoundrel] --track-kol requires -n/--name <traderName>');
+                process.exit(1);
+            }
             await walletsDomain.kol.ensureKolWallet({
                 walletAddress: walletId,
                 alias: cliTraderName,
             });
+        } else if (cliTraderName) {
+            const rl = readline.createInterface({ input, output });
+            try {
+                const answerRaw = await rl.question(
+                    `[scoundrel] Track "${cliTraderName}" as a KOL wallet in sc_wallets? [y/N] `
+                );
+                const answer = (answerRaw || '').trim().toLowerCase();
+                if (answer === 'y' || answer === 'yes') {
+                    await walletsDomain.kol.ensureKolWallet({
+                        walletAddress: walletId,
+                        alias: cliTraderName,
+                    });
+                    logger.info(`[scoundrel] ✅ tracked KOL wallet: ${cliTraderName} (${shortenPubkey(walletId)})`);
+                }
+            } finally {
+                rl.close();
+            }
         }
         const alias = normalizeTraderAlias(traderName, walletId);
 
@@ -348,10 +375,17 @@ program
 program
     .command('autopsy')
     .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
-    .addHelpText('after', `\nFlow:\n  • Choose a HUD wallet or enter another address.\n  • Enter the token mint to analyze.\n  • Saves autopsy JSON to ./profiles/autopsy-<wallet>-<symbol>-<ts>.json and prints the AI narrative.\n\nExample:\n  $ scoundrel autopsy\n`)
-    .action(async () => {
+    .option('--trade-uuid <uuid>', 'Run autopsy by trade_uuid (loads trades from DB and enriches with SolanaTracker context)')
+    .addHelpText('after', `\nFlow:\n  • Default (interactive): choose a HUD wallet (or enter another address) and enter the token mint to analyze.\n  • DB mode (--trade-uuid): load all sc_trades rows for a trade_uuid and assemble the autopsy payload from DB + SolanaTracker context.\n\nOutput:\n  • Prints the AI narrative to the console.\n  • Persists the autopsy payload + response to the DB.\n\nExamples:\n  $ scoundrel autopsy\n  $ scoundrel autopsy --trade-uuid <TRADE_UUID>\n\nNotes:\n  • --trade-uuid is intended for analyzing a single position-run / campaign already recorded in sc_trades.\n`)
+    .action(async (opts) => {
         const rl = readline.createInterface({ input, output });
         try {
+            const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
+            if (tradeUuid) {
+                const result = await runAutopsy({ tradeUuid });
+                process.exitCode = result ? 0 : 0;
+                return;
+            }
             const selection = await walletsDomain.selection.selectWalletInteractively({
                 promptLabel: 'Which wallet?',
                 allowOther: true,
@@ -374,13 +408,12 @@ program
             }
 
             const result = await runAutopsy({ walletLabel, walletAddress, mint });
-            if (!result) {
-                process.exit(0);
-            }
-            process.exit(0);
+            process.exitCode = result ? 0 : 0;
+            return;
         } catch (err) {
             logAutopsyError(err);
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         } finally {
             rl.close();
             try { await BootyBox.close(); } catch (_) {}
@@ -796,7 +829,7 @@ Examples:
 program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
-    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a MySQL connection and prints DB config.\n\nExample:\n  $ scoundrel test\n`)
+    .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`)
     .action(async () => {
     console.log('[test] starting test action');
     const hasKey = !!process.env.OPENAI_API_KEY;
@@ -819,28 +852,20 @@ program
         });
 
         // DB diagnostics
-        const {
-            DB_ENGINE = 'sqlite',
-            DB_HOST = 'localhost',
-            DB_PORT = '3306',
-            DB_NAME = '(unset)',
-            DB_USER = '(unset)',
-            DB_POOL_LIMIT = '30',
-        } = process.env;
+        const { BOOTYBOX_SQLITE_PATH = join(__dirname, 'db', 'bootybox.db') } = process.env;
 
         logger.info('\n[db] configuration:');
-        logger.info(`  Engine   : ${DB_ENGINE}`);
-        logger.info(`  Host     : ${DB_HOST}:${DB_PORT}`);
-        logger.info(`  Database : ${DB_NAME}`);
-        logger.info(`  User     : ${DB_USER}`);
-        logger.info(`  Pool     : ${DB_POOL_LIMIT}`);
+        logger.info(`  Engine   : sqlite`);
+        logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
 
         try {
             if (typeof BootyBox.init === 'function') {
                 await BootyBox.init();
             }
-            await BootyBox.ping();
-            logger.info('[db] ✅ connected');
+            if (typeof BootyBox.ping === 'function') {
+                await BootyBox.ping();
+            }
+            logger.info('[db] ✅ sqlite reachable');
         } catch (e) {
             const msg = e && e.message ? e.message : e;
             logger.info(`[db] ❌ connection failed: ${msg}`);

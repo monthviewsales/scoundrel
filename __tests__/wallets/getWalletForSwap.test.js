@@ -1,6 +1,6 @@
 const { createKeyPairSignerFromBytes } = require('@solana/kit');
 const { hasUsablePrivateKey, getPrivateKeyForWallet } = require('../../lib/wallets/secretProvider');
-const registry = require('../../lib/wallets/registry');
+const registry = require('../../lib/wallets/walletRegistry');
 const getWalletForSwap = require('../../lib/wallets/getWalletForSwap');
 
 jest.mock('@solana/kit', () => ({
@@ -12,7 +12,7 @@ jest.mock('../../lib/wallets/secretProvider', () => ({
   getPrivateKeyForWallet: jest.fn(),
 }));
 
-jest.mock('../../lib/wallets/registry', () => ({
+jest.mock('../../lib/wallets/walletRegistry', () => ({
   getWalletByAlias: jest.fn(),
 }));
 

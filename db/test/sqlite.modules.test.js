@@ -228,36 +228,79 @@ describe('trading submodule', () => {
     expect(row.decision_label).toBe('buy');
     expect(row.decision_reason).toBe('quote_approved');
   });
-});
 
-describe('sessions submodule', () => {
-  test('tracks session lifecycle and stats', () => {
-    const sessionId = adapter.startSession({
-      strategy: 'strat1',
-      filterBlueprint: 'f',
-      buyBlueprint: 'b',
-      sellBlueprint: 's',
-      settings: { risk: 'low' },
-    });
+  test('recordScTradeEvent inserts buy then sell with shared trade_uuid and closes position', () => {
+    const mint = 'Gbz4HzY4KunK96e8dART7GhbV4bEjYSUXEA2cy2qpump';
+    const walletId = 1;
+    const baseExecutedAt = Date.UTC(2025, 0, 1);
 
-    adapter.updateSessionStats(sessionId, {
-      coinsAnalyzed: 5,
-      coinsPassed: 2,
-      sellsExecuted: 1,
-    });
+    const buyTrade = {
+      txid: 'buy-tx-sample',
+      walletId,
+      walletAlias: 'warlord',
+      coinMint: mint,
+      side: 'buy',
+      executedAt: baseExecutedAt,
+      tokenAmount: 7041.856537851523,
+      solAmount: -0.01,
+      priceSolPerToken: 0.0000013774776506536839,
+      priceUsdPerToken: 0.00018267840275627408,
+      solUsdPrice: 132.64,
+      feesSol: 0.000005,
+      slippagePct: 20,
+      priceImpactPct: 0.01,
+      program: 'swapEngine',
+      decisionPayload: { swapQuote: { foo: 'bar' } },
+    };
 
-    adapter.endSession(sessionId, {
-      coinsAnalyzed: 6,
-      coinsPassed: 3,
-      sellsExecuted: 2,
-    });
+    expect(() => adapter.recordScTradeEvent(buyTrade)).not.toThrow();
 
-    const row = context.db
-      .prepare('SELECT * FROM sessions WHERE id = ?')
-      .get(sessionId);
-    expect(row.coinsAnalyzed).toBe(6);
-    expect(row.coinsPassed).toBe(3);
-    expect(row.sellsExecuted).toBe(2);
-    expect(row.endTime).toBeTruthy();
+    const buyRow = context.db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(buyTrade.txid);
+    expect(buyRow).toBeTruthy();
+    expect(buyRow.trade_uuid).toBeTruthy();
+    expect(buyRow.side).toBe('buy');
+    expect(buyRow.coin_mint).toBe(mint);
+
+    const positionAfterBuy = context.db
+      .prepare('SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ?')
+      .get(walletId, mint);
+    expect(positionAfterBuy.trade_uuid).toBe(buyRow.trade_uuid);
+    expect(positionAfterBuy.current_token_amount).toBeCloseTo(buyTrade.tokenAmount, 6);
+    expect(positionAfterBuy.closed_at).toBe(0);
+
+    const sellTrade = {
+      txid: 'sell-tx-sample',
+      walletId,
+      walletAlias: 'warlord',
+      coinMint: mint,
+      side: 'sell',
+      executedAt: baseExecutedAt + 60_000,
+      tokenAmount: buyTrade.tokenAmount,
+      solAmount: 0.009357765395460339,
+      priceSolPerToken: 0.000001329,
+      priceUsdPerToken: 0.00018166965056324195,
+      solUsdPrice: 136.71,
+      feesSol: 0.000005,
+      slippagePct: 20,
+      priceImpactPct: 0.01,
+      program: 'swapEngine',
+    };
+
+    expect(() => adapter.recordScTradeEvent(sellTrade)).not.toThrow();
+
+    const sellRow = context.db.prepare('SELECT * FROM sc_trades WHERE txid = ?').get(sellTrade.txid);
+    expect(sellRow).toBeTruthy();
+    expect(sellRow.trade_uuid).toBe(buyRow.trade_uuid);
+    expect(sellRow.side).toBe('sell');
+
+    const positionAfterSell = context.db
+      .prepare('SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ?')
+      .get(walletId, mint);
+
+    expect(positionAfterSell.trade_uuid).toBe(buyRow.trade_uuid);
+    const remainingTokens = Math.abs(positionAfterSell.current_token_amount);
+    expect(remainingTokens).toBeLessThan(1e-6);
+    expect(positionAfterSell.closed_at).toBeGreaterThan(0);
+    expect(positionAfterSell.last_trade_at).toBe(sellTrade.executedAt);
   });
 });

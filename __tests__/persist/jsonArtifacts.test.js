@@ -63,21 +63,21 @@ describe('jsonArtifacts helpers', () => {
   test('getArtifactConfig reads env booleans', () => {
     const original = {
       SAVE_RAW: process.env.SAVE_RAW,
-      SAVE_PARSED: process.env.SAVE_PARSED,
-      SAVE_ENRICHED: process.env.SAVE_ENRICHED,
+      SAVE_PROMPT: process.env.SAVE_PROMPT,
+      SAVE_RESPONSE: process.env.SAVE_RESPONSE,
       NODE_ENV: process.env.NODE_ENV,
     };
     process.env.SAVE_RAW = 'true';
-    process.env.SAVE_PARSED = 'TRUE';
-    process.env.SAVE_ENRICHED = 'false';
+    process.env.SAVE_PROMPT = 'TRUE';
+    process.env.SAVE_RESPONSE = 'false';
     process.env.NODE_ENV = 'production';
 
     const cfg = getArtifactConfig();
-    expect(cfg).toMatchObject({ saveRaw: true, saveParsed: true, saveEnriched: false, env: 'production' });
+    expect(cfg).toMatchObject({ saveRaw: true, savePrompt: true, saveResponse: false, env: 'production' });
 
     process.env.SAVE_RAW = original.SAVE_RAW;
-    process.env.SAVE_PARSED = original.SAVE_PARSED;
-    process.env.SAVE_ENRICHED = original.SAVE_ENRICHED;
+    process.env.SAVE_PROMPT = original.SAVE_PROMPT;
+    process.env.SAVE_RESPONSE = original.SAVE_RESPONSE;
     process.env.NODE_ENV = original.NODE_ENV;
   });
 
@@ -87,4 +87,3 @@ describe('jsonArtifacts helpers', () => {
     expect(runId.includes(':')).toBe(false);
   });
 });
-

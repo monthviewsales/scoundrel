@@ -15,6 +15,9 @@ function clearSqliteModulesFromCache() {
     '../../src/adapters/sqlite/coins.js',
     '../../src/adapters/sqlite/trading.js',
     '../../src/adapters/sqlite/sessions.js',
+    '../../src/adapters/sqlite/trading/recordScTradeEvent.js',
+    '../../src/adapters/sqlite/trading/applyScTradeEventToPositions.js',
+    '../../src/adapters/sqlite/trading/ensureOpenPositionRun.js',
   ];
 
   for (const target of targets) {

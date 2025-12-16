@@ -6,7 +6,7 @@ jest.mock('../../lib/logger', () => ({
 }));
 
 const logger = require('../../lib/logger');
-const { resolveWalletSpecsWithRegistry } = require('../../lib/warchest/walletResolver');
+const { resolveWalletSpecsWithRegistry } = require('../../lib/wallets/resolver');
 
 describe('resolveWalletSpecsWithRegistry', () => {
   beforeEach(() => {
