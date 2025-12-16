@@ -192,11 +192,12 @@ program
     .option('-s, --start <isoOrEpoch>', 'Start time (ISO or epoch seconds)')
     .option('-e, --end <isoOrEpoch>', 'End time (ISO or epoch seconds)')
     .option('-n, --name <traderName>', 'Trader alias for this wallet (e.g., Cupsey, Ansem)')
+    .option('--track-kol', 'If set, upsert this wallet into sc_wallets as a tracked KOL using --name as the alias')
     .option('-l, --limit <num>', 'Max trades to pull (default from HARVEST_LIMIT)')
     .option('-f, --feature-mint-count <num>', 'How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)')
     .option('--harvest-only', 'Harvest trades + chart and write artifacts but skip AI + DB upsert')
     .option('-r, --resend', 'Resend the latest merged file for this trader (-n) to AI without re-harvesting data', false)
-    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n  --harvest-only            Harvest trades + chart and write artifacts but skip AI + DB upsert\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel dossier &lt;WALLET&gt;\n  $ scoundrel dossier &lt;WALLET&gt; -n Gh0stee -l 500\n  $ scoundrel dossier &lt;WALLET&gt; --start 1735689600 --end 1738367999\n\nFlags:\n  -s, --start &lt;isoOrEpoch&gt;  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end &lt;isoOrEpoch&gt;    End time; ISO or epoch seconds\n  -n, --name &lt;traderName&gt;   Alias used as output filename under ./profiles/ (also enables an interactive KOL tracking prompt)\n  --track-kol               Non-interactive: upsert the wallet into sc_wallets as a tracked KOL (requires -n/--name)\n                             (if omitted but -n is provided, Scoundrel will ask [y/N] whether to track)\n  -l, --limit &lt;num&gt;         Max trades to pull (default: HARVEST_LIMIT or 500)\n  -f, --feature-mint-count &lt;num&gt;  Number of recent mints to summarize for features (default: 8)\n  --harvest-only            Harvest trades + chart and write artifacts but skip AI + DB upsert\n\nOutput:\n  • Writes schema-locked JSON to ./profiles/&lt;name&gt;.json using OpenAI Responses.\n  • Also writes raw samples to ./data/dossier/&lt;alias&gt;/raw/ (trades + chart) in development.\n  • Upserts result into sc_profiles for future local access.\n\nEnv:\n  OPENAI_API_KEY, OPENAI_RESPONSES_MODEL, SOLANATRACKER_API_KEY\n`)
     .action(async (walletId, opts) => {
         const harvestWallet = loadHarvest();
 
@@ -238,11 +239,37 @@ program
             }
         }
 
-        if (cliTraderName) {
+        const trackKol = !!opts.trackKol;
+
+        // KOL tracking:
+        // - If --track-kol is set, do it non-interactively (requires -n/--name).
+        // - If a CLI name is provided without --track-kol, ask the user whether to track.
+        if (trackKol) {
+            if (!cliTraderName) {
+                logger.error('[scoundrel] --track-kol requires -n/--name <traderName>');
+                process.exit(1);
+            }
             await walletsDomain.kol.ensureKolWallet({
                 walletAddress: walletId,
                 alias: cliTraderName,
             });
+        } else if (cliTraderName) {
+            const rl = readline.createInterface({ input, output });
+            try {
+                const answerRaw = await rl.question(
+                    `[scoundrel] Track "${cliTraderName}" as a KOL wallet in sc_wallets? [y/N] `
+                );
+                const answer = (answerRaw || '').trim().toLowerCase();
+                if (answer === 'y' || answer === 'yes') {
+                    await walletsDomain.kol.ensureKolWallet({
+                        walletAddress: walletId,
+                        alias: cliTraderName,
+                    });
+                    logger.info(`[scoundrel] ✅ tracked KOL wallet: ${cliTraderName} (${shortenPubkey(walletId)})`);
+                }
+            } finally {
+                rl.close();
+            }
         }
         const alias = normalizeTraderAlias(traderName, walletId);
 

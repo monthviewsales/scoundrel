@@ -33,7 +33,7 @@ const mockRegistry = {
   addWallet: jest.fn(),
 };
 
-jest.mock('../../lib/wallets/registry', () => mockRegistry);
+jest.mock('../../lib/wallets/walletRegistry', () => mockRegistry);
 
 const { selectWalletInteractively } = require('../../lib/wallets/walletSelection');
 

@@ -269,7 +269,7 @@ function insertWarchestWallet(record) {
  *
  * @param {string} alias
  * @param {Object} updates
- * @returns {import('../../../lib/warchest/walletRegistry').WalletRecord|null}
+ * @returns {import('../../../lib/wallets/walletRegistry').WalletRecord|null}
  */
 function updateWarchestWalletOptions(alias, updates = {}) {
   if (!alias) return null;
