@@ -20,6 +20,7 @@ const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
 const walletsDomain = require('./lib/wallets');
 const { runAutopsy } = require('./lib/cli/autopsy');
+const { resolveAutopsyWallet } = require('./lib/cli/autopsyWalletResolver');
 const {
     dossierBaseDir,
     loadLatestJson,
@@ -386,6 +387,7 @@ program
             const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
             const walletArg = opts && opts.wallet ? String(opts.wallet).trim() : '';
             const mintArg = opts && opts.mint ? String(opts.mint).trim() : '';
+            const tuiDisabled = opts && opts.tui === false;
 
             if (tradeUuid) {
                 const result = await runAutopsy({ tradeUuid });
@@ -393,14 +395,28 @@ program
                 return;
             }
 
-            if (opts && opts.noTui && walletArg && mintArg) {
-                const result = await runAutopsy({ walletLabel: walletArg, walletAddress: walletArg, mint: mintArg });
+            if (tuiDisabled) {
+                if (!walletArg || !mintArg) {
+                    logger.error('[autopsy] --no-tui requires --wallet and --mint');
+                    process.exitCode = 1;
+                    return;
+                }
+
+                const { walletLabel, walletAddress } = await resolveAutopsyWallet({
+                    walletLabel: walletArg,
+                    walletAddress: walletArg,
+                });
+                const result = await runAutopsy({ walletLabel, walletAddress, mint: mintArg });
                 process.exitCode = result ? 0 : 0;
                 return;
             }
 
             if (walletArg && mintArg) {
-                const result = await runAutopsy({ walletLabel: walletArg, walletAddress: walletArg, mint: mintArg });
+                const { walletLabel, walletAddress } = await resolveAutopsyWallet({
+                    walletLabel: walletArg,
+                    walletAddress: walletArg,
+                });
+                const result = await runAutopsy({ walletLabel, walletAddress, mint: mintArg });
                 process.exitCode = result ? 0 : 0;
                 return;
             }
