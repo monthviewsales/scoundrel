@@ -3,6 +3,7 @@
 require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
 const chalk = require('chalk');
+const React = require('react');
 const { program } = require('commander');
 const {
     getConfigPath: getSwapConfigPath,
@@ -19,6 +20,7 @@ const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
 const walletsDomain = require('./lib/wallets');
 const { runAutopsy } = require('./lib/cli/autopsy');
+const { resolveAutopsyWallet } = require('./lib/cli/autopsyWalletResolver');
 const {
     dossierBaseDir,
     loadLatestJson,
@@ -376,46 +378,74 @@ program
     .command('autopsy')
     .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
     .option('--trade-uuid <uuid>', 'Run autopsy by trade_uuid (loads trades from DB and enriches with SolanaTracker context)')
+    .option('--wallet <aliasOrAddress>', 'Wallet alias or address (non-interactive)')
+    .option('--mint <address>', 'Token mint to analyze (non-interactive)')
+    .option('--no-tui', 'Disable the Ink TUI prompts (automation-friendly)')
     .addHelpText('after', `\nFlow:\n  • Default (interactive): choose a HUD wallet (or enter another address) and enter the token mint to analyze.\n  • DB mode (--trade-uuid): load all sc_trades rows for a trade_uuid and assemble the autopsy payload from DB + SolanaTracker context.\n\nOutput:\n  • Prints the AI narrative to the console.\n  • Persists the autopsy payload + response to the DB.\n\nExamples:\n  $ scoundrel autopsy\n  $ scoundrel autopsy --trade-uuid <TRADE_UUID>\n\nNotes:\n  • --trade-uuid is intended for analyzing a single position-run / campaign already recorded in sc_trades.\n`)
     .action(async (opts) => {
-        const rl = readline.createInterface({ input, output });
         try {
             const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
+            const walletArg = opts && opts.wallet ? String(opts.wallet).trim() : '';
+            const mintArg = opts && opts.mint ? String(opts.mint).trim() : '';
+            const tuiDisabled = opts && opts.tui === false;
+
             if (tradeUuid) {
                 const result = await runAutopsy({ tradeUuid });
                 process.exitCode = result ? 0 : 0;
                 return;
             }
-            const selection = await walletsDomain.selection.selectWalletInteractively({
-                promptLabel: 'Which wallet?',
-                allowOther: true,
-                rl,
-            });
 
-            let walletLabel = selection && selection.walletLabel ? selection.walletLabel : 'other';
-            let walletAddress = selection && selection.walletAddress ? selection.walletAddress.trim() : '';
-            if (!walletAddress) {
-                walletAddress = (await rl.question('Enter wallet address:\n> ')).trim();
+            if (tuiDisabled) {
+                if (!walletArg || !mintArg) {
+                    logger.error('[autopsy] --no-tui requires --wallet and --mint');
+                    process.exitCode = 1;
+                    return;
+                }
+
+                const { walletLabel, walletAddress } = await resolveAutopsyWallet({
+                    walletLabel: walletArg,
+                    walletAddress: walletArg,
+                });
+                const result = await runAutopsy({ walletLabel, walletAddress, mint: mintArg });
+                process.exitCode = result ? 0 : 0;
+                return;
             }
 
-            let mint = await rl.question('Enter mint to trace:\n> ');
-            mint = mint.trim();
-            if (!mint) {
-                throw new Error('mint is required');
-            }
-            if (!isBase58Mint(mint)) {
-                logger.warn('[scoundrel] mint does not look like base58; continuing anyway');
+            if (walletArg && mintArg) {
+                const { walletLabel, walletAddress } = await resolveAutopsyWallet({
+                    walletLabel: walletArg,
+                    walletAddress: walletArg,
+                });
+                const result = await runAutopsy({ walletLabel, walletAddress, mint: mintArg });
+                process.exitCode = result ? 0 : 0;
+                return;
             }
 
-            const result = await runAutopsy({ walletLabel, walletAddress, mint });
-            process.exitCode = result ? 0 : 0;
+            const { render } = await import('ink');
+            const { loadAutopsyPrompt } = require('./lib/wallets/inkAutopsyPrompt');
+            const { AutopsyPrompt } = await loadAutopsyPrompt();
+
+            const { waitUntilExit } = render(
+                React.createElement(AutopsyPrompt, {
+                    defaultMint: mintArg,
+                    onSubmit: async ({ walletLabel, walletAddress, mint }) => {
+                        try {
+                            const result = await runAutopsy({ walletLabel, walletAddress, mint });
+                            process.exitCode = result ? 0 : 0;
+                        } catch (err) {
+                            logAutopsyError(err);
+                            process.exitCode = 1;
+                        }
+                    },
+                })
+            );
+            await waitUntilExit();
             return;
         } catch (err) {
             logAutopsyError(err);
             process.exitCode = 1;
             return;
         } finally {
-            rl.close();
             try { await BootyBox.close(); } catch (_) {}
         }
     });
@@ -429,10 +459,21 @@ program
         if (!previous) return [value];
         return previous.concat(value);
     })
-    .option('-s, --swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
+    .option('--swap', 'Also interpret this transaction as a swap for a specific wallet/mint')
+    .option('-s, --session', 'Interactive review session for this transaction (TUI)')
     .option('-w, --wallet <aliasOrAddress>', 'Wallet alias or address that initiated the swap (focus wallet)')
     .option('-m, --mint <mint>', 'SPL mint address for the swapped token')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v\n\nNotes:\n  • Uses SolanaTracker RPC via your configured API key.\n  • Shows status, network fee, and per-account SOL balance changes.\n  • With -s/--swap, also computes token + SOL deltas for the given wallet/mint.\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ
+  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --sig ANOTHER_SIG --sig THIRD_SIG
+  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ -s
+  $ scoundrel tx 2xbbCaokF84M9YXnuWK86nfayJemC5RvH6xqXwgw9fgC1dVWML4xBjq8idb1oX9hg16qcFHK5H51u3YyCfjfheTQ --swap --wallet DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR --mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+
+Notes:
+  • Uses SolanaTracker RPC via your configured API key.
+  • Shows status, network fee, and per-account SOL balance changes.
+  • With --swap, also computes token + SOL deltas for the given wallet/mint.
+  • With -s/--session, runs an interactive review session after inspection.
+`)
     .action(async (signature, cmd) => {
         const txProcessor = loadProcessor('tx');
 
