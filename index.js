@@ -421,8 +421,9 @@ program
                 return;
             }
 
-            const { render } = require('ink');
-            const { AutopsyPrompt } = require('./lib/wallets/inkAutopsyPrompt');
+            const { render } = await import('ink');
+            const { loadAutopsyPrompt } = require('./lib/wallets/inkAutopsyPrompt');
+            const { AutopsyPrompt } = await loadAutopsyPrompt();
 
             const { waitUntilExit } = render(
                 React.createElement(AutopsyPrompt, {
