@@ -4,6 +4,7 @@ const React = require('react');
 
 jest.mock('ink', () => {
   return {
+    __esModule: true,
     Box: () => null,
     Text: () => null,
     useApp: () => ({ exit: jest.fn() }),
@@ -12,10 +13,11 @@ jest.mock('ink', () => {
 });
 
 jest.mock('ink-text-input', () => ({
+  __esModule: true,
   default: () => null,
 }));
 
-const { WalletManagerApp } = require('../../lib/wallets/inkWalletManager');
+const { loadWalletManagerApp } = require('../../lib/wallets/inkWalletManager');
 
 function createRegistry(wallets = []) {
   return {
@@ -27,11 +29,13 @@ function createRegistry(wallets = []) {
 }
 
 describe('WalletManagerApp', () => {
-  test('exposes a component function', () => {
+  test('loader resolves a component function', async () => {
+    const { WalletManagerApp } = await loadWalletManagerApp();
     expect(typeof WalletManagerApp).toBe('function');
   });
 
-  test('creates element with injected registry without throwing', () => {
+  test('creates element with injected registry without throwing', async () => {
+    const { WalletManagerApp } = await loadWalletManagerApp();
     const registry = createRegistry([{ alias: 'a', pubkey: 'p' }]);
     const element = React.createElement(WalletManagerApp, { registry, initialRoute: 'menu' });
     expect(element).toBeTruthy();
