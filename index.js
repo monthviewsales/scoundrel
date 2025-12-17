@@ -3,6 +3,7 @@
 require("dotenv").config({ quiet: true });
 const logger = require('./lib/logger');
 const chalk = require('chalk');
+const React = require('react');
 const { program } = require('commander');
 const {
     getConfigPath: getSwapConfigPath,
@@ -19,6 +20,7 @@ const readline = require('readline/promises');
 const { stdin: input, stdout: output } = require('process');
 const walletsDomain = require('./lib/wallets');
 const { runAutopsy } = require('./lib/cli/autopsy');
+const { resolveAutopsyWallet } = require('./lib/cli/autopsyWalletResolver');
 const {
     dossierBaseDir,
     loadLatestJson,
@@ -376,46 +378,73 @@ program
     .command('autopsy')
     .description('Interactive trade autopsy for a wallet + mint campaign (SolanaTracker + OpenAI)')
     .option('--trade-uuid <uuid>', 'Run autopsy by trade_uuid (loads trades from DB and enriches with SolanaTracker context)')
+    .option('--wallet <aliasOrAddress>', 'Wallet alias or address (non-interactive)')
+    .option('--mint <address>', 'Token mint to analyze (non-interactive)')
+    .option('--no-tui', 'Disable the Ink TUI prompts (automation-friendly)')
     .addHelpText('after', `\nFlow:\n  • Default (interactive): choose a HUD wallet (or enter another address) and enter the token mint to analyze.\n  • DB mode (--trade-uuid): load all sc_trades rows for a trade_uuid and assemble the autopsy payload from DB + SolanaTracker context.\n\nOutput:\n  • Prints the AI narrative to the console.\n  • Persists the autopsy payload + response to the DB.\n\nExamples:\n  $ scoundrel autopsy\n  $ scoundrel autopsy --trade-uuid <TRADE_UUID>\n\nNotes:\n  • --trade-uuid is intended for analyzing a single position-run / campaign already recorded in sc_trades.\n`)
     .action(async (opts) => {
-        const rl = readline.createInterface({ input, output });
         try {
             const tradeUuid = opts && opts.tradeUuid ? String(opts.tradeUuid).trim() : '';
+            const walletArg = opts && opts.wallet ? String(opts.wallet).trim() : '';
+            const mintArg = opts && opts.mint ? String(opts.mint).trim() : '';
+            const tuiDisabled = opts && opts.tui === false;
+
             if (tradeUuid) {
                 const result = await runAutopsy({ tradeUuid });
                 process.exitCode = result ? 0 : 0;
                 return;
             }
-            const selection = await walletsDomain.selection.selectWalletInteractively({
-                promptLabel: 'Which wallet?',
-                allowOther: true,
-                rl,
-            });
 
-            let walletLabel = selection && selection.walletLabel ? selection.walletLabel : 'other';
-            let walletAddress = selection && selection.walletAddress ? selection.walletAddress.trim() : '';
-            if (!walletAddress) {
-                walletAddress = (await rl.question('Enter wallet address:\n> ')).trim();
+            if (tuiDisabled) {
+                if (!walletArg || !mintArg) {
+                    logger.error('[autopsy] --no-tui requires --wallet and --mint');
+                    process.exitCode = 1;
+                    return;
+                }
+
+                const { walletLabel, walletAddress } = await resolveAutopsyWallet({
+                    walletLabel: walletArg,
+                    walletAddress: walletArg,
+                });
+                const result = await runAutopsy({ walletLabel, walletAddress, mint: mintArg });
+                process.exitCode = result ? 0 : 0;
+                return;
             }
 
-            let mint = await rl.question('Enter mint to trace:\n> ');
-            mint = mint.trim();
-            if (!mint) {
-                throw new Error('mint is required');
-            }
-            if (!isBase58Mint(mint)) {
-                logger.warn('[scoundrel] mint does not look like base58; continuing anyway');
+            if (walletArg && mintArg) {
+                const { walletLabel, walletAddress } = await resolveAutopsyWallet({
+                    walletLabel: walletArg,
+                    walletAddress: walletArg,
+                });
+                const result = await runAutopsy({ walletLabel, walletAddress, mint: mintArg });
+                process.exitCode = result ? 0 : 0;
+                return;
             }
 
-            const result = await runAutopsy({ walletLabel, walletAddress, mint });
-            process.exitCode = result ? 0 : 0;
+            const { render } = require('ink');
+            const { AutopsyPrompt } = require('./lib/wallets/inkAutopsyPrompt');
+
+            const { waitUntilExit } = render(
+                React.createElement(AutopsyPrompt, {
+                    defaultMint: mintArg,
+                    onSubmit: async ({ walletLabel, walletAddress, mint }) => {
+                        try {
+                            const result = await runAutopsy({ walletLabel, walletAddress, mint });
+                            process.exitCode = result ? 0 : 0;
+                        } catch (err) {
+                            logAutopsyError(err);
+                            process.exitCode = 1;
+                        }
+                    },
+                })
+            );
+            await waitUntilExit();
             return;
         } catch (err) {
             logAutopsyError(err);
             process.exitCode = 1;
             return;
         } finally {
-            rl.close();
             try { await BootyBox.close(); } catch (_) {}
         }
     });
