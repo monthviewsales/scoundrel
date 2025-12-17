@@ -54,7 +54,7 @@ function ensureOpenPositionRun(args) {
   }
 
   const getOpen = db.prepare(
-    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at IS NULL'
+    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND (closed_at IS NULL OR closed_at = 0)'
   );
 
   const insertOpen = db.prepare(
@@ -127,7 +127,9 @@ function ensureOpenPositionRun(args) {
     }
 
     // Create new position-run
-    const newUuid = resolveTradeUuid(walletId, coinMint) || crypto.randomUUID();
+    // IMPORTANT: If there is no open run, this is a new campaign. Always mint a fresh UUID.
+    // Do NOT reuse cached/pending UUIDs here, or closed campaigns can be accidentally reused.
+    const newUuid = crypto.randomUUID();
 
     // Persist uuid (will stash pending if the position doesn't exist yet; after insert it will bind)
     setTradeUuid(walletId, coinMint, newUuid);
