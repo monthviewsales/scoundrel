@@ -513,8 +513,9 @@ program
     .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use \"auto\")')
     .option('--jito', 'Use Jito-style priority fee routing when supported')
     .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
+    .option('--detach', 'Return immediately after tx submission; confirmation/persistence runs in background')
     .option('-c, --config', 'Manage swap configuration instead of executing a swap')
-    .addHelpText('after', `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n\n  # Manage swap configuration\n  $ scoundrel swap -c view\n  $ scoundrel swap -c edit\n  $ scoundrel swap -c set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true\n  $ scoundrel swap -c set swapAPIKey YOUR_API_KEY\n`)
+    .addHelpText('after', `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --detach\n\n  # Manage swap configuration\n  $ scoundrel swap -c view\n  $ scoundrel swap -c edit\n  $ scoundrel swap -c set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true\n  $ scoundrel swap -c set swapAPIKey YOUR_API_KEY\n`)
     .action(async (mintOrSubcommand, configKey, configValue, cmdOrOpts) => {
         // Commander v14 may pass either (args..., options) or (args..., Command).
         // If the last parameter has an .opts() function, treat it as the Command instance;

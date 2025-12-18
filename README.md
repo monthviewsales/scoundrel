@@ -189,7 +189,7 @@ Wallet-related helpers now live under `lib/wallets/`:
 - `resolver.js` – resolves aliases or pubkeys to registry records or watch-only passthroughs.
 - `state.js` – shared live SOL/token state wrapper.
 - `scanner.js` – passthrough to the raw RPC wallet scanner.
-- `getWalletForSwap.js` – **TODO placeholder** until swap flow is finalized; implement with secure key handling (no plaintext keys/logging).
+- `getWalletForSwap.js` – builds a swap-ready runtime wallet (signer + pubkey verification) from registry rows.
 
 BootyBox remains the source of truth for persisted wallets. Keep key material protected when adding swap/signing support.
 
@@ -211,8 +211,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
 - `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
-- `swap:config <view|edit|set>` — Manage swap config file (RPC URL, swap API key, slippage, priority fee, tx version).
-- `trade <mint>` — Execute a swap through the SolanaTracker swap API using the configured warchest wallet.
+- `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `warchest [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
@@ -252,16 +251,12 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Prints status, slot/block time, network fee, and per-account SOL deltas.
 - Swap mode adds wallet/mint deltas, decodes errors, and upserts fee-only or swap events to `sc_trades` when the wallet is tracked.
 
-### swap:config `view|edit|set`
-- Config file: macOS `~/Library/Application Support/com.VAULT77.scoundrel/swapConfig.json`; other OS: `$XDG_CONFIG_HOME/com.VAULT77.scoundrel/swapConfig.json`.
-- Keys: `rpcUrl`, `swapAPIKey`, `slippage`, `priorityFee`, `priorityFeeLevel`, `txVersion`, `showQuoteDetails`, `DEBUG_MODE`.
-- `set <key> <value>` casts numbers when possible; `edit` opens `$EDITOR`.
-
-### trade `<mint>`
-- Executes a buy/sell via SolanaTracker swap API through `lib/trades` (swapEngine).
-- Required: `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
-- Optional: `--slippage <pct>` (default 15), `--priority-fee <microlamports|auto>`, `--jito`, `--dry-run`.
-- Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when available.
+### swap `<mint>` (plus config mode)
+- Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
+- Options: `--slippage <pct>` (default 15), `--priority-fee <microlamports|auto>`, `--jito`, `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
+- Internals: `lib/cli/trade.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
+- Config mode: `scoundrel swap -c view|edit|set <key> <value>` (file location and keys unchanged from previous swap config docs).
+- Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
 ### ask
 - Q&A over `profiles/<name>.json`; includes latest `data/dossier/<alias>/enriched/techniqueFeatures-*` when present.
@@ -314,7 +309,7 @@ All AI jobs enforce **strict JSON Schema**. The wallet profile currently include
 
 ## Logging & ops
 
-- **Production** (`NODE_ENV=production`): minimal logs; writes only final artifacts.
+- **Production** (`NODE_ENV=production`): defaults to `LOG_LEVEL=info` (override via `LOG_LEVEL`); keeps JSON artifacts + rotating log files as configured.
 - **Development**: includes sizes, sample write paths, and model output snippets.
 - Failures are explicit (missing env, schema violations, or upstream API errors).
 
