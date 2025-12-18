@@ -55,14 +55,61 @@ const logger = require('../../lib/logger');
 const { forkWorkerWithPayload } = require('../../lib/warchest/workers/harness');
 const tradeCli = require('../../lib/cli/trade');
 
-describe('trade CLI (worker-based)', () => {
-  test('propagates txid from swap worker', async () => {
-    await tradeCli('So11111111111111111111111111111111111111112', {
-      wallet: 'alias',
-      buy: 1,
+function setStdoutTty(stdoutIsTty) {
+  const prev = {
+    stdout: process.stdout.isTTY,
+  };
+
+  Object.defineProperty(process.stdout, 'isTTY', {
+    value: stdoutIsTty,
+    configurable: true,
+  });
+
+  return () => {
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: prev.stdout,
+      configurable: true,
     });
+  };
+}
+
+describe('trade CLI (worker-based)', () => {
+  beforeEach(() => {
+    forkWorkerWithPayload.mockClear();
+    logger.info.mockClear();
+    logger.debug.mockClear();
+    logger.warn.mockClear();
+  });
+
+  test('propagates txid from swap worker', async () => {
+    const restoreTty = setStdoutTty(false);
+    try {
+      await tradeCli('So11111111111111111111111111111111111111112', {
+        wallet: 'alias',
+        buy: 1,
+      });
+    } finally {
+      restoreTty();
+    }
 
     expect(forkWorkerWithPayload).toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('txid: worker-txid'));
+  });
+
+  test('passes detach flag through to swap worker payload', async () => {
+    const restoreTty = setStdoutTty(false);
+    try {
+      await tradeCli('So11111111111111111111111111111111111111112', {
+        wallet: 'alias',
+        buy: 1,
+        detach: true,
+      });
+    } finally {
+      restoreTty();
+    }
+
+    const call = forkWorkerWithPayload.mock.calls[0] || [];
+    const options = call[1] || {};
+    expect(options.payload).toEqual(expect.objectContaining({ detachMonitor: true }));
   });
 });

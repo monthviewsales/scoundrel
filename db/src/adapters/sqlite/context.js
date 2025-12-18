@@ -152,12 +152,25 @@ function fetchTradeUuidFromStorage(walletId, mint) {
   const positionRow = walletId
     ? db
         .prepare(
-          'SELECT trade_uuid FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at IS NULL AND trade_uuid IS NOT NULL'
+          `SELECT trade_uuid
+           FROM sc_positions
+           WHERE wallet_id = ?
+             AND coin_mint = ?
+             AND (closed_at IS NULL OR closed_at = 0)
+             AND trade_uuid IS NOT NULL
+           ORDER BY (closed_at IS NULL) DESC, open_at DESC, last_trade_at DESC, position_id DESC
+           LIMIT 1`
         )
         .get(walletId, mint)
     : db
         .prepare(
-          'SELECT trade_uuid FROM sc_positions WHERE coin_mint = ? AND closed_at IS NULL AND trade_uuid IS NOT NULL ORDER BY open_at DESC LIMIT 1'
+          `SELECT trade_uuid
+           FROM sc_positions
+           WHERE coin_mint = ?
+             AND (closed_at IS NULL OR closed_at = 0)
+             AND trade_uuid IS NOT NULL
+           ORDER BY (closed_at IS NULL) DESC, open_at DESC, last_trade_at DESC, position_id DESC
+           LIMIT 1`
         )
         .get(mint);
 
@@ -197,10 +210,33 @@ function setTradeUuid(a, b, c) {
 
   const result = walletId
     ? db
-        .prepare('UPDATE sc_positions SET trade_uuid = ? WHERE wallet_id = ? AND coin_mint = ? AND closed_at IS NULL')
+        .prepare(
+          `UPDATE sc_positions
+           SET trade_uuid = ?
+           WHERE position_id = (
+             SELECT position_id
+             FROM sc_positions
+             WHERE wallet_id = ?
+               AND coin_mint = ?
+               AND (closed_at IS NULL OR closed_at = 0)
+             ORDER BY (closed_at IS NULL) DESC, open_at DESC, last_trade_at DESC, position_id DESC
+             LIMIT 1
+           )`
+        )
         .run(uuid, walletId, mint)
     : db
-        .prepare('UPDATE sc_positions SET trade_uuid = ? WHERE coin_mint = ? AND closed_at IS NULL')
+        .prepare(
+          `UPDATE sc_positions
+           SET trade_uuid = ?
+           WHERE position_id = (
+             SELECT position_id
+             FROM sc_positions
+             WHERE coin_mint = ?
+               AND (closed_at IS NULL OR closed_at = 0)
+             ORDER BY (closed_at IS NULL) DESC, open_at DESC, last_trade_at DESC, position_id DESC
+             LIMIT 1
+           )`
+        )
         .run(uuid, mint);
 
   if (result.changes > 0) {
@@ -222,9 +258,32 @@ function clearTradeUuid(a, b) {
   tradeUuidMap.delete(key);
 
   if (walletId) {
-    db.prepare('UPDATE sc_positions SET trade_uuid = NULL WHERE wallet_id = ? AND coin_mint = ? AND closed_at IS NULL').run(walletId, mint);
+    db.prepare(
+      `UPDATE sc_positions
+       SET trade_uuid = NULL
+       WHERE position_id = (
+         SELECT position_id
+         FROM sc_positions
+         WHERE wallet_id = ?
+           AND coin_mint = ?
+           AND (closed_at IS NULL OR closed_at = 0)
+         ORDER BY (closed_at IS NULL) DESC, open_at DESC, last_trade_at DESC, position_id DESC
+         LIMIT 1
+       )`
+    ).run(walletId, mint);
   } else {
-    db.prepare('UPDATE sc_positions SET trade_uuid = NULL WHERE coin_mint = ? AND closed_at IS NULL').run(mint);
+    db.prepare(
+      `UPDATE sc_positions
+       SET trade_uuid = NULL
+       WHERE position_id = (
+         SELECT position_id
+         FROM sc_positions
+         WHERE coin_mint = ?
+           AND (closed_at IS NULL OR closed_at = 0)
+         ORDER BY (closed_at IS NULL) DESC, open_at DESC, last_trade_at DESC, position_id DESC
+         LIMIT 1
+       )`
+    ).run(mint);
   }
 
   deletePendingTradeUuid(walletId, mint);

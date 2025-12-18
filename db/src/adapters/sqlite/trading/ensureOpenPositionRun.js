@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const {
   db,
   logger,
-  resolveTradeUuid,
   setTradeUuid,
 } = require('../context');
 
@@ -54,7 +53,7 @@ function ensureOpenPositionRun(args) {
   }
 
   const getOpen = db.prepare(
-    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at IS NULL'
+    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at = 0'
   );
 
   const insertOpen = db.prepare(
@@ -87,7 +86,7 @@ function ensureOpenPositionRun(args) {
       @strategy_id,
       @strategy_name,
       @open_at,
-      NULL,
+      0,
       @last_trade_at,
       @last_updated_at,
       NULL,
@@ -112,8 +111,9 @@ function ensureOpenPositionRun(args) {
         return { position: existing, trade_uuid: existing.trade_uuid, created: false };
       }
 
-      // No uuid on open row: resolve or create and attach.
-      const resolved = resolveTradeUuid(walletId, coinMint) || crypto.randomUUID();
+      // No uuid on open row: mint a fresh UUID and attach it to THIS open run.
+      // Do not consult resolver/cache here; it may select a stale campaign UUID.
+      const resolved = crypto.randomUUID();
       setTradeUuid(walletId, coinMint, resolved);
 
       db.prepare('UPDATE sc_positions SET trade_uuid = ?, last_updated_at = ? WHERE position_id = ?').run(
@@ -127,7 +127,9 @@ function ensureOpenPositionRun(args) {
     }
 
     // Create new position-run
-    const newUuid = resolveTradeUuid(walletId, coinMint) || crypto.randomUUID();
+    // IMPORTANT: If there is no open run, this is a new campaign. Always mint a fresh UUID.
+    // Do NOT reuse cached/pending UUIDs here, or closed campaigns can be accidentally reused.
+    const newUuid = crypto.randomUUID();
 
     // Persist uuid (will stash pending if the position doesn't exist yet; after insert it will bind)
     setTradeUuid(walletId, coinMint, newUuid);
@@ -167,7 +169,7 @@ function ensureOpenPositionRun(args) {
         const existing = getOpen.get(walletId, coinMint);
         if (existing) {
           if (existing.trade_uuid) setTradeUuid(walletId, coinMint, existing.trade_uuid);
-          return { position: existing, trade_uuid: existing.trade_uuid || resolveTradeUuid(walletId, coinMint), created: false };
+          return { position: existing, trade_uuid: existing.trade_uuid || null, created: false };
         }
       } catch (_) {
         // fall through

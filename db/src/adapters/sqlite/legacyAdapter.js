@@ -1183,7 +1183,7 @@ function derivePriceUsdPerToken(event, priceSolPerToken) {
   return null;
 }
 
-function applyScTradeEventToPositions(event) {
+/* function applyScTradeEventToPositions(event) {
   if (!event || typeof event !== "object") {
     throw new Error("applyScTradeEventToPositions: event object is required");
   }
@@ -1370,7 +1370,7 @@ function applyScTradeEventToPositions(event) {
     last_price_sol: priceSolPerToken,
     last_price_usd: priceUsdPerToken,
   });
-}
+} */
 
 // === Helper upsert functions for risk and events ===
 function upsertCoinRisk(mint, risk) {
@@ -1770,7 +1770,7 @@ function upsertCoinEvents(mint, events) {
 // Core BootyBox functions
 const BootyBox = {
   recordScTradeEvent,
-  applyScTradeEventToPositions,
+  // applyScTradeEventToPositions,
   listWarchestWallets,
   getWarchestWalletByAlias,
   insertWarchestWallet,

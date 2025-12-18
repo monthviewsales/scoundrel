@@ -14,6 +14,30 @@ const applyScTradeEventToPositions = require('./applyScTradeEventToPositions');
 
 let ensuredTxidIndex = false;
 
+const stmtGetOpenTradeUuid = db.prepare(
+  `
+  SELECT trade_uuid
+  FROM sc_positions
+  WHERE wallet_id = ?
+    AND coin_mint = ?
+    AND (closed_at IS NULL OR closed_at = 0)
+  ORDER BY open_at DESC
+  LIMIT 1
+  `
+);
+
+function getOpenTradeUuid(walletId, coinMint) {
+  try {
+    const row = stmtGetOpenTradeUuid.get(walletId, coinMint);
+    return row?.trade_uuid || null;
+  } catch (err) {
+    logger?.warn?.(
+      `[BootyBox] recordScTradeEvent: failed to resolve open trade_uuid from sc_positions: ${err?.message || err}`
+    );
+    return null;
+  }
+}
+
 function ensureTxidIndex() {
   if (ensuredTxidIndex) return;
   try {
@@ -110,18 +134,25 @@ function recordScTradeEvent(trade) {
 
   // Position-run id
   let tradeUuid = trade.trade_uuid ?? trade.tradeUuid ?? null;
+
   if (!tradeUuid) {
-    tradeUuid = resolveTradeUuid(walletId, coinMint);
+    // 1) Prefer an OPEN run from sc_positions.
+    tradeUuid = getOpenTradeUuid(walletId, coinMint);
 
-    if (!tradeUuid) {
+    // 2) If there is no open run, this is a new campaign.
+    //    For buys, always mint a fresh trade_uuid (do NOT reuse cached/pending UUIDs).
+    if (!tradeUuid && side === 'buy') {
       tradeUuid = crypto.randomUUID();
-      if (side !== 'buy') {
-        logger?.warn?.(
-          `[BootyBox] recordScTradeEvent: created new trade_uuid for ${side} with no open position-run: wallet_id=${walletId} mint=${coinMint}`
-        );
-      }
+      setTradeUuid(walletId, coinMint, tradeUuid);
+    }
 
-      // Persist for the open position-run (if it exists) or stash in pending_trade_uuids.
+    // 3) For sells with no open run, fall back to any cached/pending UUID if present,
+    //    otherwise create a new one so the trade is not lost (and warn).
+    if (!tradeUuid && side !== 'buy') {
+      tradeUuid = resolveTradeUuid(walletId, coinMint) || crypto.randomUUID();
+      logger?.warn?.(
+        `[BootyBox] recordScTradeEvent: using trade_uuid for ${side} with no open position-run: wallet_id=${walletId} mint=${coinMint} trade_uuid=${tradeUuid}`
+      );
       setTradeUuid(walletId, coinMint, tradeUuid);
     }
   } else {
@@ -242,8 +273,18 @@ function recordScTradeEvent(trade) {
     slippage_pct: slippagePct,
     price_impact_pct: priceImpactPct,
     program,
-    evaluation_payload: evaluationPayload ? JSON.stringify(evaluationPayload) : null,
-    decision_payload: decisionPayload ? JSON.stringify(decisionPayload) : null,
+    evaluation_payload:
+      evaluationPayload == null
+        ? null
+        : (typeof evaluationPayload === 'string'
+            ? evaluationPayload
+            : JSON.stringify(evaluationPayload)),
+    decision_payload:
+      decisionPayload == null
+        ? null
+        : (typeof decisionPayload === 'string'
+            ? decisionPayload
+            : JSON.stringify(decisionPayload)),
     fees_sol: feesSol,
     fees_usd: feesUsd,
     sol_usd_price: solUsdPrice,
