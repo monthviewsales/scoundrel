@@ -649,9 +649,9 @@ CREATE INDEX IF NOT EXISTS idx_sc_trades_wallet_executed
   CREATE INDEX IF NOT EXISTS idx_pending_trade_uuids_created_at
     ON pending_trade_uuids (created_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_sc_positions_open_wallet_mint
-ON sc_positions(wallet_id, coin_mint)
-WHERE closed_at IS NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS uniq_sc_positions_open_wallet_mint
+  ON sc_positions(wallet_id, coin_mint)
+  WHERE closed_at = 0;
 `);
 
   // Ensure txid is unique for UPSERTs. Older DB files may have been created before UNIQUE(txid) existed.
