@@ -155,7 +155,7 @@ db.exec(`
     strategy_id           TEXT,
     strategy_name         TEXT,
     open_at               INTEGER,
-    closed_at             INTEGER,
+    closed_at INTEGER NOT NULL DEFAULT 0,
     last_trade_at         INTEGER,
     last_updated_at       INTEGER,
     entry_token_amount    REAL,

@@ -273,8 +273,18 @@ function recordScTradeEvent(trade) {
     slippage_pct: slippagePct,
     price_impact_pct: priceImpactPct,
     program,
-    evaluation_payload: evaluationPayload ? JSON.stringify(evaluationPayload) : null,
-    decision_payload: decisionPayload ? JSON.stringify(decisionPayload) : null,
+    evaluation_payload:
+      evaluationPayload == null
+        ? null
+        : (typeof evaluationPayload === 'string'
+            ? evaluationPayload
+            : JSON.stringify(evaluationPayload)),
+    decision_payload:
+      decisionPayload == null
+        ? null
+        : (typeof decisionPayload === 'string'
+            ? decisionPayload
+            : JSON.stringify(decisionPayload)),
     fees_sol: feesSol,
     fees_usd: feesUsd,
     sol_usd_price: solUsdPrice,

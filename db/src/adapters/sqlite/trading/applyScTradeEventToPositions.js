@@ -89,7 +89,7 @@ function applyScTradeEventToPositions(trade) {
   const lastPriceUsd = calcTradePriceUsd(solAmount, tokenAmount, solUsdPrice);
 
   const getOpen = db.prepare(
-    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND (closed_at IS NULL OR closed_at = 0)'
+    'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at = 0'
   );
 
   const insertOpen = db.prepare(
