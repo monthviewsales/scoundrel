@@ -143,6 +143,9 @@ The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on
   - `WARCHEST_WS_RESTART_GAP_MS` (default `30000`) – minimum time between restarts.
   - `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` (default `300000`) – cap exponential backoff after failed restarts.
   - `WARCHEST_WS_UNSUB_TIMEOUT_MS` (default `2500`) – timeout for unsubscribe/close during restarts.
+- HUD shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
+  - `WARCHEST_HUD_MAX_TX` (default `10`) – max transactions displayed.
+  - `WARCHEST_HUD_MAX_LOGS` (default `5`) – max recent logs per wallet.
 - Each RPC client tracks its live WebSocket handles; `service.sockets` in health snapshots shows the active count so leaked sockets can be spotted and terminated on restart.
 
 ### Reading `data/warchest/status.json`

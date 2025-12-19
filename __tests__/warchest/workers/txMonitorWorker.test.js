@@ -57,6 +57,7 @@ describe('txMonitorWorker.monitorTransaction', () => {
     expect(events[0].txid).toBe(makeTxid());
     expect(events[0].context.side).toBe('buy');
     expect(events[0].insight).toEqual({ foo: 'bar' });
+    expect(events[0].txSummary.statusEmoji).toBeDefined();
   });
 
   test('falls back to polling when logs are unavailable', async () => {

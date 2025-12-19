@@ -35,6 +35,14 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 - HUD/monitor consumers subscribe to hub status and tx-event files via `lib/warchest/events.js`. When a hub is present, prefer the follower instead of opening another set of WebSocket subscriptions.
 - Event files default to `data/warchest/status.json` (health snapshots) and `data/warchest/tx-events.json` (confirmed/failed tx summaries). Workers should respect overrides from env/CLI so tests can inject temporary paths.
 
+### HUD transaction feed + env overrides
+
+- The HUD worker now follows `tx-events.json` through `createHubEventFollower` and renders a live transaction list above logs. Only the newest N events are kept (`WARCHEST_HUD_MAX_TX`, default `10`).
+- Status emojis mirror txMonitor: 🟢 confirmed, 🔴 failed, 🟡 everything else.
+- Each item pulls mint metadata through `tokenInfoService.ensureTokenInfo` (with refresh) so names, holders, price, and the 1m/5m/15m/30m price deltas appear once metadata exists. Missing metadata falls back to mint pubkeys.
+- Per-wallet log lines remain but are capped independently (`WARCHEST_HUD_MAX_LOGS`, default `5`).
+- Watch `data/warchest/status.json` for regressions: `ws.lastSlotAgeMs` should stay below `WARCHEST_WS_STALE_MS`, and `service.sockets` should hover around 1–3 after restarts. Rising `rssBytes` or `sockets` counts usually mean subscriptions leaked.
+
 ### Shutdown expectations
 
 - Coordinators and HUD workers must close followers/watchers, timers, and RPC/Data clients on `SIGINT`/`SIGTERM`. The HUD worker now closes hub followers in addition to the RPC client.
