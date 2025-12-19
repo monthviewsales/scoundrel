@@ -143,6 +143,21 @@ The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on
   - `WARCHEST_WS_RESTART_GAP_MS` (default `30000`) – minimum time between restarts.
   - `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` (default `300000`) – cap exponential backoff after failed restarts.
   - `WARCHEST_WS_UNSUB_TIMEOUT_MS` (default `2500`) – timeout for unsubscribe/close during restarts.
+- Each RPC client tracks its live WebSocket handles; `service.sockets` in health snapshots shows the active count so leaked sockets can be spotted and terminated on restart.
+
+### Reading `data/warchest/status.json`
+
+- Location: `./data/warchest/status.json` is refreshed every ~5s (daemon or HUD).
+- Key fields:
+  - `process.rssBytes` / `loadAvg1m` – memory and host pressure; sustained climbs suggest leaks or stuck jobs.
+  - `ws.lastSlotAgeMs` – WS freshness; values > `WARCHEST_WS_STALE_MS` should trigger a restart. Healthy is single-digit ms–seconds.
+  - `service.wsSupervisor` – restart history (`restarts`, `lastRestartAt`, `lastRestartReason`, `backoffMs`, `restartInFlight`). Frequent restarts with nonzero `backoffMs` mean the endpoint is flapping.
+  - `service.sockets` – current WS handles owned by the RPC client. Normal is 1–3. Growth over time indicates a cleanup problem; restarting the worker should reset to 1–3.
+  - `session.*` – current BootyBox session metadata (id, start slot/time, last heartbeat).
+- Quick triage:
+  - If `lastSlotAgeMs` climbs and `restarts` stays flat, WS may be wedged; manually restart the worker.
+  - If `sockets` climbs above 3, restart the worker; the registry is cleaned on restart.
+  - If `loadAvg1m` spikes alongside `restarts`, check network/endpoint health; backoff will slow restarts.
 
 ---
 

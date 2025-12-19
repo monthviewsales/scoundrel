@@ -20,6 +20,7 @@ If Warchest remains the long-lived hub that owns BootyBox plus the SolanaTracker
 - Each worker initializes fresh RPC/Data clients; always call `await close()` on the RPC client and unsubscribe from every subscription before sending a `process.exit(0)` or letting the worker finish.
 - Put shared helpers (wallet resolution, BootyBox open/close, status snapshot writing) into small modules the worker harness can import; avoid storing global state in the hub.
 - If two monitors might target the same mint/wallet, add a minimal guard: write a PID/tag file per `(job, mint)` in `data/warchest/` and refuse to start if it already exists.
+- The HUD worker now tracks every WebSocket handle created by the SolanaTracker Kit client and exposes the count in health snapshots (`service.sockets`). Client restarts terminate all tracked sockets; a normal count is 1–3. Watch for growth to catch cleanup regressions early.
 
 ## When a registry is optional vs. useful
 
