@@ -6,6 +6,7 @@ const applyScTradeEventToPositions = require('./trading/applyScTradeEventToPosit
 const ensureOpenPositionRun = require('./trading/ensureOpenPositionRun');
 const recordPastTradeEvent = require('./trading/recordPastTradeEvent');
 const getTradesByTradeUuid = require('./trading/getTradesByTradeUuid');
+const getPnlPositionsLive = require('./trading/getPnlPositionsLive');
 
 const chalk = require('chalk');
 const { logger } = require('./context');
@@ -22,6 +23,7 @@ module.exports = {
   ensureOpenPositionRun,
   recordScTradeEvent,
   getTradesByTradeUuid,
+  getPnlPositionsLive,
   recordPastTradeEvent,
   bulkResyncPositions: legacy.bulkResyncPositions,
   clearPendingSwap: legacy.clearPendingSwap,
