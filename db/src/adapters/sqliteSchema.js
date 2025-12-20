@@ -419,23 +419,51 @@ db.exec(`
       COALESCE(p.wallet_alias, pn.wallet_alias) AS wallet_alias,
       p.coin_mint,
       p.trade_uuid,
-      pn.total_tokens_bought,
-      pn.total_tokens_sold,
-      pn.total_sol_spent,
-      pn.total_sol_received,
-      pn.fees_sol,
-      pn.fees_usd,
-      pn.avg_cost_sol,
-      pn.avg_cost_usd,
-      pn.realized_sol,
-      pn.realized_usd,
+
+      COALESCE(pn.total_tokens_bought, 0) AS total_tokens_bought,
+      COALESCE(pn.total_tokens_sold, 0) AS total_tokens_sold,
+      COALESCE(pn.total_sol_spent, 0) AS total_sol_spent,
+      COALESCE(pn.total_sol_received, 0) AS total_sol_received,
+      COALESCE(pn.fees_sol, 0) AS fees_sol,
+      COALESCE(pn.fees_usd, 0) AS fees_usd,
+      COALESCE(pn.avg_cost_sol, 0) AS avg_cost_sol,
+      COALESCE(pn.avg_cost_usd, 0) AS avg_cost_usd,
+      COALESCE(pn.realized_sol, 0) AS realized_sol,
+      COALESCE(pn.realized_usd, 0) AS realized_usd,
+
+      -- Wallet-balance derived amount (what you actually hold right now)
       p.current_token_amount,
+
+      -- Trade-derived position size (bought - sold) used for PnL math
+      (COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) AS position_token_amount,
+
       c.priceSol AS coin_price_sol,
       c.priceUsd AS coin_price_usd,
-      (p.current_token_amount * c.priceSol) AS unrealized_sol,
-      (p.current_token_amount * c.priceUsd) AS unrealized_usd,
-      (pn.realized_sol + (p.current_token_amount * c.priceSol)) AS total_sol,
-      (pn.realized_usd + (p.current_token_amount * c.priceUsd)) AS total_usd,
+
+      -- Unrealized PnL (NOT position value)
+      (
+        ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceSol, 0))
+        - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_sol, 0))
+      ) AS unrealized_sol,
+      (
+        ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceUsd, 0))
+        - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_usd, 0))
+      ) AS unrealized_usd,
+
+      -- Total PnL (realized + unrealized)
+      (
+        COALESCE(pn.realized_sol, 0) + (
+          ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceSol, 0))
+          - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_sol, 0))
+        )
+      ) AS total_sol,
+      (
+        COALESCE(pn.realized_usd, 0) + (
+          ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceUsd, 0))
+          - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_usd, 0))
+        )
+      ) AS total_usd,
+
       pn.first_trade_at,
       pn.last_trade_at,
       pn.last_updated_at
@@ -488,6 +516,7 @@ db.exec(`
       last_trade_at       = MAX(sc_pnl.last_trade_at, excluded.last_trade_at),
       last_updated_at     = excluded.last_updated_at;
 
+      
     -- Position-run rollup (only when a trade_uuid is present)
     INSERT INTO sc_pnl_positions (
       wallet_id, wallet_alias, coin_mint, trade_uuid,
