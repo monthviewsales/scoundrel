@@ -443,24 +443,24 @@ db.exec(`
       -- Unrealized PnL (NOT position value)
       (
         ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceSol, 0))
-        - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_sol, 0))
+        - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * ABS(COALESCE(pn.avg_cost_sol, 0)))
       ) AS unrealized_sol,
       (
         ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceUsd, 0))
-        - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_usd, 0))
+        - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * ABS(COALESCE(pn.avg_cost_usd, 0)))
       ) AS unrealized_usd,
 
       -- Total PnL (realized + unrealized)
       (
         COALESCE(pn.realized_sol, 0) + (
           ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceSol, 0))
-          - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_sol, 0))
+          - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * ABS(COALESCE(pn.avg_cost_sol, 0)))
         )
       ) AS total_sol,
       (
         COALESCE(pn.realized_usd, 0) + (
           ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(c.priceUsd, 0))
-          - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * COALESCE(pn.avg_cost_usd, 0))
+          - ((COALESCE(pn.total_tokens_bought, 0) - COALESCE(pn.total_tokens_sold, 0)) * ABS(COALESCE(pn.avg_cost_usd, 0)))
         )
       ) AS total_usd,
 
@@ -489,8 +489,8 @@ db.exec(`
       NEW.wallet_id, NEW.wallet_alias, NEW.coin_mint,
       COALESCE(NEW.token_amount, 0), COALESCE(NEW.sol_amount, 0),
       COALESCE(NEW.fees_sol, 0), COALESCE(NEW.fees_usd, 0),
-      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN COALESCE(NEW.sol_amount, 0) / NEW.token_amount ELSE 0 END,
-      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN (COALESCE(NEW.sol_amount, 0) / NEW.token_amount) * COALESCE(NEW.sol_usd_price, 0) ELSE 0 END,
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN ABS(COALESCE(NEW.sol_amount, 0)) / NEW.token_amount ELSE 0 END,
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN (ABS(COALESCE(NEW.sol_amount, 0)) / NEW.token_amount) * COALESCE(NEW.sol_usd_price, 0) ELSE 0 END,
       0, 0,
       NEW.executed_at, NEW.executed_at, NEW.executed_at
     )
@@ -502,13 +502,13 @@ db.exec(`
       fees_usd            = sc_pnl.fees_usd + COALESCE(excluded.fees_usd, 0),
       avg_cost_sol        = CASE
                               WHEN (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
-                              THEN (sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0))
+                              THEN ABS(sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0))
                                   / (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
                               ELSE sc_pnl.avg_cost_sol
                             END,
       avg_cost_usd        = CASE
                               WHEN (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
-                              THEN ((sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0)) * COALESCE(NEW.sol_usd_price, 0))
+                              THEN (ABS(sc_pnl.total_sol_spent + COALESCE(excluded.total_sol_spent, 0)) * COALESCE(NEW.sol_usd_price, 0))
                                   / (sc_pnl.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
                               ELSE sc_pnl.avg_cost_usd
                             END,
@@ -516,7 +516,6 @@ db.exec(`
       last_trade_at       = MAX(sc_pnl.last_trade_at, excluded.last_trade_at),
       last_updated_at     = excluded.last_updated_at;
 
-      
     -- Position-run rollup (only when a trade_uuid is present)
     INSERT INTO sc_pnl_positions (
       wallet_id, wallet_alias, coin_mint, trade_uuid,
@@ -530,8 +529,8 @@ db.exec(`
       NEW.wallet_id, NEW.wallet_alias, NEW.coin_mint, NEW.trade_uuid,
       COALESCE(NEW.token_amount, 0), COALESCE(NEW.sol_amount, 0),
       COALESCE(NEW.fees_sol, 0), COALESCE(NEW.fees_usd, 0),
-      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN COALESCE(NEW.sol_amount, 0) / NEW.token_amount ELSE 0 END,
-      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN (COALESCE(NEW.sol_amount, 0) / NEW.token_amount) * COALESCE(NEW.sol_usd_price, 0) ELSE 0 END,
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN ABS(COALESCE(NEW.sol_amount, 0)) / NEW.token_amount ELSE 0 END,
+      CASE WHEN COALESCE(NEW.token_amount, 0) > 0 THEN (ABS(COALESCE(NEW.sol_amount, 0)) / NEW.token_amount) * COALESCE(NEW.sol_usd_price, 0) ELSE 0 END,
       0, 0,
       NEW.executed_at, NEW.executed_at, NEW.executed_at
     WHERE NEW.trade_uuid IS NOT NULL
@@ -543,13 +542,13 @@ db.exec(`
       fees_usd            = sc_pnl_positions.fees_usd + COALESCE(excluded.fees_usd, 0),
       avg_cost_sol        = CASE
                               WHEN (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
-                              THEN (sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0))
+                              THEN ABS(sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0))
                                    / (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
                               ELSE sc_pnl_positions.avg_cost_sol
                             END,
       avg_cost_usd        = CASE
                               WHEN (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0)) > 0
-                              THEN ((sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0)) * COALESCE(NEW.sol_usd_price, 0))
+                              THEN (ABS(sc_pnl_positions.total_sol_spent + COALESCE(excluded.total_sol_spent, 0)) * COALESCE(NEW.sol_usd_price, 0))
                                    / (sc_pnl_positions.total_tokens_bought + COALESCE(excluded.total_tokens_bought, 0))
                               ELSE sc_pnl_positions.avg_cost_usd
                             END,
