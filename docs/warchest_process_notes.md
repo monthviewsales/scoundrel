@@ -20,6 +20,7 @@ If Warchest remains the long-lived hub that owns BootyBox plus the SolanaTracker
 - Each worker initializes fresh RPC/Data clients; always call `await close()` on the RPC client and unsubscribe from every subscription before sending a `process.exit(0)` or letting the worker finish.
 - Put shared helpers (wallet resolution, BootyBox open/close, status snapshot writing) into small modules the worker harness can import; avoid storing global state in the hub.
 - If two monitors might target the same mint/wallet, add a minimal guard: write a PID/tag file per `(job, mint)` in `data/warchest/` and refuse to start if it already exists.
+- The HUD worker now tracks every WebSocket handle created by the SolanaTracker Kit client and exposes the count in health snapshots (`service.sockets`). Client restarts terminate all tracked sockets; a normal count is 1–3. Watch for growth to catch cleanup regressions early.
 
 ## When a registry is optional vs. useful
 
@@ -33,6 +34,14 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 - A lightweight coordinator now lives in `lib/warchest/hubCoordinator.js`. It routes commands to workers through the harness, enforces per-wallet/tx namespaces (duplicate `swap` or `txMonitor` calls on the same wallet/txid throw), and passes shared env hints down to the forked workers.
 - HUD/monitor consumers subscribe to hub status and tx-event files via `lib/warchest/events.js`. When a hub is present, prefer the follower instead of opening another set of WebSocket subscriptions.
 - Event files default to `data/warchest/status.json` (health snapshots) and `data/warchest/tx-events.json` (confirmed/failed tx summaries). Workers should respect overrides from env/CLI so tests can inject temporary paths.
+
+### HUD transaction feed + env overrides
+
+- The HUD worker now follows `tx-events.json` through `createHubEventFollower` and renders a live transaction list above logs. Only the newest N events are kept (`WARCHEST_HUD_MAX_TX`, default `10`).
+- Status emojis mirror txMonitor: 🟢 confirmed, 🔴 failed, 🟡 everything else.
+- Each item pulls mint metadata through `tokenInfoService.ensureTokenInfo` (with refresh) so names, holders, price, and the 1m/5m/15m/30m price deltas appear once metadata exists. Missing metadata falls back to mint pubkeys.
+- Per-wallet log lines remain but are capped independently (`WARCHEST_HUD_MAX_LOGS`, default `5`).
+- Watch `data/warchest/status.json` for regressions: `ws.lastSlotAgeMs` should stay below `WARCHEST_WS_STALE_MS`, and `service.sockets` should hover around 1–3 after restarts. Rising `rssBytes` or `sockets` counts usually mean subscriptions leaked.
 
 ### Shutdown expectations
 
