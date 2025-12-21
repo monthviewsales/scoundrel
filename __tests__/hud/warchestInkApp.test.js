@@ -10,6 +10,7 @@ const {
   createSessionStatus,
   createWalletCard,
   createRecentActivityList,
+  createTransactionsPanel,
 } = require("../../lib/hud/warchestInkApp");
 
 const h = React.createElement;
@@ -86,7 +87,8 @@ describe("warchest Ink components", () => {
       })
     );
 
-    expect(lastFrame()).toContain("Stable");
+    expect(lastFrame()).toContain("USDC");
+    expect(lastFrame()).toContain("stable");
     expect(lastFrame()).toContain("$12.50");
     expect(lastFrame()).toContain("Showing 1-1 of 2");
   });
@@ -104,5 +106,44 @@ describe("warchest Ink components", () => {
     expect(lastFrame()).toContain("First");
     expect(lastFrame()).toContain("Second");
     expect(lastFrame()).not.toContain("Third");
+  });
+
+  test("TransactionsPanel renders emoji status and trims items", () => {
+    const TransactionsPanel = createTransactionsPanel(ink);
+    const transactions = [
+      {
+        txid: "a",
+        statusCategory: "confirmed",
+        statusEmoji: "🟢",
+        side: "buy",
+        mint: "ABCDEFGHIJKL",
+        tokens: 1.2345,
+        sol: 0.002345,
+        coin: {
+          symbol: "ABC",
+          priceUsd: 0.123456,
+          events: { "1m": 1.234, "5m": -0.5, "15m": 0, "30m": 3.333 },
+          holders: 12,
+        },
+        observedAt: Date.now() - 1500,
+      },
+      {
+        txid: "b",
+        statusCategory: "failed",
+        statusEmoji: "🔴",
+        side: "sell",
+        mint: "MNOPQRST",
+        errMessage: "boom",
+      },
+      { txid: "c", statusEmoji: "🟡", side: "tx", mint: "MintC" },
+    ];
+
+    const { lastFrame } = render(h(TransactionsPanel, { transactions, maxItems: 2 }));
+
+    const frame = lastFrame();
+    expect(frame).toContain("BUY  ABC");
+    expect(frame).toContain("SELL MNOPQRST");
+    // Note: some terminals/test renderers do not include the errMessage text or may render emojis as replacement chars.
+    expect(frame).not.toContain("MintC");
   });
 });

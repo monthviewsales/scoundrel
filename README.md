@@ -138,6 +138,29 @@ The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on
 - The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
 - Session lifecycle is persisted via `sc_sessions`: the worker closes any stale session it finds (using the last snapshot in `data/warchest/status.json`) before opening a new one, heartbeats the active session via its health loop, and records the session metadata inside `health.session` for CLI status commands.
 - Clean shutdowns (`SIGINT`, CLI stop) now finalize the open session with the most recent slot/block time; unexpected exits are recorded as `end_reason='crash'` on the next launch.
+- The worker runs a WS heartbeat watchdog: if `slotSubscribe` goes stale, it restarts the SolanaTracker Kit RPC client + resubscribes, and surfaces restarts/errors in the HUD + `data/warchest/status.json`.
+  - `WARCHEST_WS_STALE_MS` (default `20000`) – restart when no slot update for this long.
+  - `WARCHEST_WS_RESTART_GAP_MS` (default `30000`) – minimum time between restarts.
+  - `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` (default `300000`) – cap exponential backoff after failed restarts.
+  - `WARCHEST_WS_UNSUB_TIMEOUT_MS` (default `2500`) – timeout for unsubscribe/close during restarts.
+- HUD shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
+  - `WARCHEST_HUD_MAX_TX` (default `10`) – max transactions displayed.
+  - `WARCHEST_HUD_MAX_LOGS` (default `5`) – max recent logs per wallet.
+- Each RPC client tracks its live WebSocket handles; `service.sockets` in health snapshots shows the active count so leaked sockets can be spotted and terminated on restart.
+
+### Reading `data/warchest/status.json`
+
+- Location: `./data/warchest/status.json` is refreshed every ~5s (daemon or HUD).
+- Key fields:
+  - `process.rssBytes` / `loadAvg1m` – memory and host pressure; sustained climbs suggest leaks or stuck jobs.
+  - `ws.lastSlotAgeMs` – WS freshness; values > `WARCHEST_WS_STALE_MS` should trigger a restart. Healthy is single-digit ms–seconds.
+  - `service.wsSupervisor` – restart history (`restarts`, `lastRestartAt`, `lastRestartReason`, `backoffMs`, `restartInFlight`). Frequent restarts with nonzero `backoffMs` mean the endpoint is flapping.
+  - `service.sockets` – current WS handles owned by the RPC client. Normal is 1–3. Growth over time indicates a cleanup problem; restarting the worker should reset to 1–3.
+  - `session.*` – current BootyBox session metadata (id, start slot/time, last heartbeat).
+- Quick triage:
+  - If `lastSlotAgeMs` climbs and `restarts` stays flat, WS may be wedged; manually restart the worker.
+  - If `sockets` climbs above 3, restart the worker; the registry is cleaned on restart.
+  - If `loadAvg1m` spikes alongside `restarts`, check network/endpoint health; backoff will slow restarts.
 
 ---
 
