@@ -24,6 +24,27 @@ describe('swap worker spawns tx monitor', () => {
   test('propagates swap context into monitor worker IPC', async () => {
     const { secret } = makeSecretKey();
     const logPath = path.join(os.tmpdir(), `tx-monitor-log-${Date.now()}.json`);
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'swap-worker-home-'));
+    const configDir = process.platform === 'darwin'
+      ? path.join(tempHome, 'Library', 'Application Support', 'com.VAULT77.scoundrel')
+      : path.join(tempHome, '.config', 'com.VAULT77.scoundrel');
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(configDir, 'swapConfig.json'),
+      JSON.stringify({
+        rpcUrl: 'https://rpc.example.invalid',
+        slippage: 10,
+        priorityFee: 'auto',
+        priorityFeeLevel: 'low',
+        txVersion: 'v0',
+        showQuoteDetails: false,
+        useJito: false,
+        jitoTip: 0.0001,
+        swapAPIKey: 'stub',
+        DEBUG_MODE: false,
+      }, null, 2),
+      'utf8'
+    );
 
     const { result } = await forkWorkerWithPayload(workerPath, {
       payload: {
@@ -31,9 +52,9 @@ describe('swap worker spawns tx monitor', () => {
         mint: 'So11111111111111111111111111111111111111112',
         amount: 1,
         walletPrivateKey: secret,
-        slippagePercent: 1,
       },
       env: {
+        HOME: tempHome,
         SWAP_WORKER_EXECUTOR: mockExecutor,
         TX_MONITOR_WORKER_PATH: monitorWorker,
         TX_MONITOR_TEST_LOG: logPath,

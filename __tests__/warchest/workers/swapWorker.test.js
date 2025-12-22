@@ -18,7 +18,7 @@ process.env.SWAP_WORKER_EXECUTOR = mockExecutor;
 // eslint-disable-next-line global-require
 const { forkWorkerWithPayload } = require('../../../lib/warchest/workers/harness');
 // eslint-disable-next-line global-require
-const { validateSwapPayload } = require('../../../lib/warchest/workers/swapWorker');
+const { validateSwapPayload } = require('../../../lib/swap/validateSwapPayload');
 
 function makeSecretKey() {
   const kp = Keypair.generate();
@@ -38,24 +38,10 @@ describe('swap worker payload validation', () => {
       mint: 'So11111111111111111111111111111111111111112',
       amount: '50%',
       walletAlias: 'main',
-      slippagePercent: 5,
-      priorityFee: 'auto',
-      useJito: true,
-      priorityFeeLevel: 'medium',
-      txVersion: 'legacy',
-      showQuoteDetails: 'true',
-      debugLogging: 1,
       dryRun: true,
     });
 
     expect(payload.amount).toBe('50%');
-    expect(payload.slippagePercent).toBe(5);
-    expect(payload.priorityFee).toBe('auto');
-    expect(payload.priorityFeeLevel).toBe('medium');
-    expect(payload.txVersion).toBe('legacy');
-    expect(payload.useJito).toBe(true);
-    expect(payload.showQuoteDetails).toBe(true);
-    expect(payload.debugLogging).toBe(true);
     expect(payload.dryRun).toBe(true);
   });
 });
@@ -64,6 +50,27 @@ describe('swap worker IPC forwarding', () => {
   test('forwards swap results from the executor', async () => {
     const { secret, pubkey } = makeSecretKey();
     const logPath = path.join(os.tmpdir(), `swap-worker-log-${Date.now()}.json`);
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'swap-worker-home-'));
+    const configDir = process.platform === 'darwin'
+      ? path.join(tempHome, 'Library', 'Application Support', 'com.VAULT77.scoundrel')
+      : path.join(tempHome, '.config', 'com.VAULT77.scoundrel');
+    fs.mkdirSync(configDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(configDir, 'swapConfig.json'),
+      JSON.stringify({
+        rpcUrl: 'https://rpc.example.invalid',
+        slippage: 12,
+        priorityFee: 'auto',
+        priorityFeeLevel: 'low',
+        txVersion: 'v0',
+        showQuoteDetails: false,
+        useJito: false,
+        jitoTip: 0.0001,
+        swapAPIKey: 'stub',
+        DEBUG_MODE: false,
+      }, null, 2),
+      'utf8'
+    );
 
     const { result } = await forkWorkerWithPayload(workerPath, {
       payload: {
@@ -71,9 +78,9 @@ describe('swap worker IPC forwarding', () => {
         mint: 'So11111111111111111111111111111111111111112',
         amount: 1,
         walletPrivateKey: secret,
-        slippagePercent: 12,
       },
       env: {
+        HOME: tempHome,
         SWAP_WORKER_EXECUTOR: mockExecutor,
         SWAP_WORKER_TEST_LOG: logPath,
         TX_MONITOR_WORKER_PATH: monitorWorker,

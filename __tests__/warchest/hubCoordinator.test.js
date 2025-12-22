@@ -43,6 +43,7 @@ describe('warchest hub coordinator', () => {
     const coordinator = createHubCoordinator({
       swapWorkerPath,
       eventPath,
+      lockPrefix: `test-${Date.now()}`,
       commandEnv: {
         swap: {
           TX_MONITOR_EVENT_PATH: eventPath,

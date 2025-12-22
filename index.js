@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 // index.js — Scoundrel CLI
-require("dotenv").config({ quiet: true });
+require('./lib/env/safeDotenv').loadDotenv();
 const logger = require('./lib/logger');
 const chalk = require('chalk');
 const React = require('react');
 const { program } = require('commander');
-const {
-    getConfigPath: getSwapConfigPath,
-    loadConfig: loadSwapConfig,
-    saveConfig: saveSwapConfig,
-    editConfig: editSwapConfig,
-} = require('./lib/swap/swapConfig');
 const { existsSync, mkdirSync, writeFileSync, readFileSync } = require('fs');
 const { join, relative } = require('path');
 const BootyBox = require('./db');
@@ -499,9 +493,7 @@ Notes:
 // --- swap command ---
 program
     .command('swap')
-    .argument('[mintOrSubcommand]', 'Token mint address to swap, or config subcommand when used with -c')
-    .argument('[configKey]', 'Config key for -c set (e.g., rpcUrl, swapAPIKey)')
-    .argument('[configValue]', 'Config value for -c set')
+    .argument('[mint]', 'Token mint address to swap')
     .description('Execute a token swap via the SolanaTracker swap API or manage swap configuration')
     .option(
         '-w, --wallet <aliasOrAddress>',
@@ -509,77 +501,36 @@ program
     )
     .option('-b, --buy <amount>', "Spend <amount> SOL (number or '<percent>%') to buy the token")
     .option('-s, --sell <amount>', "Sell <amount> of the token (number, 'auto', or '<percent>%')")
-    .option('--slippage <percent>', 'Override default slippage percent for this swap')
-    .option('--priority-fee <microlamports>', 'Override default priority fee in microlamports (or use \"auto\")')
-    .option('--jito', 'Use Jito-style priority fee routing when supported')
     .option('--dry-run', 'Build and simulate the swap without broadcasting the transaction')
     .option('--detach', 'Return immediately after tx submission; confirmation/persistence runs in background')
     .option('-c, --config', 'Manage swap configuration instead of executing a swap')
-    .addHelpText('after', `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --slippage 3 --priority-fee auto\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --detach\n\n  # Manage swap configuration\n  $ scoundrel swap -c view\n  $ scoundrel swap -c edit\n  $ scoundrel swap -c set rpcUrl https://your-solanatracker-rpc-url?advancedTx=true\n  $ scoundrel swap -c set swapAPIKey YOUR_API_KEY\n`)
-    .action(async (mintOrSubcommand, configKey, configValue, cmdOrOpts) => {
+    .addHelpText('after', `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --detach\n\n  # Manage swap configuration\n  $ scoundrel swap --config\n`)
+    .action(async (mint, cmdOrOpts) => {
         // Commander v14 may pass either (args..., options) or (args..., Command).
         // If the last parameter has an .opts() function, treat it as the Command instance;
         // otherwise assume it's already the plain options object.
         const hasOptsMethod = cmdOrOpts && typeof cmdOrOpts.opts === 'function';
         const opts = hasOptsMethod ? cmdOrOpts.opts() : (cmdOrOpts || {});
 
-        // Config mode (-c/--config): reuse the previous swap:config workflows
+        // Config mode (-c/--config): launch the swap config TUI
         if (opts.config) {
-            const sub = mintOrSubcommand || 'view';
-
             try {
-                if (sub === 'view') {
-                    const configPath = getSwapConfigPath();
-                    const cfg = await loadSwapConfig();
-
-                    // Redact API key to avoid screen-share leaks
-                    const redacted = { ...cfg };
-                    if (redacted.swapAPIKey && typeof redacted.swapAPIKey === 'string') {
-                        const tail = redacted.swapAPIKey.slice(-4);
-                        redacted.swapAPIKey = `************${tail}`;
-                    }
-
-                    logger.info(`[scoundrel:swap-config] Config file: ${configPath}`);
-                    logger.info(JSON.stringify(redacted, null, 2));
-                    return;
-                }
-
-                if (sub === 'edit') {
-                    await editSwapConfig();
-                    return;
-                }
-
-                if (sub === 'set') {
-                    if (!configKey || typeof configValue === 'undefined') {
-                        logger.error('[scoundrel:swap-config] Usage: scoundrel swap -c set <key> <value>');
-                        process.exitCode = 1;
-                        return;
-                    }
-
-                    const configPath = getSwapConfigPath();
-                    const cfg = await loadSwapConfig();
-                    const numeric = Number(configValue);
-                    const castValue = Number.isNaN(numeric) ? configValue : numeric;
-
-                    cfg[configKey] = castValue;
-                    await saveSwapConfig(cfg);
-
-                    logger.info(`[scoundrel:swap-config] ✅ Updated ${configKey} → ${castValue} in ${configPath}`);
-                    return;
-                }
-
-                logger.error(`[scoundrel:swap-config] Unknown config subcommand: ${sub}`);
-                process.exitCode = 1;
+                const { loadSwapConfigApp } = require('./lib/tui/swapConfigApp');
+                const { render } = await import('ink');
+                const { SwapConfigApp } = await loadSwapConfigApp();
+                const { waitUntilExit } = render(
+                    React.createElement(SwapConfigApp, { onComplete: () => {} })
+                );
+                await waitUntilExit();
                 return;
             } catch (err) {
-                logger.error('[scoundrel:swap-config] ❌ config operation failed:', err?.message || err);
+                logger.error('[scoundrel:swap-config] ❌ config UI failed:', err?.message || err);
                 process.exitCode = 1;
                 return;
             }
         }
 
         // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/trade
-        const mint = mintOrSubcommand;
         if (!mint) {
             logger.error('[scoundrel] swap requires a mint when not using -c/--config.');
             process.exit(1);

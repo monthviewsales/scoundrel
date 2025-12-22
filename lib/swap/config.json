@@ -4,7 +4,9 @@
   "priorityFee": "auto",
   "priorityFeeLevel": "low",
   "txVersion": "v0",
-  "showQuoteDetails": "false",
+  "showQuoteDetails": false,
+  "useJito": false,
+  "jitoTip": 0.0001,
   "swapAPIKey": "jduck-d815-4c28-b85d-17e9fc3a21a8",
-  "DEBUG_MODE": "true"
+  "DEBUG_MODE": false
 }

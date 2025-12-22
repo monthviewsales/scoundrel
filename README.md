@@ -276,9 +276,9 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 ### swap `<mint>` (plus config mode)
 - Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
-- Options: `--slippage <pct>` (default 15), `--priority-fee <microlamports|auto>`, `--jito`, `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
+- Options: `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
 - Internals: `lib/cli/trade.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
-- Config mode: `scoundrel swap -c view|edit|set <key> <value>` (file location and keys unchanged from previous swap config docs).
+- Config mode: `scoundrel swap --config` (Ink-based editor; file location and keys unchanged from previous swap config docs).
 - Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
 ### ask
