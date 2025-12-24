@@ -25,9 +25,10 @@ describe('swap worker spawns tx monitor', () => {
     const { secret } = makeSecretKey();
     const logPath = path.join(os.tmpdir(), `tx-monitor-log-${Date.now()}.json`);
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'swap-worker-home-'));
+    const xdgConfigHome = path.join(tempHome, '.config');
     const configDir = process.platform === 'darwin'
       ? path.join(tempHome, 'Library', 'Application Support', 'com.VAULT77.scoundrel')
-      : path.join(tempHome, '.config', 'com.VAULT77.scoundrel');
+      : path.join(xdgConfigHome, 'com.VAULT77.scoundrel');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(
       path.join(configDir, 'swapConfig.json'),
@@ -55,6 +56,7 @@ describe('swap worker spawns tx monitor', () => {
       },
       env: {
         HOME: tempHome,
+        XDG_CONFIG_HOME: xdgConfigHome,
         SWAP_WORKER_EXECUTOR: mockExecutor,
         TX_MONITOR_WORKER_PATH: monitorWorker,
         TX_MONITOR_TEST_LOG: logPath,
