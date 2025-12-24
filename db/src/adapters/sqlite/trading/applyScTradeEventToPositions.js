@@ -168,6 +168,19 @@ function applyScTradeEventToPositions(trade) {
   const tx = db.transaction(() => {
     const open = getOpen.get(walletId, coinMint);
 
+    // Idempotency guard:
+    // Multiple producers (e.g., txMonitor + wallet watcher) may emit the same confirmed trade.
+    // If the open position already reflects a trade at this exact executedAt timestamp,
+    // skip applying deltas again.
+    if (open && Number(open.last_trade_at || 0) === executedAt) {
+      if (process.env.SC_SQLITE_DIAGNOSTICS === '1') {
+        logger?.debug?.(
+          `[BootyBox][applyScTradeEventToPositions] skip duplicate apply wallet_id=${walletId} mint=${coinMint} executedAt=${executedAt}`
+        );
+      }
+      return open;
+    }
+
     // If we have no open position, create one.
     // For buys: open with tokenAmount.
     // For sells without an open position: create a row so the trade_uuid has a home, but mark as zero/closed.

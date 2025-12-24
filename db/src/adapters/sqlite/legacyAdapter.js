@@ -970,7 +970,7 @@ function persistWalletProfileArtifacts({
   );
 }
 
-/* function recordScTradeEvent(event) {
+function recordScTradeEvent(event) {
   if (!event || typeof event !== "object") {
     throw new Error("recordScTradeEvent: event object is required");
   }
@@ -1152,9 +1152,9 @@ function persistWalletProfileArtifacts({
     created_at: now,
     updated_at: now,
   });
-} */
+}
 
-/* function derivePriceSolPerToken(event, tokenAmount) {
+function derivePriceSolPerToken(event, tokenAmount) {
   const explicit = Number.isFinite(Number(event.priceSolPerToken))
     ? Number(event.priceSolPerToken)
     : null;
@@ -1166,9 +1166,9 @@ function persistWalletProfileArtifacts({
     return solAmount / tokenAmount;
   }
   return null;
-} */
+}
 
-/* function derivePriceUsdPerToken(event, priceSolPerToken) {
+function derivePriceUsdPerToken(event, priceSolPerToken) {
   const explicit = Number.isFinite(Number(event.priceUsdPerToken))
     ? Number(event.priceUsdPerToken)
     : null;
@@ -1180,9 +1180,9 @@ function persistWalletProfileArtifacts({
     return solUsdPrice * priceSolPerToken;
   }
   return null;
-} */
+}
 
-/* function applyScTradeEventToPositions(event) {
+function applyScTradeEventToPositions(event) {
   if (!event || typeof event !== "object") {
     throw new Error("applyScTradeEventToPositions: event object is required");
   }
@@ -1230,6 +1230,17 @@ function persistWalletProfileArtifacts({
   selectSql += " LIMIT 1";
 
   const existing = db.prepare(selectSql).get(...params);
+
+  // Idempotency guard:
+  // This adapter may receive the same confirmed trade event from multiple producers
+  // (e.g., txMonitor + wallet watcher). If the position already reflects a trade
+  // at this exact executedAt timestamp, do not apply deltas again.
+  if (existing && Number(existing.last_trade_at || 0) === executedAt) {
+    logger.debug(
+      `[BootyBox] applyScTradeEventToPositions: skipping duplicate apply for tx at executedAt=${executedAt} mint=${coinMint} wallet=${walletId}`
+    );
+    return;
+  }
 
   if (!existing && side === "sell") {
     // Selling a position we do not have a row for yet. For now log and bail.
@@ -1369,7 +1380,7 @@ function persistWalletProfileArtifacts({
     last_price_sol: priceSolPerToken,
     last_price_usd: priceUsdPerToken,
   });
-} */
+}
 
 // === Helper upsert functions for risk and events ===
 function upsertCoinRisk(mint, risk) {
@@ -2375,7 +2386,7 @@ const BootyBox = {
    * Prevents overwriting highestPrice if the incoming value is lower.
    * @param {Object} position - The position data (mint, entry price, SL, etc.).
    */
-  /* addPosition(position) {
+  addPosition(position) {
     const { coin_mint, highestPrice: incomingHighest = 0 } = position;
 
     // New mapping for extended columns
@@ -2441,7 +2452,7 @@ const BootyBox = {
       source,
       lastUpdated,
     });
-  }, */
+  },
 
   /**
    * Deletes a position by coin mint, used when a position is sold.
@@ -2961,7 +2972,7 @@ const BootyBox = {
       .prepare(
         `
       SELECT positions.*, coins.symbol, coins.name, coins.decimals, coins.image, coins.status
-      FROM positions
+      FROM sc_positions
       JOIN coins ON coins.mint = positions.coin_mint
       WHERE coins.status = 'complete' AND positions.coin_mint = ?
     `
@@ -3003,9 +3014,13 @@ const BootyBox = {
    */
   getTokenAmount(mint) {
     const result = db
-      .prepare(`SELECT current_token_amount FROM sc_positions WHERE coin_mint = ?`)
+      .prepare(`SELECT current_token_amount
+        FROM sc_positions
+        WHERE coin_mint = ?
+          AND (closed_at = 0 OR closed_at IS NULL)
+        LIMIT 1;`)
       .get(mint);
-    return result && typeof result.amount === "number" ? result.amount : 0;
+    return result && typeof result.current_token_amount === "number" ? result.current_token_amount : 0;
   },
 
   /**
