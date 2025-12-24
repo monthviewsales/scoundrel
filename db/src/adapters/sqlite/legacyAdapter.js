@@ -10,7 +10,6 @@ const {
   getTradeUuid,
   clearTradeUuid,
   resolveTradeUuid,
-  upsertPendingTradeUuid,
   deletePendingTradeUuid,
   setDefaultWalletPublicKey,
   getDefaultWalletPublicKey,
@@ -1183,7 +1182,7 @@ function derivePriceUsdPerToken(event, priceSolPerToken) {
   return null;
 }
 
-/* function applyScTradeEventToPositions(event) {
+function applyScTradeEventToPositions(event) {
   if (!event || typeof event !== "object") {
     throw new Error("applyScTradeEventToPositions: event object is required");
   }
@@ -1231,6 +1230,17 @@ function derivePriceUsdPerToken(event, priceSolPerToken) {
   selectSql += " LIMIT 1";
 
   const existing = db.prepare(selectSql).get(...params);
+
+  // Idempotency guard:
+  // This adapter may receive the same confirmed trade event from multiple producers
+  // (e.g., txMonitor + wallet watcher). If the position already reflects a trade
+  // at this exact executedAt timestamp, do not apply deltas again.
+  if (existing && Number(existing.last_trade_at || 0) === executedAt) {
+    logger.debug(
+      `[BootyBox] applyScTradeEventToPositions: skipping duplicate apply for tx at executedAt=${executedAt} mint=${coinMint} wallet=${walletId}`
+    );
+    return;
+  }
 
   if (!existing && side === "sell") {
     // Selling a position we do not have a row for yet. For now log and bail.
@@ -1370,7 +1380,7 @@ function derivePriceUsdPerToken(event, priceSolPerToken) {
     last_price_sol: priceSolPerToken,
     last_price_usd: priceUsdPerToken,
   });
-} */
+}
 
 // === Helper upsert functions for risk and events ===
 function upsertCoinRisk(mint, risk) {
@@ -1769,7 +1779,7 @@ function upsertCoinEvents(mint, events) {
 
 // Core BootyBox functions
 const BootyBox = {
-  recordScTradeEvent,
+  // recordScTradeEvent,
   // applyScTradeEventToPositions,
   listWarchestWallets,
   getWarchestWalletByAlias,
@@ -2371,11 +2381,7 @@ const BootyBox = {
       .all();
   },
 
-  /**
-   * Adds or replaces a tracked open position.
-   * @param {Object} position - The position data (mint, entry price, SL, etc.).
-   */
-  /**
+  /* *
    * Adds or replaces a tracked open position.
    * Prevents overwriting highestPrice if the incoming value is lower.
    * @param {Object} position - The position data (mint, entry price, SL, etc.).
@@ -2452,15 +2458,15 @@ const BootyBox = {
    * Deletes a position by coin mint, used when a position is sold.
    * @param {string} mint - The token mint of the coin.
    */
-  removePosition(mint) {
+/*   removePosition(mint) {
     db.prepare(`DELETE FROM positions WHERE coin_mint = ?`).run(mint);
-  },
+  }, */
 
   /**
    * Logs a buy transaction to the buy history table.
    * @param {Object} buy - Buy record including price, qty, timestamp, txid, and fees (lamports).
    */
-  logBuy(buy) {
+  /* logBuy(buy) {
     if (!buy.price || buy.price === 0) {
       logger.warn(
         `[BootyBox] Ignoring buy log — no valid price for TXID: ${buy.txid}`
@@ -2552,13 +2558,13 @@ const BootyBox = {
         pools: Array.isArray(buy.pools) ? buy.pools : [],
       },
     ]);
-  },
+  }, */
 
   /**
    * Logs a sell transaction to the sell history table.
    * @param {Object} sell - Sell record including price, priceUsd, qty, timestamp, txid, pnl, pnlPct, fees, feesUsd.
    */
-  logSell(sell) {
+  /* logSell(sell) {
     const exists = db
       .prepare(`SELECT 1 FROM sells WHERE txid = ?`)
       .get(sell.txid);
@@ -2649,23 +2655,23 @@ const BootyBox = {
       },
     ]);
     clearTradeUuid(sell.coin_mint);
-  },
+  }, */
 
-  getLatestBuyByMint(mint) {
+/*   getLatestBuyByMint(mint) {
     return db
       .prepare(
         "SELECT * FROM buys WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
       )
       .get(mint);
-  },
+  }, */
 
-  getLatestSellByMint(mint) {
+/*   getLatestSellByMint(mint) {
     return db
       .prepare(
         "SELECT * FROM sells WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
       )
       .get(mint);
-  },
+  }, */
 
   /**
    * Logs a buy or sell evaluation result.
@@ -2966,7 +2972,7 @@ const BootyBox = {
       .prepare(
         `
       SELECT positions.*, coins.symbol, coins.name, coins.decimals, coins.image, coins.status
-      FROM positions
+      FROM sc_positions
       JOIN coins ON coins.mint = positions.coin_mint
       WHERE coins.status = 'complete' AND positions.coin_mint = ?
     `
@@ -3008,9 +3014,13 @@ const BootyBox = {
    */
   getTokenAmount(mint) {
     const result = db
-      .prepare(`SELECT amount FROM positions WHERE coin_mint = ?`)
+      .prepare(`SELECT current_token_amount
+        FROM sc_positions
+        WHERE coin_mint = ?
+          AND (closed_at = 0 OR closed_at IS NULL)
+        LIMIT 1;`)
       .get(mint);
-    return result && typeof result.amount === "number" ? result.amount : 0;
+    return result && typeof result.current_token_amount === "number" ? result.current_token_amount : 0;
   },
 
   /**
