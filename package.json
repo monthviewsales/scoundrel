@@ -1,6 +1,6 @@
 {
   "name": "scoundrel",
-  "version": "4.4.0",
+  "version": "4.4.1",
   "description": "Scoundrel is a research and trading side project designed to explore the use of OpenAI’s APIs and SolanaTracker data to improve memecoin trading strategies.",
   "main": "index.js",
   "directories": {
