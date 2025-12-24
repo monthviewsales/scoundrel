@@ -26,6 +26,15 @@ const stmtGetOpenTradeUuid = db.prepare(
   `
 );
 
+const stmtTradeExistsByTxid = db.prepare(
+  `
+  SELECT 1 AS ok
+  FROM sc_trades
+  WHERE txid = ?
+  LIMIT 1
+  `
+);
+
 function getOpenTradeUuid(walletId, coinMint) {
   try {
     const row = stmtGetOpenTradeUuid.get(walletId, coinMint);
@@ -123,6 +132,11 @@ function recordScTradeEvent(trade) {
       `[BootyBox] recordScTradeEvent requires txid (sc_trades.txid is NOT NULL + UNIQUE). wallet_id=${walletId} mint=${coinMint} side=${side}`
     );
   }
+
+  // Multiple producers can emit the same confirmed tx (txMonitor + wallet watcher).
+  // sc_trades is idempotent by txid, but we must not apply position deltas twice.
+  const existedBefore = !!stmtTradeExistsByTxid.get(txid);
+
   const strategyId = trade.strategy_id ?? trade.strategyId ?? null;
   const strategyName = trade.strategy_name ?? trade.strategyName ?? null;
   const decisionLabel = trade.decision_label ?? trade.decisionLabel ?? null;
@@ -221,29 +235,32 @@ function recordScTradeEvent(trade) {
       @updated_at
     )
     ON CONFLICT(txid) DO UPDATE SET
-      wallet_id = COALESCE(excluded.wallet_id, sc_trades.wallet_id),
+      -- Core identity fields: always keep them aligned with the latest event
+      wallet_id = excluded.wallet_id,
       wallet_alias = COALESCE(excluded.wallet_alias, sc_trades.wallet_alias),
-      session_id = COALESCE(excluded.session_id, sc_trades.session_id),
-      trade_uuid = COALESCE(excluded.trade_uuid, sc_trades.trade_uuid),
-      coin_mint = COALESCE(excluded.coin_mint, sc_trades.coin_mint),
-      side = COALESCE(excluded.side, sc_trades.side),
+      coin_mint = excluded.coin_mint,
+      side = excluded.side,
       executed_at = MAX(sc_trades.executed_at, excluded.executed_at),
-      token_amount = COALESCE(excluded.token_amount, sc_trades.token_amount),
-      sol_amount = COALESCE(excluded.sol_amount, sc_trades.sol_amount),
-      price_sol_per_token = COALESCE(excluded.price_sol_per_token, sc_trades.price_sol_per_token),
-      price_usd_per_token = COALESCE(excluded.price_usd_per_token, sc_trades.price_usd_per_token),
-      slippage_pct = COALESCE(excluded.slippage_pct, sc_trades.slippage_pct),
-      price_impact_pct = COALESCE(excluded.price_impact_pct, sc_trades.price_impact_pct),
-      program = COALESCE(excluded.program, sc_trades.program),
-      evaluation_payload = COALESCE(excluded.evaluation_payload, sc_trades.evaluation_payload),
-      decision_payload = COALESCE(excluded.decision_payload, sc_trades.decision_payload),
-      fees_sol = COALESCE(excluded.fees_sol, sc_trades.fees_sol),
-      fees_usd = COALESCE(excluded.fees_usd, sc_trades.fees_usd),
-      sol_usd_price = COALESCE(excluded.sol_usd_price, sc_trades.sol_usd_price),
-      strategy_id = COALESCE(excluded.strategy_id, sc_trades.strategy_id),
-      strategy_name = COALESCE(excluded.strategy_name, sc_trades.strategy_name),
-      decision_label = COALESCE(excluded.decision_label, sc_trades.decision_label),
-      decision_reason = COALESCE(excluded.decision_reason, sc_trades.decision_reason),
+
+      -- Fill-null-only metadata fields (prefer existing non-null values)
+      session_id = COALESCE(sc_trades.session_id, excluded.session_id),
+      trade_uuid = COALESCE(sc_trades.trade_uuid, excluded.trade_uuid),
+      token_amount = COALESCE(sc_trades.token_amount, excluded.token_amount),
+      sol_amount = COALESCE(sc_trades.sol_amount, excluded.sol_amount),
+      price_sol_per_token = COALESCE(sc_trades.price_sol_per_token, excluded.price_sol_per_token),
+      price_usd_per_token = COALESCE(sc_trades.price_usd_per_token, excluded.price_usd_per_token),
+      slippage_pct = COALESCE(sc_trades.slippage_pct, excluded.slippage_pct),
+      price_impact_pct = COALESCE(sc_trades.price_impact_pct, excluded.price_impact_pct),
+      program = COALESCE(sc_trades.program, excluded.program),
+      evaluation_payload = COALESCE(sc_trades.evaluation_payload, excluded.evaluation_payload),
+      decision_payload = COALESCE(sc_trades.decision_payload, excluded.decision_payload),
+      fees_sol = COALESCE(sc_trades.fees_sol, excluded.fees_sol),
+      fees_usd = COALESCE(sc_trades.fees_usd, excluded.fees_usd),
+      sol_usd_price = COALESCE(sc_trades.sol_usd_price, excluded.sol_usd_price),
+      strategy_id = COALESCE(sc_trades.strategy_id, excluded.strategy_id),
+      strategy_name = COALESCE(sc_trades.strategy_name, excluded.strategy_name),
+      decision_label = COALESCE(sc_trades.decision_label, excluded.decision_label),
+      decision_reason = COALESCE(sc_trades.decision_reason, excluded.decision_reason),
       updated_at = excluded.updated_at
   `
   );
@@ -320,8 +337,9 @@ function recordScTradeEvent(trade) {
   }
 
   // Keep sc_positions in sync using the new trading-domain applier.
+  // Only apply deltas the FIRST time we see a txid; later upserts should not double-apply.
   try {
-    if (typeof applyScTradeEventToPositions === 'function') {
+    if (!existedBefore && typeof applyScTradeEventToPositions === 'function') {
       applyScTradeEventToPositions({
         ...trade,
         wallet_id: walletId,

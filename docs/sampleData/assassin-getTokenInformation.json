@@ -1,0 +1,201 @@
+{
+  "mint": "8iD9FzefnVa9wexCC6CyqUdzmUwgFbThrQVspgGkpump",
+  "token": {
+    "name": "The Assassin",
+    "symbol": "ASSASSIN",
+    "mint": "8iD9FzefnVa9wexCC6CyqUdzmUwgFbThrQVspgGkpump",
+    "decimals": 6,
+    "uri": "https://ipfs.io/ipfs/bafkreigfkw6mljs4nni5iufsk3ftwgvxnvqsd3eybklwf5dklk3pggzyfa",
+    "hasFileMetaData": true,
+    "createdOn": "https://pump.fun",
+    "description": "the assassin",
+    "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafybeid4qlx4vizlxolahbilrkrh2a2w4oghzyzjk6mnpkuq53upfoa2ry",
+    "showName": true,
+    "twitter": "https://x.com/jdvance/status/2003098998010212740?s=46",
+    "strictSocials": {
+      "twitter": "https://x.com/jdvance/status/2003098998010212740?s=46"
+    },
+    "creation": {
+      "creator": "5ZJQSU7YHuDQqtUhL1z65UUuEnaJJ73J3YCBAo9uuTVD",
+      "created_tx": "2q1hiyePbjz2EuUuXxsgffvcSWxxukiZApx32sKTeNLgLwH7sv52CRrkHQhYwpPUSRhvKKSQCHi1kmNxTTXJMJUU",
+      "created_time": 1766414128
+    }
+  },
+  "pools": [
+    {
+      "poolId": "CC5mX24HvWbMXspmVWJhbaAaatC7Je45EWPFThU3D3f",
+      "liquidity": {
+        "quote": 77.097971695,
+        "usd": 19601.35734709599
+      },
+      "price": {
+        "quote": 3.375935096369922e-7,
+        "usd": 0.000042914819125417576
+      },
+      "tokenSupply": 999987124.570994,
+      "lpBurn": 100,
+      "tokenAddress": "8iD9FzefnVa9wexCC6CyqUdzmUwgFbThrQVspgGkpump",
+      "marketCap": {
+        "quote": 337.58916297572597,
+        "usd": 42914.26657871062
+      },
+      "decimals": 6,
+      "security": {
+        "freezeAuthority": null,
+        "mintAuthority": null
+      },
+      "quoteToken": "So11111111111111111111111111111111111111112",
+      "market": "pumpfun-amm",
+      "pumpfun-amm": {
+        "isMayhemMode": false,
+        "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+      },
+      "deployer": "HtR8hvmP4u6jD7oUHvMFaQ6LXNn1ctLZHgahZo1jKRNS",
+      "lastUpdated": 1766417485012,
+      "createdAt": 1766417287836,
+      "txns": {
+        "buys": 188,
+        "sells": 194,
+        "total": 382,
+        "volume": 26478,
+        "volume24h": 26478
+      },
+      "bundleId": "f90c6b4505037e1477ac0bb2604710ad987b313d137f901751ac47de6b5aaaf1"
+    },
+    {
+      "poolId": "8iD9FzefnVa9wexCC6CyqUdzmUwgFbThrQVspgGkpump",
+      "liquidity": {
+        "quote": 0,
+        "usd": 0
+      },
+      "price": {
+        "quote": null,
+        "usd": null
+      },
+      "tokenSupply": 1000000000,
+      "lpBurn": 100,
+      "tokenAddress": "8iD9FzefnVa9wexCC6CyqUdzmUwgFbThrQVspgGkpump",
+      "marketCap": {
+        "quote": 0,
+        "usd": 0
+      },
+      "decimals": 6,
+      "security": {
+        "freezeAuthority": null,
+        "mintAuthority": null
+      },
+      "quoteToken": "So11111111111111111111111111111111111111112",
+      "market": "pumpfun",
+      "deployer": "5ZJQSU7YHuDQqtUhL1z65UUuEnaJJ73J3YCBAo9uuTVD",
+      "pumpfun": {
+        "isMayhemMode": false,
+        "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+      },
+      "curvePercentage": 100,
+      "curve": "6Qx2ikVcrxbPSxR77UrPbnVTvLNL4iwz86WxdMZt7wng",
+      "lastUpdated": 1766417484995,
+      "createdAt": 1766414127793,
+      "txns": {
+        "buys": 2195,
+        "sells": 1728,
+        "total": 3923,
+        "volume": 281152,
+        "volume24h": 281152
+      },
+      "bundleId": "f90c6b4505037e1477ac0bb2604710ad987b313d137f901751ac47de6b5aaaf1"
+    }
+  ],
+  "events": {
+    "1m": {
+      "priceChangePercentage": -19.916542789131
+    },
+    "5m": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "15m": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "30m": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "1h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "2h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "3h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "4h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "5h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "6h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "12h": {
+      "priceChangePercentage": -21.327472286063
+    },
+    "24h": {
+      "priceChangePercentage": -21.327472286063
+    }
+  },
+  "risk": {
+    "snipers": {
+      "count": 0,
+      "totalBalance": 0,
+      "totalPercentage": 0,
+      "wallets": []
+    },
+    "insiders": {
+      "count": 0,
+      "totalBalance": 0,
+      "totalPercentage": 0,
+      "wallets": []
+    },
+    "top10": 20.2274,
+    "dev": {
+      "percentage": 0,
+      "amount": 0
+    },
+    "fees": {
+      "jito": 0.256211355,
+      "network": 1.520428538,
+      "bullx": 0.052458381,
+      "helius-sender": 0.024160002,
+      "trojan": 1.318619647,
+      "axiom": 6.149154693,
+      "0slot": 0.276652343,
+      "nextblock": 0.024001,
+      "padre": 0.856149812,
+      "maestro": 0.313075804,
+      "soltradingbot": 0.054655412,
+      "photon": 0.011163745,
+      "bloom": 0.077272816,
+      "totalTrading": 8.83255031,
+      "totalTips": 2.101453238,
+      "total": 10.934003548000002
+    },
+    "rugged": false,
+    "risks": [
+      {
+        "name": "Top 10 Holders",
+        "description": "Top 10 holders own more than 20.23% of the total supply.",
+        "value": "20.23%",
+        "level": "danger",
+        "score": 5000
+      }
+    ],
+    "score": 4
+  },
+  "buys": 101,
+  "sells": 105,
+  "txns": 206,
+  "holders": 347,
+  "symbol": "ASSASSIN",
+  "name": "The Assassin",
+  "decimals": 6
+}

@@ -90,7 +90,7 @@ The current trade command (`lib/cli/trade.js`) delegates to `lib/trades.js`, whi
 
 To move swaps into the same forked-worker pattern as tx/autopsy/coin monitors:
 
-- **Launch trades as forked jobs:** Instead of running swaps in the CLI process, have the CLI send a `trade` job to the worker harness with `{ side, mint, amount, walletAlias, slippagePercent, priorityFee, useJito, dryRun }`. The worker can reuse the same code paths (`buyToken`/`sellToken` or `performTrade`) without sharing live RPC clients.
+- **Launch trades as forked jobs:** Instead of running swaps in the CLI process, have the CLI send a `trade` job to the worker harness with `{ side, mint, amount, walletAlias, dryRun }`. The worker can reuse the same code paths (`buyToken`/`sellToken` or `performTrade`) without sharing live RPC clients.
 - **Confine client caches to the worker lifetime:** `lib/trades.js` keeps a module-level `_clientCache`. In a worker, that cache dies with the process, so you avoid long-lived WebSocket connections and can skip manual teardown. If you keep trades in-process, add explicit shutdown hooks to close the SolanaTracker client and clear the cache to match the cleanup expectations of other workers.
 - **Preserve BootyBox safety checks:** `performTrade` marks swaps as pending and clears the flag in `finally`. Keep that module untouched in the worker; the isolation prevents cross-job contamination while still avoiding concurrent swaps on the same mint.
 - **Pass config/env explicitly over IPC when needed:** The worker should receive RPC URLs and API keys (or the wallet alias used to resolve them) from the hub so it doesn’t depend on ambient env vars. That mirrors how other workers will receive mint/wallet context for monitors.
@@ -104,8 +104,8 @@ To move swaps into the same forked-worker pattern as tx/autopsy/coin monitors:
   - `mint`: SPL mint (Base58, 32–44 chars)
   - `amount`: number, percentage string (e.g., `'50%'`), or `'auto'` for sells
   - `walletAlias` (preferred) or `walletPrivateKey` (fallback/test hook)
-  - `slippagePercent` (defaults to 15), optional `priorityFee` (number or `'auto'`)
-  - `useJito` / `dryRun` booleans
+  - `dryRun` boolean
+  - swap settings (slippage, priority fee, Jito, tx version, debug flags) are sourced from swap config.
 - **Validation:** The worker rejects invalid sides, mint formats, negative/empty amounts, or missing wallet context before attempting a swap.
 - **Execution:** A fresh swap client is created from `swapEngine.performTrade`, using the provided keypair and mint/amount context. Each invocation owns its own SolanaTracker client and closes when the process exits.
 - **Response envelope:** `{ txid, signature, slot, timing, tokensReceivedDecimal?, solReceivedDecimal?, totalFees?, priceImpact?, quote?, dryRun? }` where `timing` includes `startedAt`, `endedAt`, and `durationMs`.
