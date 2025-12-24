@@ -29,28 +29,25 @@ describe('solanaTrackerRPCClient proxy logging', () => {
     process.env.KIT_LOG_LEVEL = 'info';
     process.env.HTTP_PROXY = 'http://user:secret@proxy.example.com:8080/path?token=123';
 
-    const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
-    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+    jest.resetModules();
+
+    const infoMessages = [];
 
     jest.isolateModules(() => {
+      jest.doMock('../lib/logger', () => ({
+        child: () => ({
+          info: (msg) => infoMessages.push(String(msg)),
+          warn: () => {},
+          debug: () => {},
+          error: () => {},
+        }),
+      }));
+
       const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
       createSolanaTrackerRPCClient({ httpUrl: 'http://rpc.example.com', wsUrl: null });
     });
 
-    const allCalls = [
-      ...infoSpy.mock.calls,
-      ...logSpy.mock.calls,
-      ...warnSpy.mock.calls,
-      ...debugSpy.mock.calls,
-    ];
-
-    const allMessages = allCalls
-      .map((args) => (args && args.length ? String(args[0]) : ''))
-      .filter(Boolean);
-
-    const proxyLog = allMessages.find((msg) => /proxy/i.test(msg));
+    const proxyLog = infoMessages.find((msg) => /proxy/i.test(msg));
 
     expect(proxyLog).toBeDefined();
 

@@ -237,7 +237,7 @@ function recordScTradeEvent(trade) {
     ON CONFLICT(txid) DO UPDATE SET
       -- Core identity fields: always keep them aligned with the latest event
       wallet_id = excluded.wallet_id,
-      wallet_alias = excluded.wallet_alias,
+      wallet_alias = COALESCE(excluded.wallet_alias, sc_trades.wallet_alias),
       coin_mint = excluded.coin_mint,
       side = excluded.side,
       executed_at = MAX(sc_trades.executed_at, excluded.executed_at),
