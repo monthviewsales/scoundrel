@@ -4,7 +4,7 @@ const {
   chalk,
   pendingSwaps,
   tradeUuidMap,
-  saveInput,
+  // saveInput,
   normalizeWalletField,
   setTradeUuid,
   getTradeUuid,
@@ -1820,7 +1820,7 @@ const BootyBox = {
     if (!coin) return;
 
     const now = Date.now();
-    saveInput(coin);
+    // saveInput(coin);
 
     // Log data structure and normalize nested SolanaTracker payloads
     if (coin.token) {
