@@ -1,0 +1,380 @@
+{
+	"token": {
+		"name": "Buy The Pikachu",
+		"symbol": "BTP",
+		"mint": "5NGM6UJM4q9WSCU6XoqvrLNfvyR58mGL3ENBrrVhBAGS",
+		"uri": "https://ipfs-forward.solanatracker.io/ipfs/QmWckc9mztp5hcB5mjp8MS7EJ1wMch1GSwaMj4RcZTrsMR",
+		"decimals": 9,
+		"isMutable": true,
+		"createdOn": "https://bags.fm",
+		"description": "Deployed using https://j7tracker.com",
+		"telegram": "",
+		"twitter": "https://x.com/quantisthename/status/2004557353577001298?s=20",
+		"website": "",
+		"image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2FQmUPLPxW8hAACaSAg9utnTowtgRq5g766RURs5m9ve5yv2",
+		"hasFileMetaData": true,
+		"strictSocials": {
+			"twitter": "https://x.com/quantisthename/status/2004557353577001298?s=20"
+		},
+		"creation": {
+			"creator": "BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv",
+			"created_tx": "CQbtjXdBogkjdDGDCBLGBQcSVcp9n58sF9cgM7jurfZVgQkjpC7UHdyAR3qPzywRsDzVLMhgDRP9H4QoD6mpxPJ",
+			"created_time": 1766758706
+		}
+	},
+	"pools": [
+		{
+			"poolId": "9BQo4eJQkTQTs3rXa8iT5WHAc86fZ6ELjEmhV7V7Fbkt",
+			"liquidity": {
+				"quote": 978.0342507460356,
+				"usd": 119240.30881173172
+			},
+			"price": {
+				"quote": 7.204528e-06,
+				"usd": 0.0008783640684438986
+			},
+			"tokenSupply": 999996704.5509154,
+			"lpBurn": 93.36,
+			"tokenAddress": "5NGM6UJM4q9WSCU6XoqvrLNfvyR58mGL3ENBrrVhBAGS",
+			"marketCap": {
+				"quote": 7204.504257844797,
+				"usd": 878361.1738398334
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 47499651.689886644,
+					"usd": 41721.98730799694
+				},
+				"quoteLiquidity": {
+					"quote": 635.821680156,
+					"usd": 77518.32150373478
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 9,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "CQdrEsYAxRqkwmpycuTwnMKggr3cr9fqY8Qma4J9TudY",
+			"lastUpdated": 1766773718296,
+			"createdAt": 1766759744065,
+			"txns": {
+				"buys": 2784,
+				"sells": 2135,
+				"total": 4919,
+				"volume": 574366,
+				"volume24h": 574366
+			}
+		},
+		{
+			"poolId": "GCEo84jSHjELRunWJXHXcXmnffu5McKbDXTnqtePyAnw",
+			"liquidity": {
+				"quote": 630.320358148,
+				"usd": 89135.87397931608
+			},
+			"price": {
+				"quote": 7.422143042729556e-06,
+				"usd": 0.0009048953324332295
+			},
+			"tokenSupply": 999996704.5509154,
+			"lpBurn": 0,
+			"tokenAddress": "5NGM6UJM4q9WSCU6XoqvrLNfvyR58mGL3ENBrrVhBAGS",
+			"marketCap": {
+				"quote": 7422.11858343506,
+				"usd": 904892.3503967345
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 9,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "9qdiDGhXrGqPN4CTGvyKwFKHrgJSGn836cjkVcGfPd6N",
+			"lastUpdated": 1766773718297,
+			"createdAt": 1766760394670,
+			"txns": {
+				"buys": 565,
+				"sells": 778,
+				"total": 1343,
+				"volume": 290586,
+				"volume24h": 290586
+			}
+		},
+		{
+			"poolId": "AgcGj3s1KN3U4cKZh56TMFfPEpQgMwriCfYDBPdP7o4A",
+			"liquidity": {
+				"quote": 63.389524035,
+				"usd": 7770.278180329816
+			},
+			"price": {
+				"quote": 7.320999033051815e-06,
+				"usd": 0.0008925640230345749
+			},
+			"tokenSupply": 999996704.5509154,
+			"lpBurn": 0,
+			"tokenAddress": "5NGM6UJM4q9WSCU6XoqvrLNfvyR58mGL3ENBrrVhBAGS",
+			"marketCap": {
+				"quote": 7320.974907072253,
+				"usd": 892561.0816352821
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 9,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "EXtTPKerTU5dHe153ZZ6KfEo4CA8whDqEAszciyBkT99",
+			"lastUpdated": 1766773717868,
+			"createdAt": 1766773516793,
+			"txns": {
+				"buys": 8,
+				"sells": 4,
+				"total": 12,
+				"volume": 189,
+				"volume24h": 189
+			}
+		},
+		{
+			"poolId": "5BoZsG9jjPvKhr2mGRd844379uCrZ3ZXF7F9RAqT7uqY",
+			"liquidity": {
+				"quote": 5.360424841,
+				"usd": 738.8103684230138
+			},
+			"price": {
+				"quote": 7.438603561518759e-06,
+				"usd": 0.0009069021715006024
+			},
+			"tokenSupply": 999996704.5509154,
+			"lpBurn": 0,
+			"tokenAddress": "5NGM6UJM4q9WSCU6XoqvrLNfvyR58mGL3ENBrrVhBAGS",
+			"marketCap": {
+				"quote": 7438.579047979461,
+				"usd": 906899.1828506715
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 9,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "GFTt3kJ6AiTuFEpMgLbJhxezQfYsjNgpWeoMBVxHtQsJ",
+			"lastUpdated": 1766773718285,
+			"createdAt": 1766768249227
+		},
+		{
+			"poolId": "37tthmLw6Arfqc5DfyBdFLFCyp758sXFC95qZFqmRXAW",
+			"liquidity": {
+				"quote": 0,
+				"usd": 0
+			},
+			"price": {
+				"quote": 0,
+				"usd": 0
+			},
+			"tokenSupply": 1000000000,
+			"lpBurn": 100,
+			"tokenAddress": "5NGM6UJM4q9WSCU6XoqvrLNfvyR58mGL3ENBrrVhBAGS",
+			"marketCap": {
+				"quote": 0,
+				"usd": 0
+			},
+			"market": "meteora-curve",
+			"meteoraCurve": {
+				"baseLiquidity": {
+					"base": 0.999752987,
+					"usd": 0
+				},
+				"quoteLiquidity": {
+					"quote": 19.572454269,
+					"usd": 2427.3544987072114
+				},
+				"fee": 2,
+				"name": "BAGS",
+				"url": "https://bags.fm",
+				"logo": "https://bags.fm/assets/images/bags-icon.png"
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 9,
+			"curve": "37tthmLw6Arfqc5DfyBdFLFCyp758sXFC95qZFqmRXAW",
+			"curvePercentage": 100,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv",
+			"lastUpdated": 1766759744294,
+			"createdAt": 1766758706018
+		}
+	],
+	"events": {
+		"1m": {
+			"priceChangePercentage": 1.2860526801017
+		},
+		"5m": {
+			"priceChangePercentage": 0.23265459677356
+		},
+		"15m": {
+			"priceChangePercentage": 3.2494328715916
+		},
+		"30m": {
+			"priceChangePercentage": 22.402535626149
+		},
+		"1h": {
+			"priceChangePercentage": 21.618385764484
+		},
+		"2h": {
+			"priceChangePercentage": 433.19674853431
+		},
+		"3h": {
+			"priceChangePercentage": 282.95831734502
+		},
+		"4h": {
+			"priceChangePercentage": 1423.8164917359
+		},
+		"5h": {
+			"priceChangePercentage": 1423.8164917359
+		},
+		"6h": {
+			"priceChangePercentage": 1423.8164917359
+		},
+		"12h": {
+			"priceChangePercentage": 1423.8164917359
+		},
+		"24h": {
+			"priceChangePercentage": 1423.8164917359
+		}
+	},
+	"risk": {
+		"snipers": {
+			"count": 15,
+			"totalBalance": 2267464.5881796433,
+			"totalPercentage": 0.2268,
+			"wallets": [
+				{
+					"wallet": "5RA3mHaNZmteC7TLkykPe6NwMdYzz9XqRqZdXsS2nQqa",
+					"balance": 1870900.704352942,
+					"percentage": 0.18709
+				},
+				{
+					"wallet": "As7HjL7dzzvbRbaD3WCun47robib2kmAKRXMvjHkSMB5",
+					"balance": 396563.883826701,
+					"percentage": 0.03966
+				},
+				{
+					"wallet": "G4f3CixGZXaiF5rHxZ2sFLPdinkkFFtZQ1M8reKEc3ku",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "HZtuiZVSttdn84J1dtz3Jpz4bLptaoZhfGC1YDBdjiLh",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "4bCSWucKYNnGjazohoJ1ezg9CAqZSAZ79qbLCkEQwBPF",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "9iDLtHish6fThBNeDnvqkdmMqFXqvZmtZWs6M1Z9mcPn",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "CqJyPLSriXk3dESteQVa3iNAdwLFrAhdqaLAyvcqV4AC",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "HZrMJ2oHnsiV3fR5HAEiFAcP5X23D4RXr6Qw2EE4XWYy",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "7Ze8zJarNXfuH5EFpjHvsnrvahVFxm9xDNT7PXeMPrkG",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "3BwPTskxBUskonHTMDhpimu3fP9dCJvNrXeLS7ENGRqq",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "3JD7zrZVXfGozgaSrnn3GzAcGsHCM5ATazX8EqwJqZWY",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "J1TXeEWQso9vg1bPC5cRZAXUNvXAWaQCixBQEFxw4JtX",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "DsqdUPgAtH94nYEeqmCd6DKCUEAZAc5tCtjEQQEoc8Gk",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "HZ5AqqcjqecaLUTnxwWbCF4CZyBnWagpk3ZjNxZY82Pg",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "6S9jZEYhV8nU3SjvdF4tuwAVywPwExJLsu45WkZMWJb7",
+					"balance": 0,
+					"percentage": 0
+				}
+			]
+		},
+		"insiders": {
+			"count": 0,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": []
+		},
+		"top10": 14.6767,
+		"dev": {
+			"percentage": 0,
+			"amount": 0
+		},
+		"fees": {
+			"axiom": 5.879978105,
+			"network": 2.040757676,
+			"jito": 0.047315655,
+			"0slot": 0.569508893,
+			"padre": 1.245173904,
+			"photon": 1.834050615,
+			"trojan": 0.195497234,
+			"soltradingbot": 0.019407169,
+			"helius-sender": 0.016777189,
+			"bullx": 0.036688249,
+			"maestro": 0.99563101,
+			"bloom": 1.150016327,
+			"nextblock": 0.078148178,
+			"totalTrading": 11.356442613,
+			"totalTips": 2.752507591,
+			"total": 14.108950204
+		},
+		"rugged": false,
+		"risks": [
+			{
+				"name": "Top 10 Holders",
+				"description": "Top 10 holders own more than 14.68% of the total supply.",
+				"value": "14.68%",
+				"level": "danger",
+				"score": 5000
+			}
+		],
+		"score": 4
+	},
+	"buys": 819,
+	"sells": 611,
+	"txns": 1430,
+	"holders": 1790
+}
