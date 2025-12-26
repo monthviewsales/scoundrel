@@ -4,7 +4,15 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const chalk = require('chalk');
-const logger = require('../../utils/logger');
+const rootLogger = require('../../utils/logger');
+
+// Prefer a scoped logger when available (Winston-style child loggers).
+const logger =
+  typeof rootLogger?.bootybox === 'function'
+    ? rootLogger.bootybox()
+    : typeof rootLogger?.child === 'function'
+      ? rootLogger.child({ scope: 'BootyBox' })
+      : rootLogger;
 const { ensureSqliteSchema } = require('../sqliteSchema');
 
 let defaultWalletPublicKey = null;
@@ -69,21 +77,6 @@ function getDefaultWalletPublicKey() {
 
 ensureSqliteSchema(db, tradeUuidMap);
 
-function saveInput(input) {
-  if (process.env.SAVE_RAW !== 'true') return;
-  try {
-    const outDir = path.join(process.cwd(), 'data', 'bootybox');
-    if (!fs.existsSync(outDir)) {
-      fs.mkdirSync(outDir, { recursive: true });
-    }
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const outPath = path.join(outDir, `BootyBoxInput-${timestamp}.json`);
-    fs.writeFileSync(outPath, JSON.stringify(input, null, 2), 'utf8');
-    logger.info(`[BootyBox] Saved raw token info to ${outPath}`);
-  } catch (err) {
-    logger.warn(`[BootyBox] Failed to save raw token info: ${err?.message || err}`);
-  }
-}
 
 function normalizeTradeUuidArgs(a, b) {
   // Back-compat: old callers used (mint, uuid) or (mint)
@@ -306,7 +299,6 @@ module.exports = {
   pendingSwaps,
   tradeUuidMap,
   normalizeWalletField,
-  saveInput,
   setDefaultWalletPublicKey,
   getDefaultWalletPublicKey,
   setTradeUuid,

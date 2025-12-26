@@ -1,0 +1,269 @@
+{
+	"token": {
+		"name": "Hatsune Miku",
+		"symbol": "MIKU",
+		"mint": "6pxFvZjnFrQBgcfyreRnjUrtypTw5dAuDZ8bFBBYpump",
+		"decimals": 6,
+		"uri": "https://ipfs.io/ipfs/QmPBVTJqVQfZH8knA2grEWoCaXCPb1R3kkHekZ5zw37Vv3",
+		"hasFileMetaData": true,
+		"description": "Built on the legacy of Hatsune Miku a symbol of digital culture, creativity, and viral dominance. This project taps into an army of fans and the infinite momentum of internet-native icons.",
+		"showName": "true",
+		"image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2FQmPUxs1cbfhFr67SCosZRiSDAdBaBvLf4JrqAkdw6iGeHp",
+		"createdOn": "https://pump.fun",
+		"twitter": "https://x.com/omegaxbt_/status/2003849836593135690?s=46&t=wf6ZqqUtH4h967Sos_6LsA",
+		"website": "https://x.com/i/communities/2003848420822290519",
+		"strictSocials": {
+			"twitter": "https://x.com/omegaxbt_/status/2003849836593135690?s=46&t=wf6ZqqUtH4h967Sos_6LsA",
+			"website": "https://x.com/i/communities/2003848420822290519"
+		},
+		"creation": {
+			"creator": "86cXrcEcjPCcaKHScb5MpUTFpwmfpX2eMH92ovYQQUxx",
+			"created_tx": "5UUoLozdNkFvhhUshq4JLnZwi825KjYvYXYHjAWbbpvH3rKHiA7Twewzx2gLFJXiJMxt8PymA3q1Qw5DvfFnUyQe",
+			"created_time": 1766590044
+		}
+	},
+	"pools": [
+		{
+			"poolId": "6pxFvZjnFrQBgcfyreRnjUrtypTw5dAuDZ8bFBBYpump",
+			"liquidity": {
+				"quote": 147.573091986,
+				"usd": 18118.429447891333
+			},
+			"price": {
+				"quote": 1.691349593854467e-07,
+				"usd": 2.0765708623140467e-05
+			},
+			"tokenSupply": 1000000000,
+			"lpBurn": 100,
+			"tokenAddress": "6pxFvZjnFrQBgcfyreRnjUrtypTw5dAuDZ8bFBBYpump",
+			"marketCap": {
+				"quote": 169.1349593854467,
+				"usd": 20765.70862314047
+			},
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"market": "pumpfun",
+			"deployer": "86cXrcEcjPCcaKHScb5MpUTFpwmfpX2eMH92ovYQQUxx",
+			"pumpfun": {
+				"isMayhemMode": false,
+				"tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+			},
+			"curvePercentage": 80.28516007662502,
+			"curve": "GK2xs9YdYhq9cgKCpoUV9ToePGwcEgZge6ekMUgr9DH",
+			"lastUpdated": 1766593364270,
+			"createdAt": 1766590043855,
+			"txns": {
+				"buys": 683,
+				"sells": 543,
+				"total": 1226,
+				"volume": 48741,
+				"volume24h": 48741
+			}
+		}
+	],
+	"events": {
+		"1m": {
+			"priceChangePercentage": 18.935484832746
+		},
+		"5m": {
+			"priceChangePercentage": 66.604358318574
+		},
+		"15m": {
+			"priceChangePercentage": 24.003391498726
+		},
+		"30m": {
+			"priceChangePercentage": 111.07255520473
+		},
+		"1h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"2h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"3h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"4h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"5h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"6h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"12h": {
+			"priceChangePercentage": 308.11341356656
+		},
+		"24h": {
+			"priceChangePercentage": 308.11341356656
+		}
+	},
+	"risk": {
+		"snipers": {
+			"count": 21,
+			"totalBalance": 1e-06,
+			"totalPercentage": 0,
+			"wallets": [
+				{
+					"wallet": "59iBbwPfR74pHfsLiuyzHbKkk7qMYscdJLAzLpbu6N96",
+					"balance": 1e-06,
+					"percentage": 9.999999999999999e-14
+				},
+				{
+					"wallet": "7vfqVDpBFvDdgDu8aPLbgBYhXVi9XamFy4r58mNMJ89y",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "9SAsB2NSGcD442d6c18YnxVLyMusUsxqSeqLaLnNdKVp",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "CSDog1h1fqC3iWn92tTa2S9937uocsM3m7R8V3ZdPaH4",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "HYkggjggxWKS8ju3TbSujpBwaL4s8xCaCFzKwTJfQtzV",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "G95D2EC53xaw1QxYYSA2MWaAFRGk24P9wgoPr4SUDP4F",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "AhiPCvUFPdUSv58vYqhwk2dKJKg9PftKEGmSNvJ9qeji",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "Epv1NKQfwQkAyFx15D4ZM3V6RXsnmUMFEQw3B5S1Eirp",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "7EZErHmkhzqnzE9zeTxSz9Jwx2N5HexpHMF36hFe8jpd",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "4W4feZhQP1hY7tUdtfTigWGsUaSrmVDSgHTmV2sdMzXm",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "9szy3cy5wDxZNic191itFv6SB9zCtK93uc6P644WGTVS",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "AthACNGMSzi2Kbiv8SKxCSBypezNjKvR2gJAYT7UWqpn",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "DgX6ejVpEFDNth3c4cuYw8p6MdpAvwtHQ88kUmLevM9b",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "3gKheozm5SRmNyTus2BiXE8zm3T4BYhd9pNApiC7Hs56",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "J9W2ANuVctDKpJc4DccQ8YuZkudNb3rEyeHo3ZDZQeff",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "cGBycAUW9yaDNRS5CzatfqSkcp7Mf7qouxTP7uM5BCz",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "86cXrcEcjPCcaKHScb5MpUTFpwmfpX2eMH92ovYQQUxx",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "6V2PeEfQFN5iYBstG2i9kGxF8jzaiYsGmTcmk9vhHuYM",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "2ezv4U5HmPpkt2xLsKnw1FyyGmjFBeW7c166p99Hw2xB",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "33GtNAQzmdq4jELpHxXYqW3vDy7fux89zevVU4hP7BTX",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "DbZHYmm2aT4rfGx2nir5g5D5zCNiRbjSzBL7VfdWY8ZA",
+					"balance": 0,
+					"percentage": 0
+				}
+			]
+		},
+		"insiders": {
+			"count": 0,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": []
+		},
+		"top10": 25.1025,
+		"dev": {
+			"percentage": 0,
+			"amount": 0
+		},
+		"fees": {
+			"helius-sender": 0.017437016,
+			"network": 0.524355342,
+			"jito": 0.032700402,
+			"bloom": 0.0408,
+			"0slot": 0.153889018,
+			"axiom": 0.654738404,
+			"nextblock": 0.001,
+			"padre": 0.309649316,
+			"bullx": 0.043820073,
+			"photon": 0.04082916,
+			"trojan": 0.088364076,
+			"maestro": 0.087595824,
+			"totalTrading": 1.265796853,
+			"totalTips": 0.729381778,
+			"total": 1.995178631
+		},
+		"rugged": false,
+		"risks": [
+			{
+				"name": "Bonding curve not complete",
+				"description": "No Pumpswap liquidity pool, bonding curve not complete",
+				"level": "warning",
+				"score": 4000
+			},
+			{
+				"name": "Top 10 Holders",
+				"description": "Top 10 holders own more than 25.10% of the total supply.",
+				"value": "25.10%",
+				"level": "danger",
+				"score": 5000
+			}
+		],
+		"score": 6
+	},
+	"buys": 285,
+	"sells": 206,
+	"txns": 491,
+	"holders": 94
+}
