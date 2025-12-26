@@ -53,7 +53,7 @@ jest.mock('../../lib/wallets/resolver', () => {
 
 const logger = require('../../lib/logger');
 const { forkWorkerWithPayload } = require('../../lib/warchest/workers/harness');
-const tradeCli = require('../../lib/cli/trade');
+const tradeCli = require('../../lib/cli/swap');
 
 function setStdoutTty(stdoutIsTty) {
   const prev = {
