@@ -530,7 +530,7 @@ program
             }
         }
 
-        // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/trade
+        // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/swap
         if (!mint) {
             logger.error('[scoundrel] swap requires a mint when not using -c/--config.');
             process.exit(1);
@@ -578,9 +578,9 @@ program
         }
 
         try {
-            const tradeCli = require('./lib/cli/trade');
+            const tradeCli = require('./lib/cli/swap');
             if (typeof tradeCli !== 'function') {
-                logger.error('[scoundrel] ./lib/cli/trade must export a default function (module.exports = async (mint, opts) => { ... })');
+                logger.error('[scoundrel] ./lib/cli/swap must export a default function (module.exports = async (mint, opts) => { ... })');
                 process.exit(1);
             }
             await tradeCli(mint, opts);
