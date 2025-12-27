@@ -32,7 +32,7 @@ db.exec(`
     strictSocials    TEXT         -- JSON string of strictSocials
   );
 
-  CREATE TABLE pools (
+  CREATE TABLE IF NOT EXISTS pools (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     pool_address     TEXT,                      -- NEW
     coin_mint        TEXT,
