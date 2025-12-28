@@ -1,5 +1,3 @@
-
-
 'use strict';
 
 /**
@@ -25,6 +23,28 @@ const DEFAULT_FRESHNESS = {
   pool: 2 * 60 * 1000, // 2 minutes
   events: 2 * 60 * 1000, // 2 minutes
   risk: 10 * 60 * 1000, // 10 minutes
+};
+
+// Chart/TA defaults (opt-in)
+const DEFAULT_OHLCV = {
+  type: '5m',
+  lookbackMs: 6 * 60 * 60 * 1000, // 6 hours
+  fastCache: true,
+  removeOutliers: true,
+};
+
+const DEFAULT_INDICATORS = {
+  rsiPeriod: 14,
+  atrPeriod: 14,
+  slopePeriods: 30, // number of candles to fit a simple trend slope
+
+  // EMA/MACD
+  emaFast: 12,
+  emaSlow: 26,
+  macdSignal: 9,
+
+  // VWAP
+  vwapPeriods: null, // null = full lookback; or set a number of candles (e.g. 60 for last 60 minutes on 1m)
 };
 
 // --------------------------
@@ -205,6 +225,274 @@ function computeDerived({ position, coin, pool, pnl }) {
 }
 
 // --------------------------
+// OHLCV + indicators
+// --------------------------
+
+function pickNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeCandle(c) {
+  if (!c || typeof c !== 'object') return null;
+
+  // Common field aliases
+  const t = pickNumber(c.t ?? c.time ?? c.ts ?? c.timestamp ?? c.startTime ?? c.start);
+  const o = pickNumber(c.o ?? c.open);
+  const h = pickNumber(c.h ?? c.high);
+  const l = pickNumber(c.l ?? c.low);
+  const cl = pickNumber(c.c ?? c.close);
+  const v = pickNumber(c.v ?? c.volume ?? c.vol);
+
+  if (o == null || h == null || l == null || cl == null) return null;
+
+  // NOTE: t is preserved as provided (SolanaTracker often returns UNIX seconds).
+  return { t, o, h, l, c: cl, v };
+}
+
+function normalizeOhlcvResponse(resp) {
+  if (!resp) return [];
+
+  // SolanaTracker responses vary by wrapper; support a few shapes.
+  const data =
+    (Array.isArray(resp?.oclhv) ? resp.oclhv : null) ||
+    (Array.isArray(resp) ? resp : null) ||
+    (Array.isArray(resp.data) ? resp.data : null) ||
+    (Array.isArray(resp.ohlcv) ? resp.ohlcv : null) ||
+    (Array.isArray(resp.result) ? resp.result : null) ||
+    [];
+
+  const out = [];
+  for (const row of data) {
+    const c = normalizeCandle(row);
+    if (c) out.push(c);
+  }
+
+  // Ensure ascending time order if timestamps exist.
+  out.sort((a, b) => (a.t || 0) - (b.t || 0));
+  return out;
+}
+
+function computeRsi(closes, period) {
+  const p = Math.max(1, Number(period || 14));
+  if (!Array.isArray(closes) || closes.length < p + 1) return null;
+
+  let gains = 0;
+  let losses = 0;
+
+  // seed with first p deltas
+  for (let i = 1; i <= p; i++) {
+    const delta = closes[i] - closes[i - 1];
+    if (delta >= 0) gains += delta;
+    else losses += Math.abs(delta);
+  }
+
+  let avgGain = gains / p;
+  let avgLoss = losses / p;
+
+  // Wilder smoothing over remaining points
+  for (let i = p + 1; i < closes.length; i++) {
+    const delta = closes[i] - closes[i - 1];
+    const gain = delta > 0 ? delta : 0;
+    const loss = delta < 0 ? Math.abs(delta) : 0;
+
+    avgGain = (avgGain * (p - 1) + gain) / p;
+    avgLoss = (avgLoss * (p - 1) + loss) / p;
+  }
+
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  const rsi = 100 - (100 / (1 + rs));
+  return Number.isFinite(rsi) ? rsi : null;
+}
+
+function computeAtr(candles, period) {
+  const p = Math.max(1, Number(period || 14));
+  if (!Array.isArray(candles) || candles.length < p + 1) return null;
+
+  const trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    const cur = candles[i];
+    const prev = candles[i - 1];
+    const tr = Math.max(
+      cur.h - cur.l,
+      Math.abs(cur.h - prev.c),
+      Math.abs(cur.l - prev.c)
+    );
+    trs.push(tr);
+  }
+
+  if (trs.length < p) return null;
+
+  // Wilder ATR smoothing
+  let atr = 0;
+  for (let i = 0; i < p; i++) atr += trs[i];
+  atr /= p;
+
+  for (let i = p; i < trs.length; i++) {
+    atr = (atr * (p - 1) + trs[i]) / p;
+  }
+
+  return Number.isFinite(atr) ? atr : null;
+}
+
+function computeSlopePct(closes, periods) {
+  const n = Math.max(2, Number(periods || 30));
+  if (!Array.isArray(closes) || closes.length < n) return null;
+
+  const slice = closes.slice(-n);
+  const xs = [];
+  const ys = slice;
+  for (let i = 0; i < slice.length; i++) xs.push(i);
+
+  const meanX = (xs.reduce((a, b) => a + b, 0)) / xs.length;
+  const meanY = (ys.reduce((a, b) => a + b, 0)) / ys.length;
+
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < xs.length; i++) {
+    num += (xs[i] - meanX) * (ys[i] - meanY);
+    den += (xs[i] - meanX) ** 2;
+  }
+
+  if (!den) return null;
+  const slope = num / den; // price units per candle
+
+  const base = ys[0] || 0;
+  if (!base) return null;
+
+  // Convert to % change per candle relative to starting price.
+  const slopePct = (slope / base) * 100;
+  return Number.isFinite(slopePct) ? slopePct : null;
+}
+
+function computeEmaSeries(values, period) {
+  const p = Math.max(1, Number(period || 12));
+  if (!Array.isArray(values) || values.length < p) return null;
+
+  // Seed EMA with SMA of first p values
+  let sma = 0;
+  for (let i = 0; i < p; i++) sma += values[i];
+  sma /= p;
+
+  const k = 2 / (p + 1);
+  let ema = sma;
+
+  for (let i = p; i < values.length; i++) {
+    ema = values[i] * k + ema * (1 - k);
+  }
+
+  return Number.isFinite(ema) ? ema : null;
+}
+
+function computeEmaSeriesAll(values, period) {
+  const p = Math.max(1, Number(period || 12));
+  if (!Array.isArray(values) || values.length < p) return null;
+
+  // Seed EMA with SMA of first p values
+  let sma = 0;
+  for (let i = 0; i < p; i++) sma += values[i];
+  sma /= p;
+
+  const k = 2 / (p + 1);
+  let ema = sma;
+  const out = [];
+
+  // Output aligned to input indices: null until we have a seed.
+  for (let i = 0; i < p - 1; i++) out.push(null);
+  out.push(ema);
+
+  for (let i = p; i < values.length; i++) {
+    ema = values[i] * k + ema * (1 - k);
+    out.push(ema);
+  }
+
+  return out;
+}
+
+function computeMacd(closes, fastPeriod, slowPeriod, signalPeriod) {
+  const fast = Math.max(1, Number(fastPeriod || 12));
+  const slow = Math.max(1, Number(slowPeriod || 26));
+  const signal = Math.max(1, Number(signalPeriod || 9));
+
+  if (!Array.isArray(closes) || closes.length < slow + signal) return null;
+
+  const emaFastAll = computeEmaSeriesAll(closes, fast);
+  const emaSlowAll = computeEmaSeriesAll(closes, slow);
+  if (!emaFastAll || !emaSlowAll) return null;
+
+  const macdLine = [];
+  for (let i = 0; i < closes.length; i++) {
+    const f = emaFastAll[i];
+    const s = emaSlowAll[i];
+    macdLine.push(f != null && s != null ? (f - s) : null);
+  }
+
+  // Build signal EMA over macdLine where defined
+  const macdDefined = macdLine.filter((v) => v != null);
+  if (macdDefined.length < signal) return null;
+
+  // Compute signal EMA across defined macd points (latest value)
+  const signalValue = computeEmaSeries(macdDefined, signal);
+  const lastMacd = macdDefined[macdDefined.length - 1];
+
+  if (signalValue == null || lastMacd == null) return null;
+
+  const hist = lastMacd - signalValue;
+
+  return {
+    macd: Number.isFinite(lastMacd) ? lastMacd : null,
+    signal: Number.isFinite(signalValue) ? signalValue : null,
+    hist: Number.isFinite(hist) ? hist : null,
+  };
+}
+
+function computeVwap(candles, periods) {
+  if (!Array.isArray(candles) || candles.length === 0) return { vwap: null, volume: null };
+
+  const n = periods == null ? candles.length : Math.max(1, Number(periods));
+  const slice = candles.slice(-n);
+
+  let pv = 0;
+  let vSum = 0;
+
+  for (const c of slice) {
+    const v = Number.isFinite(Number(c.v)) ? Number(c.v) : 0;
+    const tp = (Number(c.h) + Number(c.l) + Number(c.c)) / 3;
+    if (!Number.isFinite(tp)) continue;
+    pv += tp * v;
+    vSum += v;
+  }
+
+  if (!vSum) return { vwap: null, volume: 0 };
+
+  const vwap = pv / vSum;
+  return {
+    vwap: Number.isFinite(vwap) ? vwap : null,
+    volume: vSum,
+  };
+}
+
+async function fetchTokenPoolOhlcv({ dataClient, mint, poolAddress, type, timeFrom, timeTo, fastCache, removeOutliers, timezone, marketCap }) {
+  const sdkClient = dataClient?.client;
+  if (!sdkClient || typeof sdkClient.getPoolChartData !== 'function') {
+    throw new Error('dataClient must expose .client.getPoolChartData(...)');
+  }
+
+  return sdkClient.getPoolChartData({
+    tokenAddress: mint,
+    poolAddress,
+    type,
+    timeFrom,
+    timeTo,
+    fastCache,
+    removeOutliers,
+    timezone,
+    marketCap,
+  });
+}
+
+// --------------------------
 // Public API
 // --------------------------
 
@@ -214,6 +502,10 @@ function computeDerived({ position, coin, pool, pnl }) {
  * @param {Object} args
  * @param {*} args.db - DB handle with query() or execute()
  * @param {Object} args.position - Position summary (schema-aware)
+ * @param {*} [args.dataClient] - SolanaTracker Data API client wrapper (must expose .client.getPoolChartData)
+ * @param {Object} [args.ohlcv] - OHLCV options (type/lookbackMs/fastCache/removeOutliers/timezone/marketCap)
+ * @param {Object} [args.indicators] - Indicator options (rsiPeriod/atrPeriod/slopePeriods/emaFast/emaSlow/macdSignal/vwapPeriods)
+ * @param {boolean} [args.includeCandles] - When true, include normalized candles in evaluation.chart.candles
  * @param {number} [args.nowMs] - Override current time (ms)
  * @param {string[]} [args.eventIntervals] - intervals to load (default 5m/15m/1h)
  * @param {Object} [args.freshness] - overrides for freshness windows (ms)
@@ -222,9 +514,13 @@ function computeDerived({ position, coin, pool, pnl }) {
 async function buildEvaluation({
   db,
   position,
+  dataClient,
   nowMs,
   eventIntervals,
   freshness,
+  ohlcv,
+  indicators,
+  includeCandles,
 }) {
   const now = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
   const windows = { ...DEFAULT_FRESHNESS, ...(freshness || {}) };
@@ -288,6 +584,77 @@ async function buildEvaluation({
     warnings.push('derived_failed');
   }
 
+  // ---- OHLCV + indicators (optional) ----
+  let chart = null;
+  let ta = null;
+
+  try {
+    const hasDataClient = !!dataClient;
+    const poolAddress = pool?.id || null;
+
+    if (hasDataClient && poolAddress) {
+      const o = { ...DEFAULT_OHLCV, ...(ohlcv || {}) };
+      const ind = { ...DEFAULT_INDICATORS, ...(indicators || {}) };
+
+      const timeTo = now;
+      const timeFrom = timeTo - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs);
+
+      const raw = await fetchTokenPoolOhlcv({
+        dataClient,
+        mint: position.mint,
+        poolAddress,
+        type: o.type,
+        timeFrom,
+        timeTo,
+        fastCache: o.fastCache,
+        removeOutliers: o.removeOutliers,
+        timezone: o.timezone,
+        marketCap: o.marketCap,
+      });
+
+      const candles = normalizeOhlcvResponse(raw);
+      const closes = candles.map((c) => c.c);
+
+      chart = {
+        type: o.type,
+        lookbackMs: Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs),
+        poolAddress,
+        points: candles.length,
+        timeFrom,
+        timeTo,
+        candles: includeCandles ? candles : undefined,
+      };
+
+      const emaFast = computeEmaSeries(closes, ind.emaFast);
+      const emaSlow = computeEmaSeries(closes, ind.emaSlow);
+      const macd = computeMacd(closes, ind.emaFast, ind.emaSlow, ind.macdSignal);
+      const vwapRes = computeVwap(candles, ind.vwapPeriods);
+
+      ta = {
+        rsi: computeRsi(closes, ind.rsiPeriod),
+        atr: computeAtr(candles, ind.atrPeriod),
+        slopePctPerCandle: computeSlopePct(closes, ind.slopePeriods),
+
+        emaFast,
+        emaSlow,
+        macd,
+
+        vwap: vwapRes.vwap,
+        vwapVolume: vwapRes.volume,
+
+        lastClose: closes.length ? closes[closes.length - 1] : null,
+      };
+
+      if (candles.length === 0) warnings.push('ohlcv_empty');
+      if (vwapRes.volume === 0) warnings.push('ohlcv_zero_volume');
+    } else {
+      if (!hasDataClient) warnings.push('ohlcv_no_client');
+      if (!poolAddress) warnings.push('ohlcv_no_pool');
+    }
+  } catch (err) {
+    warnings.push('ohlcv_failed');
+  }
+
   const evaluation = {
     walletAlias: position.walletAlias,
     walletId: position.walletId,
@@ -301,6 +668,8 @@ async function buildEvaluation({
     risk,
     pnl,
     derived,
+    chart,
+    indicators: ta,
     warnings,
   };
 
@@ -321,5 +690,14 @@ module.exports = {
     loadRisk,
     loadPnlPositionLive,
     computeDerived,
+    normalizeOhlcvResponse,
+    computeRsi,
+    computeAtr,
+    computeSlopePct,
+    fetchTokenPoolOhlcv,
+    computeEmaSeries,
+    computeEmaSeriesAll,
+    computeMacd,
+    computeVwap,
   },
 };
