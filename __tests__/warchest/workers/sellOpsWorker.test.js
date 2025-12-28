@@ -131,7 +131,7 @@ describe('sellOps worker controller', () => {
     expect(result.status).toBe('stopped');
     expect(result.stopReason).toBe('unit-test');
     expect(dataClient.close).toHaveBeenCalled();
-    expect(client.close).toHaveBeenCalled();
+    expect(client.close).not.toHaveBeenCalled();
     expect(setup).not.toHaveBeenCalled();
     expect(createSolanaTrackerDataClient).not.toHaveBeenCalled();
 
