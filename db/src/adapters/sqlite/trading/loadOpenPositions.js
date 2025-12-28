@@ -1,35 +1,36 @@
 'use strict';
 
+const { db } = require('../context');
+
 /**
- * Create a prepared open-positions query for a sqlite db instance.
+ * Load open positions for a wallet alias using the sqlite db from context.
  *
- * Why: Percent-based sells (e.g. -s 100%) should size against a single,
- * unambiguous position run.
+ * Contract: returns an object with a `rows` array (never null).
  *
- * @param {import('better-sqlite3').Database} db
- * @returns {(walletAlias: string) => { rows: Array<object> }}
+ * @param {string} walletAlias
+ * @returns {{ rows: Array<object> }}
  */
-  async function loadOpenPositions(db) {
-    if (!db || typeof db.prepare !== 'function') {
-      throw new Error('[BootyBox] loadOpenPositions requires a sqlite db instance');
-    }
 
-    const stmt = db.prepare(`
-      SELECT *
-      FROM sc_positions
-      WHERE wallet_alias = ?
-        AND COALESCE(current_token_amount, 0) > 0
-        AND COALESCE(closed_at, 0) = 0
-    `);
+if (!db) throw new Error('[BootyBox] loadOpenPositions: db is not available from context');
+if (typeof db.prepare !== 'function') {
+  throw new Error('[BootyBox] loadOpenPositions requires a sqlite db instance');
+}
 
-    return function loadOpenPositions(walletAlias) {
-      if (!walletAlias || typeof walletAlias !== 'string') {
-        return { rows: [] };
-      }
+const stmt = db.prepare(`
+  SELECT *
+  FROM sc_positions
+  WHERE wallet_alias = ?
+    AND COALESCE(current_token_amount, 0) > 0
+    AND COALESCE(closed_at, 0) = 0
+`);
 
-      const rows = stmt.all(walletAlias);
-      return { rows };
-    };
-  };
+function loadOpenPositions(walletAlias) {
+  if (!walletAlias || typeof walletAlias !== 'string') {
+    return { rows: [] };
+  }
 
-  module.exports = loadOpenPositions;
+  const rows = stmt.all(walletAlias);
+  return { rows };
+}
+
+module.exports = loadOpenPositions;
