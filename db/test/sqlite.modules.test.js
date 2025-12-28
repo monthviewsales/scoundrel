@@ -303,4 +303,51 @@ describe('trading submodule', () => {
     expect(positionAfterSell.closed_at).toBeGreaterThan(0);
     expect(positionAfterSell.last_trade_at).toBe(sellTrade.executedAt);
   });
+
+  test('loadOpenPositions returns only open, non-zero positions for a wallet alias', () => {
+    const now = Date.now();
+
+    adapter.ensureOpenPositionRun({
+      walletId: 1,
+      walletAlias: 'alpha',
+      coinMint: 'mint-open',
+      currentTokenAmount: 25,
+      openAt: now,
+    });
+
+    adapter.ensureOpenPositionRun({
+      walletId: 2,
+      walletAlias: 'beta',
+      coinMint: 'mint-other',
+      currentTokenAmount: 30,
+      openAt: now,
+    });
+
+    const closed = adapter.ensureOpenPositionRun({
+      walletId: 1,
+      walletAlias: 'alpha',
+      coinMint: 'mint-closed',
+      currentTokenAmount: 10,
+      openAt: now,
+    }).position;
+
+    context.db.prepare('UPDATE sc_positions SET closed_at = ? WHERE position_id = ?').run(now, closed.position_id);
+
+    const empty = adapter.ensureOpenPositionRun({
+      walletId: 1,
+      walletAlias: 'alpha',
+      coinMint: 'mint-empty',
+      currentTokenAmount: 0,
+      openAt: now,
+    }).position;
+
+    context.db.prepare('UPDATE sc_positions SET current_token_amount = 0 WHERE position_id = ?').run(
+      empty.position_id
+    );
+
+    const { rows } = adapter.loadOpenPositions('alpha');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].coin_mint).toBe('mint-open');
+    expect(rows[0].wallet_alias).toBe('alpha');
+  });
 });
