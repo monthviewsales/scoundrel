@@ -1,5 +1,7 @@
 'use strict';
 
+const { db: contextDb } = require('../adapters/sqlite');
+
 /**
  * Evaluation Service
  *
@@ -65,16 +67,25 @@ function normalizeRows(result) {
 }
 
 async function dbQuery(db, sql, params) {
-  if (!db) throw new Error('evaluationService requires a db handle');
+  const resolvedDb = db || contextDb;
+  if (!resolvedDb) throw new Error('evaluationService requires a sqlite db handle');
 
-  if (typeof db.query === 'function') {
-    return db.query(sql, params);
-  }
-  if (typeof db.execute === 'function') {
-    return db.execute(sql, params);
+  // Preferred: better-sqlite3 style
+  if (typeof resolvedDb.prepare === 'function') {
+    const stmt = resolvedDb.prepare(sql);
+    const rows = stmt.all(params || []);
+    return rows;
   }
 
-  throw new Error('db handle does not support query() or execute()');
+  // Compatibility: mysql2-like / wrapper-like adapters
+  if (typeof resolvedDb.query === 'function') {
+    return resolvedDb.query(sql, params);
+  }
+  if (typeof resolvedDb.execute === 'function') {
+    return resolvedDb.execute(sql, params);
+  }
+
+  throw new Error('db handle does not support prepare(), query(), or execute()');
 }
 
 function isStale(tsMs, maxAgeMs, nowMs) {
@@ -500,7 +511,7 @@ async function fetchTokenPoolOhlcv({ dataClient, mint, poolAddress, type, timeFr
  * Build a complete evaluation snapshot for a trade/position.
  *
  * @param {Object} args
- * @param {*} args.db - DB handle with query() or execute()
+ * @param {*} [args.db] - Optional DB handle; defaults to sqlite context db
  * @param {Object} args.position - Position summary (schema-aware)
  * @param {*} [args.dataClient] - SolanaTracker Data API client wrapper (must expose .client.getPoolChartData)
  * @param {Object} [args.ohlcv] - OHLCV options (type/lookbackMs/fastCache/removeOutliers/timezone/marketCap)
@@ -530,8 +541,13 @@ async function buildEvaluation({
 
   const warnings = [];
 
+  const resolvedDb = db || contextDb;
+  if (!resolvedDb) {
+    throw new Error('buildEvaluation requires a sqlite db from context or args.db');
+  }
+
   // ---- Coin ----
-  const coin = await loadCoin(db, position.mint);
+  const coin = await loadCoin(resolvedDb, position.mint);
   if (!coin) {
     warnings.push('coin_missing');
   } else {
@@ -540,7 +556,7 @@ async function buildEvaluation({
   }
 
   // ---- Pool ----
-  const pool = await loadBestPool(db, position.mint);
+  const pool = await loadBestPool(resolvedDb, position.mint);
   if (!pool) {
     warnings.push('pool_missing');
   } else if (isStale(pool.lastUpdated, windows.pool, now)) {
@@ -548,7 +564,7 @@ async function buildEvaluation({
   }
 
   // ---- Events ----
-  const events = await loadLatestEventsByInterval(db, position.mint, intervals);
+  const events = await loadLatestEventsByInterval(resolvedDb, position.mint, intervals);
   for (const interval of intervals) {
     const row = events[interval];
     if (!row) {
@@ -561,7 +577,7 @@ async function buildEvaluation({
   }
 
   // ---- Risk ----
-  const risk = await loadRisk(db, position.mint);
+  const risk = await loadRisk(resolvedDb, position.mint);
   if (!risk) {
     warnings.push('risk_missing');
   } else if (isStale(risk.updatedAt, windows.risk, now)) {
@@ -569,7 +585,7 @@ async function buildEvaluation({
   }
 
   // ---- PnL (live view) ----
-  const pnl = await loadPnlPositionLive(db, {
+  const pnl = await loadPnlPositionLive(resolvedDb, {
     walletId: position.walletId,
     coinMint: position.mint,
     tradeUuid: position.tradeUuid,
