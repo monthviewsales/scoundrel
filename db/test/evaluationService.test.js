@@ -136,6 +136,7 @@ describe('evaluationService', () => {
         walletAlias: 'alpha',
         mint,
         tradeUuid: openPosition.trade_uuid,
+        currentTokenAmount: 100,
       },
       dataClient,
       nowMs: now,
