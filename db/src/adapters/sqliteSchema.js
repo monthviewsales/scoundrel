@@ -34,6 +34,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS pools (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    pool_address     TEXT,                      -- NEW
     coin_mint        TEXT,
     liquidity_quote  REAL,
     liquidity_usd    REAL,
@@ -54,7 +55,7 @@ db.exec(`
     volume24h_quote  REAL,
     deployer         TEXT,
     FOREIGN KEY (coin_mint) REFERENCES coins(mint),
-    UNIQUE(coin_mint, market)
+    UNIQUE(coin_mint, pool_address)             -- UPDATED
   );
 
   CREATE TABLE IF NOT EXISTS events (

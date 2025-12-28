@@ -8,6 +8,7 @@ const recordPastTradeEvent = require('./trading/recordPastTradeEvent');
 const getTradesByTradeUuid = require('./trading/getTradesByTradeUuid');
 const getPnlPositionsLive = require('./trading/getPnlPositionsLive');
 const getTokenAmtByAlias = require('./trading/getTokenAmtByAlias');
+const loadOpenPositions = require('./trading/loadOpenPositions');
 
 const chalk = require('chalk');
 const { logger } = require('./context');
@@ -22,6 +23,7 @@ function removed(fnName) {
 module.exports = {
   applyScTradeEventToPositions,
   ensureOpenPositionRun,
+  loadOpenPositions,
   recordScTradeEvent,
   getTradesByTradeUuid,
   getPnlPositionsLive,
