@@ -48,17 +48,6 @@ describe('evaluationService', () => {
       priceUsd: 2,
       priceSol: 0.1,
       liquidityUsd: 500,
-      pools: [
-        {
-          poolId: 'pool-1',
-          price: { quote: 0.1, usd: 2 },
-          liquidity: { quote: 10, usd: 500 },
-          marketCap: { quote: 100, usd: 2000 },
-          market: 'raydium',
-          quoteToken: 'SOL',
-          createdAt: now - 1000,
-        },
-      ],
       events: {
         '5m': { priceChangePercentage: 1, volume: { usd: 100, quote: 5 }, buys: 2, sells: 1, txns: 3, wallets: 4 },
         '15m': { priceChangePercentage: 2, volume: { usd: 150, quote: 7 }, buys: 3, sells: 2, txns: 5, wallets: 6 },
@@ -74,6 +63,28 @@ describe('evaluationService', () => {
         risks: [],
       },
     });
+
+    context.db.prepare(
+      `INSERT INTO pools (
+        id,
+        coin_mint,
+        liquidity_usd,
+        price_usd,
+        createdAt,
+        lastUpdated,
+        market,
+        quoteToken
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      'pool-1',
+      mint,
+      500,
+      2,
+      now - 1000,
+      now,
+      'raydium',
+      'SOL'
+    );
 
     const openPosition = adapter.ensureOpenPositionRun({
       walletId: 1,
