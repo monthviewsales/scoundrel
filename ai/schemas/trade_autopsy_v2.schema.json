@@ -1,10 +1,18 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "trade_autopsy_v2_2",
+  "title": "trade_autopsy_v2_3",
   "description": "Structured output schema for WarlordAI trade autopsy responses.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "tokenSymbol": {
+      "type": "string",
+      "description": "The token.symbol of the token being analyzed (e.g. PUMP, TESTCOIN)."
+    },
+    "tokenMint": {
+      "type": "string",
+      "description": "The token.mint address of the token being analyzed (e.g. 24P4wqJrMraaAUrzeGJP6tNWFYqt24DLuS5RdAGopump)."
+    },
     "grade": {
       "type": "string",
       "description": "Letter grade for the overall campaign performance (e.g. A, B-, C+, D, F)."
