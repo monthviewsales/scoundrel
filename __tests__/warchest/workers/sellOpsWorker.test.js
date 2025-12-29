@@ -165,8 +165,6 @@ describe('sellOps worker controller', () => {
   });
 
   test('runs autopsy when a position closes between ticks', async () => {
-    jest.useFakeTimers();
-
     const row = {
       position_id: 1,
       wallet_id: 7,
@@ -210,7 +208,7 @@ describe('sellOps worker controller', () => {
 
     const promise = controller.start();
     await flushPromises();
-    jest.advanceTimersByTime(20);
+    await new Promise((resolve) => setTimeout(resolve, 20));
     await flushPromises();
 
     const messages = process.send.mock.calls.map(([msg]) => msg);
@@ -227,6 +225,5 @@ describe('sellOps worker controller', () => {
 
     await controller.stop('done');
     await promise;
-    jest.useRealTimers();
   });
 });
