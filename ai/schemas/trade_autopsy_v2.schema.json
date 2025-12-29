@@ -139,6 +139,8 @@
     }
   },
   "required": [
+    "tokenSymbol",
+    "tokenMint",
     "grade",
     "summary",
     "entryAnalysis",
