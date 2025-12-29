@@ -51,7 +51,7 @@ function createTradeAutopsy(client) {
     const res = await callResponses({
       system: SYSTEM,
       model,
-      name: 'trade_autopsy_v2_1',
+      name: 'trade_autopsy_v2_2',
       schema: RESPONSE_SCHEMA,
       user: { campaign: payload },
       temperature: 0.2,

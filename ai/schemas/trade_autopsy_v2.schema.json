@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "trade_autopsy_v2_1",
+  "title": "trade_autopsy_v2_2",
   "description": "Structured output schema for WarlordAI trade autopsy responses.",
   "type": "object",
   "additionalProperties": false,
@@ -11,7 +11,7 @@
     },
     "summary": {
       "type": "string",
-      "description": "High-level summary of how the campaign was traded and the main outcome."
+      "description": "High-level summary of how the campaign was traded and the main outcome. Always start the summary with the token.symbol we send followed by a colon.  For example 'TESTCOIN:'"
     },
     "entryAnalysis": {
       "type": "string",
