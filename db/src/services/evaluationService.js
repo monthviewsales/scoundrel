@@ -612,8 +612,8 @@ async function buildEvaluation({
       const o = { ...DEFAULT_OHLCV, ...(ohlcv || {}) };
       const ind = { ...DEFAULT_INDICATORS, ...(indicators || {}) };
 
-      const timeTo = now;
-      const timeFrom = timeTo - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs);
+      const timeTo = Math.floor(now / 1000);
+      const timeFrom = Math.floor((now - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs)) / 1000);
 
       const raw = await fetchTokenPoolOhlcv({
         dataClient,
