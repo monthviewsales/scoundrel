@@ -39,7 +39,6 @@ const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('sellOps worker controller', () => {
   let originalSend;
-
   beforeEach(() => {
     originalSend = process.send;
     process.send = jest.fn();
@@ -52,6 +51,7 @@ describe('sellOps worker controller', () => {
 
   afterEach(() => {
     process.send = originalSend;
+    jest.useRealTimers();
   });
 
   test('emits evaluation snapshots for open positions', async () => {
@@ -162,5 +162,68 @@ describe('sellOps worker controller', () => {
 
   test('requires a wallet alias', () => {
     expect(() => createSellOpsController({})).toThrow(/wallet alias/i);
+  });
+
+  test('runs autopsy when a position closes between ticks', async () => {
+    const row = {
+      position_id: 1,
+      wallet_id: 7,
+      wallet_alias: 'alpha',
+      coin_mint: 'mint-1',
+      trade_uuid: 'trade-1',
+      strategy_id: 'strat-1',
+      strategy_name: 'Strat',
+      open_at: 111,
+      closed_at: 0,
+      last_trade_at: 222,
+      last_updated_at: 333,
+      entry_token_amount: 100,
+      current_token_amount: 100,
+      total_tokens_bought: 100,
+      total_tokens_sold: 0,
+      entry_price_sol: 0.01,
+      entry_price_usd: 1,
+      last_price_sol: 0.011,
+      last_price_usd: 1.1,
+      source: 'swap',
+    };
+
+    BootyBox.loadOpenPositions
+      .mockReturnValueOnce({ rows: [row] })
+      .mockReturnValueOnce({ rows: [] });
+    buildEvaluation.mockResolvedValue({
+      evaluation: { indicators: {}, chart: {} },
+      warnings: [],
+    });
+
+    const runAutopsy = jest.fn().mockResolvedValue({
+      ai: { grade: 'B', summary: 'Recovered', tags: ['test'] },
+      artifactPath: '/tmp/autopsy.json',
+    });
+
+    const controller = createSellOpsController(
+      { wallet: { alias: 'alpha', pubkey: 'pub' }, pollIntervalMs: 10 },
+      { client: { close: jest.fn() }, dataClient: { close: jest.fn() }, db: {}, track: jest.fn(), env: {}, runAutopsy }
+    );
+
+    const promise = controller.start();
+    await flushPromises();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await flushPromises();
+
+    const messages = process.send.mock.calls.map(([msg]) => msg);
+    const autopsyMsg = messages.find((msg) => msg.type === 'sellOps:autopsy');
+    expect(autopsyMsg).toBeTruthy();
+    expect(autopsyMsg.payload.tradeUuid).toBe('trade-1');
+    expect(autopsyMsg.payload.grade).toBe('B');
+    expect(autopsyMsg.payload.summary).toBe('Recovered');
+    expect(runAutopsy).toHaveBeenCalledWith({
+      walletAddress: 'pub',
+      mint: 'mint-1',
+      walletLabel: 'alpha',
+    });
+
+    await controller.stop('done');
+    await promise;
   });
 });
