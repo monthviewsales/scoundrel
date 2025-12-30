@@ -1,0 +1,355 @@
+{
+  "schemaVersion": "1.0.0",
+  "strategyId": "flash-v1",
+  "name": "FLASH",
+  "description": "Ultra-short horizon momentum scalp. Designed for early, high-volatility tokens where momentum is binary. Requires strict structural risk gates, fast confirmation, and enforced residual caps. Intended to be explainable and autopsy-friendly.",
+  "defaults": {
+    "pollIntervalMs": 60000,
+    "eventIntervals": ["1m", "5m", "15m"],
+    "ohlcv": {
+      "type": "15s",
+      "lookbackMs": 900000,
+      "fastCache": true,
+      "removeOutliers": true
+    },
+    "indicators": {
+      "vwapPeriods": 60
+    }
+  },
+  "dataRequirements": {
+    "requires": [
+      "coin",
+      "pool",
+      "risk"
+    ],
+    "recommended": [
+      "ohlcv",
+      "indicators",
+      "pnl"
+    ],
+    "freshnessMs": {
+      "coin": 120000,
+      "pool": 120000,
+      "events": 120000,
+      "risk": 600000
+    },
+    "warnings": {
+      "forbidden": [
+        "coin_missing",
+        "pool_missing",
+        "risk_missing",
+        "coin_stale",
+        "pool_stale",
+        "risk_stale"
+      ],
+      "tolerated": [
+        "events_missing:1m",
+        "events_missing:5m",
+        "events_missing:15m",
+        "ohlcv_failed",
+        "ohlcv_empty"
+      ]
+    }
+  },
+  "discovery": {
+    "enabled": false,
+    "universe": {
+      "sources": ["manual", "watchlist"],
+      "notes": "FLASH currently assumes manual entry. When automation is enabled, add pumpfun/raydium scanners here."
+    },
+    "candidateFilters": [],
+    "ranking": {
+      "method": "score",
+      "weights": {}
+    }
+  },
+  "qualify": {
+    "notes": "Eligibility gates. All gates must pass to remain in FLASH. Failure triggers a degrade-only switch or exit depending on severity.",
+    "gates": [
+      {
+        "id": "gate.data.freshness",
+        "type": "warnings_forbidden_absent",
+        "params": {
+          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "coin_stale", "pool_stale", "risk_stale"]
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.risk.rug",
+        "type": "field_equals",
+        "params": {
+          "path": "risk.rugged",
+          "value": 0
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.risk.score.max",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.riskScore",
+          "max": 6
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.top10",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.top10Percent",
+          "max": 20
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.snipers",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.snipersTotalPercent",
+          "max": 8
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.dev",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.devPercent",
+          "max": 1
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.liquidity.minUsd",
+        "type": "number_gte",
+        "params": {
+          "path": "pool.liquidity_usd",
+          "min": 12000
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.liquidity.exitability",
+        "type": "number_gte",
+        "params": {
+          "path": "derived.liquidityToPositionRatio",
+          "min": 25
+        },
+        "severityOnFail": "trim"
+      }
+    ]
+  },
+  "entry": {
+    "intent": {
+      "mode": "FLASH_SCALPER",
+      "timeHorizonSec": 120,
+      "thesisTags": ["momentum", "binary", "scalp"]
+    },
+    "sizing": {
+      "method": "risk_budget",
+      "notes": "For automated buy, compute recommended SOL size from risk budget and stop distance. For manual buy, this is advisory and can be used for post-entry de-risk trims.",
+      "inputs": {
+        "baseUnitSol": 0.25,
+        "maxNotionalSol": 2.0,
+        "riskPerTradePct": 0.5,
+        "stopDistanceModel": {
+          "type": "atr_pct_multiplier",
+          "atrPctPath": "derived.atrPct",
+          "multiplier": 2.0,
+          "fallbackFixedStopPct": 18
+        },
+        "liquidityConstraint": {
+          "minLiquidityToPositionRatio": 25
+        }
+      },
+      "outputs": {
+        "recommendedSol": "derived.sizing.recommendedSol",
+        "maxSol": "derived.sizing.maxSol",
+        "explainPath": "derived.sizing.reasons"
+      }
+    },
+    "confirmation": {
+      "notes": "Momentum is binary in FLASH. If confirmation fails, exit immediately (or trim aggressively if execution constraints exist).",
+      "mustSeeMoveWithinSec": 15,
+      "minPnLPctByTime": [
+        { "tSec": 15, "minPnlPct": -3 },
+        { "tSec": 30, "minPnlPct": 2 },
+        { "tSec": 60, "minPnlPct": 6 }
+      ],
+      "ifNotMet": "exit"
+    },
+    "entrySteps": [
+      {
+        "id": "buy.leg1",
+        "type": "market_buy",
+        "portionPct": 60,
+        "requires": [
+          {
+            "type": "regime_in",
+            "params": { "allowed": ["trend_up", "bias_up", "chop"] },
+            "note": "Avoid buying into clear trend_down."
+          }
+        ],
+        "abortIf": [
+          {
+            "type": "regime_in",
+            "params": { "allowed": ["trend_down"] },
+            "note": "Hard abort if regime is hostile."
+          }
+        ]
+      },
+      {
+        "id": "buy.leg2",
+        "type": "market_buy",
+        "portionPct": 40,
+        "cooldownMs": 15000,
+        "requires": [
+          {
+            "type": "pnl_gte",
+            "params": { "minPnlPct": 3 },
+            "note": "Scale only winners."
+          }
+        ],
+        "abortIf": [
+          {
+            "type": "pnl_lte",
+            "params": { "maxPnlPct": -8 },
+            "note": "Do not average down in FLASH."
+          }
+        ]
+      }
+    ],
+    "execution": {
+      "notes": "Execution settings are placeholders. Wire these to SolanaTracker swap settings in the future.",
+      "slippageBps": 120,
+      "priority": {
+        "useJito": true,
+        "maxPriorityFeeLamports": null
+      },
+      "retries": {
+        "confirmationRetries": 30,
+        "confirmationRetryTimeoutMs": 500,
+        "commitment": "processed",
+        "useWebSocket": true
+      }
+    }
+  },
+  "manage": {
+    "notes": "Sell/trim/exit scaffolding for FLASH. Designed to be enforced by sellOpsWorker. Keep logic explainable and step-based.",
+    "hardInvalidations": [
+      {
+        "id": "inv.data.stale",
+        "type": "warnings_contains_any",
+        "params": {
+          "anyOf": ["coin_stale", "pool_stale", "risk_stale"]
+        },
+        "action": "exit"
+      },
+      {
+        "id": "inv.risk.rugged",
+        "type": "field_equals",
+        "params": { "path": "risk.rugged", "value": 1 },
+        "action": "exit"
+      },
+      {
+        "id": "inv.loss.max",
+        "type": "pnl_lte",
+        "params": { "maxPnlPct": -20 },
+        "action": "exit"
+      }
+    ],
+    "profitTakes": [
+      { "id": "pt.10", "atPnlPct": 10, "sellPct": 25 },
+      { "id": "pt.20", "atPnlPct": 20, "sellPct": 35 },
+      { "id": "pt.35", "atPnlPct": 35, "sellPct": 30 }
+    ],
+    "residual": {
+      "notes": "Residuals are allowed only as a tiny tail and must always be protected by a trailing stop.",
+      "maxResidualPct": 10,
+      "mustBePaidFor": true
+    },
+    "trailingStop": {
+      "enabledAfterFirstProfitTake": true,
+      "trailPct": 8,
+      "minProfitToEnablePct": 10
+    },
+    "timeStops": [
+      {
+        "id": "ts.no_followthrough",
+        "afterSec": 120,
+        "condition": { "type": "pnl_lte", "params": { "maxPnlPct": 5 } },
+        "action": "exit",
+        "note": "FLASH edge decays quickly; exit if no follow-through."
+      }
+    ]
+  },
+  "switching": {
+    "notes": "Strategy switching is degrade-only by default to prevent rationalization. Promotions require manual override (future).",
+    "allowedTransitions": [
+      { "from": "FLASH", "to": "HYBRID", "type": "degrade_only" }
+    ],
+    "hysteresis": {
+      "minTicksToConfirm": 2,
+      "minMsBetweenSwitches": 300000
+    },
+    "triggers": [
+      {
+        "id": "sw.risk.degrade",
+        "whenAnyGateFailsWithSeverity": ["degrade"],
+        "switchTo": "HYBRID"
+      },
+      {
+        "id": "sw.time.window_expired",
+        "when": {
+          "type": "age_gte_sec",
+          "params": { "minAgeSec": 240 }
+        },
+        "switchTo": "HYBRID"
+      }
+    ]
+  },
+  "portfolio": {
+    "notes": "Account-level governors. Even before full automation, sellOps can enforce de-risk trims and hard stops.",
+    "limits": {
+      "maxOpenPositions": 10,
+      "maxNotionalSolPerPosition": 2.0
+    },
+    "governors": [
+      {
+        "id": "gov.daily_drawdown",
+        "type": "daily_drawdown_lte",
+        "params": { "maxDrawdownPct": -10 },
+        "action": "halt_new_entries_and_de_risk"
+      },
+      {
+        "id": "gov.intraday_breaker",
+        "type": "intraday_drawdown_lte",
+        "params": { "windowMin": 15, "maxDrawdownPct": -5 },
+        "action": "de_risk"
+      },
+      {
+        "id": "gov.cooldown_after_heater",
+        "type": "daily_pnl_gte",
+        "params": { "minPnlPct": 100 },
+        "action": "throttle_size_50pct_for_24h"
+      }
+    ]
+  },
+  "audit": {
+    "notes": "Autopsy-friendly capture configuration. Store strategy identity and key gate/step outcomes with each trade.",
+    "record": {
+      "strategyId": true,
+      "schemaVersion": true,
+      "mode": true,
+      "qualifyGateResults": true,
+      "entryPlan": true,
+      "entryStepResults": true,
+      "confirmationResults": true,
+      "switchEvents": true,
+      "manageActions": true,
+      "sizing": true,
+      "warnings": true
+    },
+    "redactKeysMatching": ["key", "secret", "token", "password", "private"]
+  }
+}

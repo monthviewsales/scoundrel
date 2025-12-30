@@ -1,0 +1,321 @@
+{
+  "schemaVersion": "1.0.0",
+  "strategyId": "hybrid-v1",
+  "name": "HYBRID",
+  "description": "Momentum-based trade management with partial entries, trailing exits, and a medium holding horizon. Allows brief weakness while enforcing structural risk controls. Sits between FLASH and CAMPAIGN.",
+  "defaults": {
+    "pollIntervalMs": 60000,
+    "eventIntervals": ["1m", "5m", "15m", "1h"],
+    "ohlcv": {
+      "type": "1m",
+      "lookbackMs": 3600000,
+      "fastCache": true,
+      "removeOutliers": true
+    },
+    "indicators": {
+      "vwapPeriods": 60
+    }
+  },
+  "dataRequirements": {
+    "requires": ["coin", "pool", "risk"],
+    "recommended": ["ohlcv", "indicators", "pnl", "events"],
+    "freshnessMs": {
+      "coin": 120000,
+      "pool": 120000,
+      "events": 120000,
+      "risk": 600000
+    },
+    "warnings": {
+      "forbidden": [
+        "coin_missing",
+        "pool_missing",
+        "risk_missing",
+        "coin_stale",
+        "pool_stale",
+        "risk_stale"
+      ],
+      "tolerated": [
+        "events_missing:1m",
+        "events_missing:5m",
+        "events_missing:15m",
+        "events_missing:1h",
+        "ohlcv_failed",
+        "ohlcv_empty"
+      ]
+    }
+  },
+  "discovery": {
+    "enabled": false,
+    "universe": {
+      "sources": ["manual", "watchlist"],
+      "notes": "HYBRID currently assumes manual entry. Automation can reuse FLASH scanners with relaxed confirmation."
+    },
+    "candidateFilters": [],
+    "ranking": {
+      "method": "score",
+      "weights": {}
+    }
+  },
+  "qualify": {
+    "notes": "Eligibility gates for HYBRID. Failure typically degrades posture rather than forcing immediate exit unless structurally unsafe.",
+    "gates": [
+      {
+        "id": "gate.data.freshness",
+        "type": "warnings_forbidden_absent",
+        "params": {
+          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "coin_stale", "pool_stale", "risk_stale"]
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.risk.rug",
+        "type": "field_equals",
+        "params": { "path": "risk.rugged", "value": 0 },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.risk.score.max",
+        "type": "number_lte",
+        "params": { "path": "risk.riskScore", "max": 7 },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.top10",
+        "type": "number_lte",
+        "params": { "path": "risk.top10Percent", "max": 25 },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.snipers",
+        "type": "number_lte",
+        "params": { "path": "risk.snipersTotalPercent", "max": 10 },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.dev",
+        "type": "number_lte",
+        "params": { "path": "risk.devPercent", "max": 2 },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.liquidity.minUsd",
+        "type": "number_gte",
+        "params": { "path": "pool.liquidity_usd", "min": 20000 },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.liquidity.exitability",
+        "type": "number_gte",
+        "params": { "path": "derived.liquidityToPositionRatio", "min": 15 },
+        "severityOnFail": "trim"
+      }
+    ]
+  },
+  "entry": {
+    "intent": {
+      "mode": "MOMENTUM_HYBRID",
+      "timeHorizonSec": 1800,
+      "thesisTags": ["momentum", "partials", "trend_follow"]
+    },
+    "sizing": {
+      "method": "risk_budget",
+      "notes": "Sizing is advisory for manual entries and enforceable post-entry for de-risking.",
+      "inputs": {
+        "baseUnitSol": 0.5,
+        "maxNotionalSol": 4.0,
+        "riskPerTradePct": 1.0,
+        "stopDistanceModel": {
+          "type": "atr_pct_multiplier",
+          "atrPctPath": "derived.atrPct",
+          "multiplier": 2.5,
+          "fallbackFixedStopPct": 25
+        },
+        "liquidityConstraint": {
+          "minLiquidityToPositionRatio": 15
+        }
+      },
+      "outputs": {
+        "recommendedSol": "derived.sizing.recommendedSol",
+        "maxSol": "derived.sizing.maxSol",
+        "explainPath": "derived.sizing.reasons"
+      }
+    },
+    "confirmation": {
+      "notes": "HYBRID confirmation allows more time than FLASH. Failure degrades posture rather than forcing an immediate exit.",
+      "mustSeeMoveWithinSec": 60,
+      "minPnLPctByTime": [
+        { "tSec": 60, "minPnlPct": -5 },
+        { "tSec": 180, "minPnlPct": 2 },
+        { "tSec": 600, "minPnlPct": 8 }
+      ],
+      "ifNotMet": "degrade"
+    },
+    "entrySteps": [
+      {
+        "id": "buy.leg1",
+        "type": "market_buy",
+        "portionPct": 50
+      },
+      {
+        "id": "buy.leg2",
+        "type": "market_buy",
+        "portionPct": 30,
+        "cooldownMs": 60000,
+        "requires": [
+          { "type": "pnl_gte", "params": { "minPnlPct": 0 } }
+        ],
+        "abortIf": [
+          { "type": "pnl_lte", "params": { "maxPnlPct": -12 } }
+        ]
+      },
+      {
+        "id": "buy.leg3",
+        "type": "market_buy",
+        "portionPct": 20,
+        "cooldownMs": 120000,
+        "requires": [
+          { "type": "pnl_gte", "params": { "minPnlPct": 5 } }
+        ],
+        "abortIf": [
+          { "type": "pnl_lte", "params": { "maxPnlPct": -12 } }
+        ]
+      }
+    ],
+    "execution": {
+      "notes": "Execution settings are placeholders.",
+      "slippageBps": 150,
+      "priority": {
+        "useJito": true,
+        "maxPriorityFeeLamports": null
+      },
+      "retries": {
+        "confirmationRetries": 30,
+        "confirmationRetryTimeoutMs": 500,
+        "commitment": "processed",
+        "useWebSocket": true
+      }
+    }
+  },
+  "manage": {
+    "notes": "HYBRID management balances partial profit-taking with trend participation.",
+    "hardInvalidations": [
+      {
+        "id": "inv.data.stale",
+        "type": "warnings_contains_any",
+        "params": { "anyOf": ["coin_stale", "pool_stale", "risk_stale"] },
+        "action": "exit"
+      },
+      {
+        "id": "inv.risk.rugged",
+        "type": "field_equals",
+        "params": { "path": "risk.rugged", "value": 1 },
+        "action": "exit"
+      },
+      {
+        "id": "inv.loss.max",
+        "type": "pnl_lte",
+        "params": { "maxPnlPct": -30 },
+        "action": "exit"
+      }
+    ],
+    "profitTakes": [
+      { "id": "pt.12", "atPnlPct": 12, "sellPct": 20 },
+      { "id": "pt.20", "atPnlPct": 20, "sellPct": 25 },
+      { "id": "pt.35", "atPnlPct": 35, "sellPct": 25 },
+      { "id": "pt.60", "atPnlPct": 60, "sellPct": 20 }
+    ],
+    "residual": {
+      "maxResidualPct": 15,
+      "mustBePaidFor": true
+    },
+    "trailingStop": {
+      "enabledAfterFirstProfitTake": true,
+      "trailPct": 10,
+      "minProfitToEnablePct": 12
+    },
+    "timeStops": [
+      {
+        "id": "ts.no_followthrough",
+        "afterSec": 3600,
+        "condition": { "type": "pnl_lte", "params": { "maxPnlPct": 10 } },
+        "action": "exit"
+      },
+      {
+        "id": "ts.momentum_decay",
+        "afterSec": 300,
+        "condition": {
+          "type": "regime_consecutive",
+          "params": { "status": "trend_down", "minTicks": 2 }
+        },
+        "action": "exit"
+      }
+    ]
+  },
+  "switching": {
+    "notes": "HYBRID can be promoted to CAMPAIGN manually. Degrades are internal posture changes unless structure worsens.",
+    "allowedTransitions": [
+      { "from": "HYBRID", "to": "CAMPAIGN", "type": "manual_only" }
+    ],
+    "hysteresis": {
+      "minTicksToConfirm": 2,
+      "minMsBetweenSwitches": 300000
+    },
+    "triggers": [
+      {
+        "id": "sw.gate.degrade",
+        "whenAnyGateFailsWithSeverity": ["degrade"],
+        "switchTo": "HYBRID"
+      },
+      {
+        "id": "sw.age.suggest_campaign",
+        "when": { "type": "age_gte_sec", "params": { "minAgeSec": 7200 } },
+        "switchTo": "CAMPAIGN",
+        "manualRequired": true
+      }
+    ]
+  },
+  "portfolio": {
+    "notes": "Account-level governors.",
+    "limits": {
+      "maxOpenPositions": 10,
+      "maxNotionalSolPerPosition": 4.0
+    },
+    "governors": [
+      {
+        "id": "gov.daily_drawdown",
+        "type": "daily_drawdown_lte",
+        "params": { "maxDrawdownPct": -10 },
+        "action": "halt_new_entries_and_de_risk"
+      },
+      {
+        "id": "gov.intraday_breaker",
+        "type": "intraday_drawdown_lte",
+        "params": { "windowMin": 15, "maxDrawdownPct": -5 },
+        "action": "de_risk"
+      },
+      {
+        "id": "gov.cooldown_after_heater",
+        "type": "daily_pnl_gte",
+        "params": { "minPnlPct": 100 },
+        "action": "throttle_size_50pct_for_24h"
+      }
+    ]
+  },
+  "audit": {
+    "notes": "Autopsy-friendly capture configuration.",
+    "record": {
+      "strategyId": true,
+      "schemaVersion": true,
+      "mode": true,
+      "qualifyGateResults": true,
+      "entryPlan": true,
+      "entryStepResults": true,
+      "confirmationResults": true,
+      "switchEvents": true,
+      "manageActions": true,
+      "sizing": true,
+      "warnings": true
+    },
+    "redactKeysMatching": ["key", "secret", "token", "password", "private"]
+  }
+}

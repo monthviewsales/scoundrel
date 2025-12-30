@@ -580,8 +580,19 @@ async function buildEvaluation({
   const risk = await loadRisk(resolvedDb, position.mint);
   if (!risk) {
     warnings.push('risk_missing');
-  } else if (isStale(risk.updatedAt, windows.risk, now)) {
-    warnings.push('risk_stale');
+  } else {
+    if (isStale(risk.updatedAt, windows.risk, now)) warnings.push('risk_stale');
+
+    // Parse risksJson once for downstream consumers (strategies/autopsy/HUD).
+    // Store on a new non-breaking field `risk.risks` (array) when possible.
+    if (risk.risks == null && risk.risksJson != null) {
+      try {
+        const parsed = typeof risk.risksJson === 'string' ? JSON.parse(risk.risksJson) : risk.risksJson;
+        if (Array.isArray(parsed)) risk.risks = parsed;
+      } catch (e) {
+        warnings.push('risk_risks_json_parse_failed');
+      }
+    }
   }
 
   // ---- PnL (live view) ----
@@ -660,6 +671,16 @@ async function buildEvaluation({
 
         lastClose: closes.length ? closes[closes.length - 1] : null,
       };
+
+      // Strategy-friendly derived metric: ATR as a percentage of price.
+      // Many sizing/stop models use ATR% rather than absolute ATR units.
+      if (derived && ta && ta.atr != null && ta.lastClose != null) {
+        const atr = Number(ta.atr);
+        const lastClose = Number(ta.lastClose);
+        if (Number.isFinite(atr) && Number.isFinite(lastClose) && lastClose > 0) {
+          derived.atrPct = (atr / lastClose) * 100;
+        }
+      }
 
       if (candles.length === 0) warnings.push('ohlcv_empty');
       if (vwapRes.volume === 0) warnings.push('ohlcv_zero_volume');
