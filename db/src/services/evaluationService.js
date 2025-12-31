@@ -1,6 +1,15 @@
 'use strict';
 
 const { db: contextDb } = require('../adapters/sqlite');
+const {
+  computeRsi,
+  computeAtr,
+  computeSlopePct,
+  computeEmaSeries,
+  computeEmaSeriesAll,
+  computeMacd,
+  computeVwap,
+} = require('./indicators');
 
 /**
  * Evaluation Service
@@ -284,206 +293,6 @@ function normalizeOhlcvResponse(resp) {
   return out;
 }
 
-function computeRsi(closes, period) {
-  const p = Math.max(1, Number(period || 14));
-  if (!Array.isArray(closes) || closes.length < p + 1) return null;
-
-  let gains = 0;
-  let losses = 0;
-
-  // seed with first p deltas
-  for (let i = 1; i <= p; i++) {
-    const delta = closes[i] - closes[i - 1];
-    if (delta >= 0) gains += delta;
-    else losses += Math.abs(delta);
-  }
-
-  let avgGain = gains / p;
-  let avgLoss = losses / p;
-
-  // Wilder smoothing over remaining points
-  for (let i = p + 1; i < closes.length; i++) {
-    const delta = closes[i] - closes[i - 1];
-    const gain = delta > 0 ? delta : 0;
-    const loss = delta < 0 ? Math.abs(delta) : 0;
-
-    avgGain = (avgGain * (p - 1) + gain) / p;
-    avgLoss = (avgLoss * (p - 1) + loss) / p;
-  }
-
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  const rsi = 100 - (100 / (1 + rs));
-  return Number.isFinite(rsi) ? rsi : null;
-}
-
-function computeAtr(candles, period) {
-  const p = Math.max(1, Number(period || 14));
-  if (!Array.isArray(candles) || candles.length < p + 1) return null;
-
-  const trs = [];
-  for (let i = 1; i < candles.length; i++) {
-    const cur = candles[i];
-    const prev = candles[i - 1];
-    const tr = Math.max(
-      cur.h - cur.l,
-      Math.abs(cur.h - prev.c),
-      Math.abs(cur.l - prev.c)
-    );
-    trs.push(tr);
-  }
-
-  if (trs.length < p) return null;
-
-  // Wilder ATR smoothing
-  let atr = 0;
-  for (let i = 0; i < p; i++) atr += trs[i];
-  atr /= p;
-
-  for (let i = p; i < trs.length; i++) {
-    atr = (atr * (p - 1) + trs[i]) / p;
-  }
-
-  return Number.isFinite(atr) ? atr : null;
-}
-
-function computeSlopePct(closes, periods) {
-  const n = Math.max(2, Number(periods || 30));
-  if (!Array.isArray(closes) || closes.length < n) return null;
-
-  const slice = closes.slice(-n);
-  const xs = [];
-  const ys = slice;
-  for (let i = 0; i < slice.length; i++) xs.push(i);
-
-  const meanX = (xs.reduce((a, b) => a + b, 0)) / xs.length;
-  const meanY = (ys.reduce((a, b) => a + b, 0)) / ys.length;
-
-  let num = 0;
-  let den = 0;
-  for (let i = 0; i < xs.length; i++) {
-    num += (xs[i] - meanX) * (ys[i] - meanY);
-    den += (xs[i] - meanX) ** 2;
-  }
-
-  if (!den) return null;
-  const slope = num / den; // price units per candle
-
-  const base = ys[0] || 0;
-  if (!base) return null;
-
-  // Convert to % change per candle relative to starting price.
-  const slopePct = (slope / base) * 100;
-  return Number.isFinite(slopePct) ? slopePct : null;
-}
-
-function computeEmaSeries(values, period) {
-  const p = Math.max(1, Number(period || 12));
-  if (!Array.isArray(values) || values.length < p) return null;
-
-  // Seed EMA with SMA of first p values
-  let sma = 0;
-  for (let i = 0; i < p; i++) sma += values[i];
-  sma /= p;
-
-  const k = 2 / (p + 1);
-  let ema = sma;
-
-  for (let i = p; i < values.length; i++) {
-    ema = values[i] * k + ema * (1 - k);
-  }
-
-  return Number.isFinite(ema) ? ema : null;
-}
-
-function computeEmaSeriesAll(values, period) {
-  const p = Math.max(1, Number(period || 12));
-  if (!Array.isArray(values) || values.length < p) return null;
-
-  // Seed EMA with SMA of first p values
-  let sma = 0;
-  for (let i = 0; i < p; i++) sma += values[i];
-  sma /= p;
-
-  const k = 2 / (p + 1);
-  let ema = sma;
-  const out = [];
-
-  // Output aligned to input indices: null until we have a seed.
-  for (let i = 0; i < p - 1; i++) out.push(null);
-  out.push(ema);
-
-  for (let i = p; i < values.length; i++) {
-    ema = values[i] * k + ema * (1 - k);
-    out.push(ema);
-  }
-
-  return out;
-}
-
-function computeMacd(closes, fastPeriod, slowPeriod, signalPeriod) {
-  const fast = Math.max(1, Number(fastPeriod || 12));
-  const slow = Math.max(1, Number(slowPeriod || 26));
-  const signal = Math.max(1, Number(signalPeriod || 9));
-
-  if (!Array.isArray(closes) || closes.length < slow + signal) return null;
-
-  const emaFastAll = computeEmaSeriesAll(closes, fast);
-  const emaSlowAll = computeEmaSeriesAll(closes, slow);
-  if (!emaFastAll || !emaSlowAll) return null;
-
-  const macdLine = [];
-  for (let i = 0; i < closes.length; i++) {
-    const f = emaFastAll[i];
-    const s = emaSlowAll[i];
-    macdLine.push(f != null && s != null ? (f - s) : null);
-  }
-
-  // Build signal EMA over macdLine where defined
-  const macdDefined = macdLine.filter((v) => v != null);
-  if (macdDefined.length < signal) return null;
-
-  // Compute signal EMA across defined macd points (latest value)
-  const signalValue = computeEmaSeries(macdDefined, signal);
-  const lastMacd = macdDefined[macdDefined.length - 1];
-
-  if (signalValue == null || lastMacd == null) return null;
-
-  const hist = lastMacd - signalValue;
-
-  return {
-    macd: Number.isFinite(lastMacd) ? lastMacd : null,
-    signal: Number.isFinite(signalValue) ? signalValue : null,
-    hist: Number.isFinite(hist) ? hist : null,
-  };
-}
-
-function computeVwap(candles, periods) {
-  if (!Array.isArray(candles) || candles.length === 0) return { vwap: null, volume: null };
-
-  const n = periods == null ? candles.length : Math.max(1, Number(periods));
-  const slice = candles.slice(-n);
-
-  let pv = 0;
-  let vSum = 0;
-
-  for (const c of slice) {
-    const v = Number.isFinite(Number(c.v)) ? Number(c.v) : 0;
-    const tp = (Number(c.h) + Number(c.l) + Number(c.c)) / 3;
-    if (!Number.isFinite(tp)) continue;
-    pv += tp * v;
-    vSum += v;
-  }
-
-  if (!vSum) return { vwap: null, volume: 0 };
-
-  const vwap = pv / vSum;
-  return {
-    vwap: Number.isFinite(vwap) ? vwap : null,
-    volume: vSum,
-  };
-}
-
 async function fetchTokenPoolOhlcv({ dataClient, mint, poolAddress, type, timeFrom, timeTo, fastCache, removeOutliers, timezone, marketCap }) {
   const sdkClient = dataClient?.client;
   if (!sdkClient || typeof sdkClient.getPoolChartData !== 'function') {
@@ -580,8 +389,19 @@ async function buildEvaluation({
   const risk = await loadRisk(resolvedDb, position.mint);
   if (!risk) {
     warnings.push('risk_missing');
-  } else if (isStale(risk.updatedAt, windows.risk, now)) {
-    warnings.push('risk_stale');
+  } else {
+    if (isStale(risk.updatedAt, windows.risk, now)) warnings.push('risk_stale');
+
+    // Parse risksJson once for downstream consumers (strategies/autopsy/HUD).
+    // Store on a new non-breaking field `risk.risks` (array) when possible.
+    if (risk.risks == null && risk.risksJson != null) {
+      try {
+        const parsed = typeof risk.risksJson === 'string' ? JSON.parse(risk.risksJson) : risk.risksJson;
+        if (Array.isArray(parsed)) risk.risks = parsed;
+      } catch (e) {
+        warnings.push('risk_risks_json_parse_failed');
+      }
+    }
   }
 
   // ---- PnL (live view) ----
@@ -612,8 +432,8 @@ async function buildEvaluation({
       const o = { ...DEFAULT_OHLCV, ...(ohlcv || {}) };
       const ind = { ...DEFAULT_INDICATORS, ...(indicators || {}) };
 
-      const timeTo = now;
-      const timeFrom = timeTo - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs);
+      const timeTo = Math.floor(now / 1000);
+      const timeFrom = Math.floor((now - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs)) / 1000);
 
       const raw = await fetchTokenPoolOhlcv({
         dataClient,
@@ -660,6 +480,16 @@ async function buildEvaluation({
 
         lastClose: closes.length ? closes[closes.length - 1] : null,
       };
+
+      // Strategy-friendly derived metric: ATR as a percentage of price.
+      // Many sizing/stop models use ATR% rather than absolute ATR units.
+      if (derived && ta && ta.atr != null && ta.lastClose != null) {
+        const atr = Number(ta.atr);
+        const lastClose = Number(ta.lastClose);
+        if (Number.isFinite(atr) && Number.isFinite(lastClose) && lastClose > 0) {
+          derived.atrPct = (atr / lastClose) * 100;
+        }
+      }
 
       if (candles.length === 0) warnings.push('ohlcv_empty');
       if (vwapRes.volume === 0) warnings.push('ohlcv_zero_volume');

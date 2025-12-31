@@ -381,6 +381,72 @@ db.exec(`
     PRIMARY KEY (wallet_id, coin_mint, trade_uuid)
   );
 
+ -- Store our sellOpsWorker evaluations
+  CREATE TABLE IF NOT EXISTS sc_sellops_evaluations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  -- Timing / identity
+  ts_ms BIGINT NOT NULL,
+  wallet_id INTEGER NOT NULL,
+  wallet_alias VARCHAR(64) NOT NULL,
+
+  trade_uuid CHAR(36) NOT NULL,
+  coin_mint VARCHAR(64) NOT NULL,
+  symbol VARCHAR(32),
+
+  -- Strategy & decision
+  strategy_name VARCHAR(32),
+  strategy_source VARCHAR(32),
+  recommendation VARCHAR(16) NOT NULL,   -- hold / exit / scale / etc
+  decision VARCHAR(16) NOT NULL,         -- actual action taken (currently hold)
+  regime VARCHAR(16),                    -- chop / bias_up / bias_down
+
+  -- Qualification / gating
+  qualify_failed_count INTEGER DEFAULT 0,
+  qualify_worst_severity VARCHAR(16),
+  gate_fail VARCHAR(64),
+
+  -- Market snapshot
+  price_usd DOUBLE,
+  liquidity_usd DOUBLE,
+  chart_interval VARCHAR(8),             -- e.g. 1m
+  chart_points INTEGER,
+
+  -- Indicators
+  rsi DOUBLE,
+  macd_hist DOUBLE,
+  vwap DOUBLE,
+  warnings_count INTEGER DEFAULT 0,
+
+  -- Position snapshot
+  unreal_usd DOUBLE,
+  total_usd DOUBLE,
+  roi_pct DOUBLE,
+
+  -- Reasons & raw payload
+  reasons_json TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+
+  -- Metadata
+  inserted_at BIGINT NOT NULL
+);
+
+-- Create the evaluation indexes
+CREATE INDEX IF NOT EXISTS idx_sellops_trade_time
+  ON sc_sellops_evaluations (wallet_id, trade_uuid, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_sellops_mint_time
+  ON sc_sellops_evaluations (coin_mint, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_sellops_recommendation
+  ON sc_sellops_evaluations (recommendation, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_sellops_gate_fail
+  ON sc_sellops_evaluations (gate_fail, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_sellops_strategy
+  ON sc_sellops_evaluations (strategy_name, ts_ms);
+
   CREATE VIEW IF NOT EXISTS sc_pnl_live AS
     SELECT
       p.wallet_id,
