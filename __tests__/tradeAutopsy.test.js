@@ -32,7 +32,7 @@ describe('tradeAutopsy job', () => {
     const res = await analyzeTradeAutopsy({ payload, model: 'gpt-test' });
 
     expect(clientMock.callResponses).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'trade_autopsy_v2_1',
+      name: 'trade_autopsy_v2_3',
       schema: expect.objectContaining({ required: expect.arrayContaining(['grade', 'summary']) }),
       user: { campaign: payload },
     }));

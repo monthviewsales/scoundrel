@@ -51,14 +51,14 @@ function createTradeAutopsy(client) {
     const res = await callResponses({
       system: SYSTEM,
       model,
-      name: 'trade_autopsy_v2_1',
+      name: 'trade_autopsy_v2_3',
       schema: RESPONSE_SCHEMA,
       user: { campaign: payload },
       temperature: 0.2,
     });
 
     const out = parseResponsesJSON(res);
-    log.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 200));
+    log.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 256));
     return out;
   }
 

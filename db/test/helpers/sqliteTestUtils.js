@@ -32,6 +32,8 @@ function clearSqliteModulesFromCache() {
 
 function cleanDatabase(context) {
   const { db, pendingSwaps, tradeUuidMap } = context;
+  const foreignKeysEnabled = db.pragma('foreign_keys', { simple: true });
+  if (foreignKeysEnabled) db.pragma('foreign_keys = OFF');
   const rows = db
     .prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
@@ -40,6 +42,7 @@ function cleanDatabase(context) {
   for (const { name } of rows) {
     db.prepare(`DELETE FROM ${name}`).run();
   }
+  if (foreignKeysEnabled) db.pragma('foreign_keys = ON');
   pendingSwaps?.clear?.();
   tradeUuidMap?.clear?.();
 }

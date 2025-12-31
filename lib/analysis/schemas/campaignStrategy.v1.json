@@ -1,0 +1,407 @@
+
+
+{
+  "schemaVersion": "1.0.0",
+  "strategyId": "campaign-v1",
+  "name": "CAMPAIGN",
+  "description": "Longer-horizon momentum campaign. Designed for coins that can sustain pullbacks and reward scaling and waterfall distribution. Allows brief weakness, but enforces structural risk gates, exitability constraints, and account-level governors. Intended to be explainable and autopsy-friendly.",
+  "defaults": {
+    "pollIntervalMs": 60000,
+    "eventIntervals": ["1m", "5m", "15m", "1h"],
+    "ohlcv": {
+      "type": "1m",
+      "lookbackMs": 14400000,
+      "fastCache": true,
+      "removeOutliers": true
+    },
+    "indicators": {
+      "vwapPeriods": 120
+    }
+  },
+  "dataRequirements": {
+    "requires": ["coin", "pool", "risk"],
+    "recommended": ["ohlcv", "indicators", "pnl", "events"],
+    "freshnessMs": {
+      "coin": 120000,
+      "pool": 120000,
+      "events": 120000,
+      "risk": 600000
+    },
+    "warnings": {
+      "forbidden": [
+        "coin_missing",
+        "pool_missing",
+        "risk_missing",
+        "coin_stale",
+        "pool_stale",
+        "risk_stale"
+      ],
+      "tolerated": [
+        "events_missing:1m",
+        "events_missing:5m",
+        "events_missing:15m",
+        "events_missing:1h",
+        "ohlcv_failed",
+        "ohlcv_empty"
+      ]
+    }
+  },
+  "discovery": {
+    "enabled": false,
+    "universe": {
+      "sources": ["manual", "watchlist"],
+      "notes": "CAMPAIGN currently assumes manual entry. When automation is enabled, candidates should be sourced from scanners and scored by liquidity, holder distribution, and sustained flow."
+    },
+    "candidateFilters": [],
+    "ranking": {
+      "method": "score",
+      "weights": {}
+    }
+  },
+  "qualify": {
+    "notes": "Eligibility gates for CAMPAIGN. Campaigns allow time and pullbacks, but should still avoid structurally dangerous distributions. Failure triggers a degrade (to HYBRID) or exit depending on severity.",
+    "gates": [
+      {
+        "id": "gate.data.freshness",
+        "type": "warnings_forbidden_absent",
+        "params": {
+          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "coin_stale", "pool_stale", "risk_stale"]
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.risk.rug",
+        "type": "field_equals",
+        "params": {
+          "path": "risk.rugged",
+          "value": 0
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.risk.score.max",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.riskScore",
+          "max": 8
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.top10",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.top10Percent",
+          "max": 30
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.snipers",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.snipersTotalPercent",
+          "max": 12
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.holders.dev",
+        "type": "number_lte",
+        "params": {
+          "path": "risk.devPercent",
+          "max": 3
+        },
+        "severityOnFail": "degrade"
+      },
+      {
+        "id": "gate.liquidity.minUsd",
+        "type": "number_gte",
+        "params": {
+          "path": "pool.liquidity_usd",
+          "min": 50000
+        },
+        "severityOnFail": "exit"
+      },
+      {
+        "id": "gate.liquidity.exitability",
+        "type": "number_gte",
+        "params": {
+          "path": "derived.liquidityToPositionRatio",
+          "min": 10
+        },
+        "severityOnFail": "trim"
+      }
+    ]
+  },
+  "entry": {
+    "intent": {
+      "mode": "MOMENTUM_CAMPAIGN",
+      "timeHorizonSec": 21600,
+      "thesisTags": ["campaign", "momentum", "distribution", "scale_only_winners"]
+    },
+    "sizing": {
+      "method": "risk_budget",
+      "notes": "For automated buy, compute recommended SOL size from risk budget and stop distance. For manual buy, this is advisory and can be used for post-entry de-risk trims.",
+      "inputs": {
+        "baseUnitSol": 0.75,
+        "maxNotionalSol": 8.0,
+        "riskPerTradePct": 1.5,
+        "stopDistanceModel": {
+          "type": "atr_pct_multiplier",
+          "atrPctPath": "derived.atrPct",
+          "multiplier": 3.0,
+          "fallbackFixedStopPct": 35
+        },
+        "liquidityConstraint": {
+          "minLiquidityToPositionRatio": 10
+        }
+      },
+      "outputs": {
+        "recommendedSol": "derived.sizing.recommendedSol",
+        "maxSol": "derived.sizing.maxSol",
+        "explainPath": "derived.sizing.reasons"
+      }
+    },
+    "confirmation": {
+      "notes": "Campaigns require follow-through, but on a slower clock than FLASH/HYBRID. If confirmation fails, downgrade to HYBRID (or trim) rather than insta-exit by default.",
+      "mustSeeMoveWithinSec": 600,
+      "minPnLPctByTime": [
+        { "tSec": 600, "minPnlPct": -8 },
+        { "tSec": 1800, "minPnlPct": 2 },
+        { "tSec": 7200, "minPnlPct": 10 }
+      ],
+      "ifNotMet": "degrade"
+    },
+    "entrySteps": [
+      {
+        "id": "buy.seed",
+        "type": "market_buy",
+        "portionPct": 40,
+        "requires": [
+          {
+            "type": "regime_in",
+            "params": { "allowed": ["trend_up", "bias_up", "chop"] },
+            "note": "Avoid entering in clear trend_down."
+          }
+        ],
+        "abortIf": [
+          {
+            "type": "regime_in",
+            "params": { "allowed": ["trend_down"] },
+            "note": "Abort initial campaign entry if regime is hostile."
+          }
+        ]
+      },
+      {
+        "id": "buy.scale1",
+        "type": "market_buy",
+        "portionPct": 25,
+        "cooldownMs": 300000,
+        "requires": [
+          {
+            "type": "pnl_gte",
+            "params": { "minPnlPct": 0 },
+            "note": "Scale only winners (or break-even) on a slower clock."
+          }
+        ],
+        "abortIf": [
+          {
+            "type": "pnl_lte",
+            "params": { "maxPnlPct": -15 },
+            "note": "Do not average down beyond tolerance in campaign mode."
+          }
+        ]
+      },
+      {
+        "id": "buy.scale2",
+        "type": "market_buy",
+        "portionPct": 20,
+        "cooldownMs": 600000,
+        "requires": [
+          {
+            "type": "pnl_gte",
+            "params": { "minPnlPct": 8 },
+            "note": "Only add size after meaningful strength."
+          }
+        ],
+        "abortIf": [
+          {
+            "type": "pnl_lte",
+            "params": { "maxPnlPct": -15 }
+          }
+        ]
+      },
+      {
+        "id": "buy.final",
+        "type": "market_buy",
+        "portionPct": 15,
+        "cooldownMs": 900000,
+        "requires": [
+          {
+            "type": "pnl_gte",
+            "params": { "minPnlPct": 15 },
+            "note": "Final scale requires strong trend continuation."
+          }
+        ],
+        "abortIf": [
+          {
+            "type": "pnl_lte",
+            "params": { "maxPnlPct": -15 }
+          }
+        ]
+      }
+    ],
+    "execution": {
+      "notes": "Execution settings are placeholders. Wire these to SolanaTracker swap settings in the future.",
+      "slippageBps": 180,
+      "priority": {
+        "useJito": true,
+        "maxPriorityFeeLamports": null
+      },
+      "retries": {
+        "confirmationRetries": 30,
+        "confirmationRetryTimeoutMs": 500,
+        "commitment": "processed",
+        "useWebSocket": true
+      }
+    }
+  },
+  "manage": {
+    "notes": "Campaign management focuses on protecting gains while allowing healthy pullbacks. Prefer distribution and trailing over single full exits. Keep logic explainable and step-based.",
+    "hardInvalidations": [
+      {
+        "id": "inv.data.stale",
+        "type": "warnings_contains_any",
+        "params": {
+          "anyOf": ["coin_stale", "pool_stale", "risk_stale"]
+        },
+        "action": "exit"
+      },
+      {
+        "id": "inv.risk.rugged",
+        "type": "field_equals",
+        "params": { "path": "risk.rugged", "value": 1 },
+        "action": "exit"
+      },
+      {
+        "id": "inv.loss.max",
+        "type": "pnl_lte",
+        "params": { "maxPnlPct": -40 },
+        "action": "exit"
+      }
+    ],
+    "profitTakes": [
+      { "id": "pt.20", "atPnlPct": 20, "sellPct": 15 },
+      { "id": "pt.40", "atPnlPct": 40, "sellPct": 15 },
+      { "id": "pt.70", "atPnlPct": 70, "sellPct": 20 },
+      { "id": "pt.120", "atPnlPct": 120, "sellPct": 20 },
+      { "id": "pt.200", "atPnlPct": 200, "sellPct": 20 }
+    ],
+    "residual": {
+      "notes": "Residuals are allowed, but must be small and protected. Campaign residuals are for optional re-entries and narrative continuation.",
+      "maxResidualPct": 10,
+      "mustBePaidFor": true
+    },
+    "trailingStop": {
+      "enabledAfterFirstProfitTake": true,
+      "trailPct": 12,
+      "minProfitToEnablePct": 20
+    },
+    "timeStops": [
+      {
+        "id": "ts.decay_6h",
+        "afterSec": 21600,
+        "condition": { "type": "pnl_lte", "params": { "maxPnlPct": 20 } },
+        "action": "degrade",
+        "note": "If the campaign hasn't meaningfully progressed by 6h, downgrade to HYBRID or exit depending on structure."
+      },
+      {
+        "id": "ts.decay_24h",
+        "afterSec": 86400,
+        "condition": { "type": "pnl_lte", "params": { "maxPnlPct": 10 } },
+        "action": "exit",
+        "note": "Hard stop: do not carry dead campaigns indefinitely."
+      },
+      {
+        "id": "ts.momentum_decay",
+        "afterSec": 300,
+        "condition": {
+          "type": "regime_consecutive",
+          "params": { "status": "trend_down", "minTicks": 2 }
+        },
+        "action": "degrade",
+        "note": "If regime flips hostile for 2 consecutive ticks, downgrade and tighten exits."
+      }
+    ]
+  },
+  "switching": {
+    "notes": "Campaign switching is typically a downgrade to HYBRID when structure worsens or time decay hits. Promotions into CAMPAIGN should be manual-only (from HYBRID) to avoid rationalization.",
+    "allowedTransitions": [
+      { "from": "CAMPAIGN", "to": "HYBRID", "type": "degrade_only" }
+    ],
+    "hysteresis": {
+      "minTicksToConfirm": 2,
+      "minMsBetweenSwitches": 300000
+    },
+    "triggers": [
+      {
+        "id": "sw.risk.degrade",
+        "whenAnyGateFailsWithSeverity": ["degrade"],
+        "switchTo": "HYBRID"
+      },
+      {
+        "id": "sw.time.window_expired",
+        "when": {
+          "type": "age_gte_sec",
+          "params": { "minAgeSec": 43200 }
+        },
+        "switchTo": "HYBRID"
+      }
+    ]
+  },
+  "portfolio": {
+    "notes": "Account-level governors. Even before full automation, sellOps can enforce de-risk trims and hard stops.",
+    "limits": {
+      "maxOpenPositions": 10,
+      "maxNotionalSolPerPosition": 8.0
+    },
+    "governors": [
+      {
+        "id": "gov.daily_drawdown",
+        "type": "daily_drawdown_lte",
+        "params": { "maxDrawdownPct": -10 },
+        "action": "halt_new_entries_and_de_risk"
+      },
+      {
+        "id": "gov.intraday_breaker",
+        "type": "intraday_drawdown_lte",
+        "params": { "windowMin": 15, "maxDrawdownPct": -5 },
+        "action": "de_risk"
+      },
+      {
+        "id": "gov.cooldown_after_heater",
+        "type": "daily_pnl_gte",
+        "params": { "minPnlPct": 100 },
+        "action": "throttle_size_50pct_for_24h"
+      }
+    ]
+  },
+  "audit": {
+    "notes": "Autopsy-friendly capture configuration. Store strategy identity and key gate/step outcomes with each trade.",
+    "record": {
+      "strategyId": true,
+      "schemaVersion": true,
+      "mode": true,
+      "qualifyGateResults": true,
+      "entryPlan": true,
+      "entryStepResults": true,
+      "confirmationResults": true,
+      "switchEvents": true,
+      "manageActions": true,
+      "sizing": true,
+      "warnings": true
+    },
+    "redactKeysMatching": ["key", "secret", "token", "password", "private"]
+  }
+}

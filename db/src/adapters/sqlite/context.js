@@ -28,6 +28,22 @@ try {
 const legacyDbPath = path.join(dbDir, 'db', 'bootybox.db');
 const defaultDbPath = path.join(dbDir, 'bootybox.db');
 
+const resolvedDefaultDbPath = path.resolve(defaultDbPath);
+const resolvedLegacyDbPath = path.resolve(legacyDbPath);
+
+if (process.env.NODE_ENV === 'test') {
+  const envPath = (process.env.BOOTYBOX_SQLITE_PATH || '').trim();
+  const resolvedEnvPath = envPath ? path.resolve(envPath) : null;
+
+  if (!resolvedEnvPath) {
+    throw new Error('[BootyBox] Refusing to open default db in tests: BOOTYBOX_SQLITE_PATH is required');
+  }
+
+  if (resolvedEnvPath === resolvedDefaultDbPath || resolvedEnvPath === resolvedLegacyDbPath) {
+    throw new Error('[BootyBox] Refusing to open production db path in tests');
+  }
+}
+
 let dbFile = process.env.BOOTYBOX_SQLITE_PATH || defaultDbPath;
 
 if (!process.env.BOOTYBOX_SQLITE_PATH && !fs.existsSync(defaultDbPath) && fs.existsSync(legacyDbPath)) {

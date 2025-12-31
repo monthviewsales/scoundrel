@@ -2105,6 +2105,7 @@ const BootyBox = {
     if (Array.isArray(coin.pools) && coin.pools.length > 0) {
       const insertStmt = db.prepare(`
         INSERT INTO pools (
+          id,
           coin_mint,
           liquidity_quote,
           liquidity_usd,
@@ -2125,6 +2126,7 @@ const BootyBox = {
           volume24h_quote,
           deployer
         ) VALUES (
+          @id,
           @coin_mint,
           @liquidity_quote,
           @liquidity_usd,
@@ -2145,7 +2147,8 @@ const BootyBox = {
           @volume24h_quote,
           @deployer
         )
-        ON CONFLICT(coin_mint, market) DO UPDATE SET
+        ON CONFLICT(id) DO UPDATE SET
+          coin_mint        = excluded.coin_mint,
           liquidity_quote  = excluded.liquidity_quote,
           liquidity_usd    = excluded.liquidity_usd,
           price_quote      = excluded.price_quote,
@@ -2170,7 +2173,22 @@ const BootyBox = {
         for (const pool of pools) {
           if (!pool || typeof pool !== "object") continue;
 
+          const poolId =
+            (typeof pool.poolId === 'string' && pool.poolId.trim()) ||
+            (typeof pool.id === 'string' && pool.id.trim()) ||
+            (typeof pool.poolAddress === 'string' && pool.poolAddress.trim()) ||
+            (typeof pool.address === 'string' && pool.address.trim()) ||
+            null;
+
+          if (!poolId) {
+            logger.warn(
+              `[BootyBox] addOrUpdateCoin: skipping pool without poolId for mint ${mint} market=${pool.market || 'n/a'}`
+            );
+            continue;
+          }
+
           insertStmt.run({
+            id: poolId,
             coin_mint: mint,
             liquidity_quote: pool.liquidity?.quote ?? null,
             liquidity_usd: pool.liquidity?.usd ?? null,
