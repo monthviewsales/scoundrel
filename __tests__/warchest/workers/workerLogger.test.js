@@ -65,7 +65,7 @@ describe('workerLogger', () => {
     const logFile = files.find((name) => name.startsWith('meta-worker_'));
     const contents = fs.readFileSync(path.join(tmpDir, logFile), 'utf8');
 
-    expect(contents).toContain('[meta-worker] metadata-check');
+    expect(contents).toMatch(/\[meta-worker\] \[pid=\d+(?: req=[^\]]+)?\] metadata-check/);
     expect(contents).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} info:/);
   });
 });
