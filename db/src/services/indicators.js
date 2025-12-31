@@ -9,14 +9,15 @@
  */
 function computeRsi(closes, period) {
   const p = Math.max(1, Number(period || 14));
-  if (!Array.isArray(closes) || closes.length < p + 1) return null;
+  const series = normalizeNumberSeries(closes);
+  if (!series || series.length < p + 1) return null;
 
   let gains = 0;
   let losses = 0;
 
   // Seed with first p deltas
   for (let i = 1; i <= p; i++) {
-    const delta = closes[i] - closes[i - 1];
+    const delta = series[i] - series[i - 1];
     if (delta >= 0) gains += delta;
     else losses += Math.abs(delta);
   }
@@ -25,8 +26,8 @@ function computeRsi(closes, period) {
   let avgLoss = losses / p;
 
   // Wilder smoothing over remaining points
-  for (let i = p + 1; i < closes.length; i++) {
-    const delta = closes[i] - closes[i - 1];
+  for (let i = p + 1; i < series.length; i++) {
+    const delta = series[i] - series[i - 1];
     const gain = delta > 0 ? delta : 0;
     const loss = delta < 0 ? Math.abs(delta) : 0;
 
@@ -38,6 +39,25 @@ function computeRsi(closes, period) {
   const rs = avgGain / avgLoss;
   const rsi = 100 - (100 / (1 + rs));
   return Number.isFinite(rsi) ? rsi : null;
+}
+
+/**
+ * Normalize a series of values into finite numbers.
+ *
+ * @param {any[]} values
+ * @returns {number[]|null}
+ */
+function normalizeNumberSeries(values) {
+  if (!Array.isArray(values)) return null;
+
+  const out = [];
+  for (const value of values) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    out.push(num);
+  }
+
+  return out;
 }
 
 /**
