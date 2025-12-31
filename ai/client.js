@@ -1,25 +1,15 @@
 // ai/client.js
 'use strict';
 
-const { loadDotenv } = require('../lib/env/safeDotenv');
-loadDotenv();
-const OpenAI = require('openai');
-const log = require('../lib/log');
+  require("dotenv").config({ quiet: true });
+  const OpenAI = require('openai');
+  const log = require('../lib/log');
 
-/**
- * Resolve a required environment variable.
- * @param {string} key
- * @returns {string}
- */
-function requireEnv(key) {
-  const value = process.env[key];
-  if (!value) throw new Error(`[ai:client] Missing ${key}`);
-  return value;
-}
+  // Default to the latest GPT-5.1 model; can be overridden via OPENAI_RESPONSES_MODEL.
+  const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.1';
+  const openAIKey = process.env.OPENAI_API_KEY;
 
-const client = new OpenAI({ apiKey: requireEnv('OPENAI_API_KEY') });
-// Default to the latest GPT-5.1 model; can be overridden via OPENAI_RESPONSES_MODEL.
-const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.1';
+  const client = new OpenAI({ apiKey: openAIKey });
 
 /**
  * Call OpenAI Responses API with Structured Outputs (GPT-5.1-friendly).
