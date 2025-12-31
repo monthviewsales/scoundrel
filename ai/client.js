@@ -1,7 +1,8 @@
 // ai/client.js
 'use strict';
 
-require('dotenv').config({ quiet: true });
+const { loadDotenv } = require('../lib/env/safeDotenv');
+loadDotenv();
 const OpenAI = require('openai');
 const log = require('../lib/log');
 
