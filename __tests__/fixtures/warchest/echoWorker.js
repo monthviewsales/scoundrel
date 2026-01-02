@@ -17,4 +17,4 @@ createWorkerHarness(async (payload) => {
       extra: process.env.EXTRA_SAMPLE_VAR,
     },
   };
-});
+}, { workerName: 'test.echoWorker' });

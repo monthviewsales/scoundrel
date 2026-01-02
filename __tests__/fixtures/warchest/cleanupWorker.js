@@ -21,6 +21,7 @@ createWorkerHarness(
     return { ok: true };
   },
   {
+    workerName: 'test.cleanupWorker',
     onClose: () => {
       if (lastPath) {
         fs.appendFileSync(lastPath, 'onClose\n');

@@ -33,4 +33,4 @@ createWorkerHarness(async (payload) => {
     slot: 1,
     walletPubkey: payload.wallet || payload.walletAlias || null,
   };
-});
+}, { workerName: 'test.swapWorker' });

@@ -66,6 +66,8 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |
 | `WARCHEST_WS_UNSUB_TIMEOUT_MS` | WS unsubscribe timeout | `2500` |
 | `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` | Proxy settings for RPC/data | empty |
+| `SC_INK_MODE` | Force Ink UI mode for workers (suppresses console) | unset |
+| `WORKER_LOG_LEVEL` | Override worker lifecycle log level | `info` |
 
 ## Testing
 
