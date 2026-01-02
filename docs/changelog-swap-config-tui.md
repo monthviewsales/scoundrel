@@ -13,14 +13,14 @@ Date: 2025-12-21
 ### Swap config UX
 - Added an Ink swap config screen at `scoundrel swap --config` with view/edit flow, type validation, and setting descriptions.
 - Kept config file location unchanged (`swapConfig.json` in Application Support/XDG config paths).
-- Marked RPC URL and swap API key as read-only in the UI while still displaying them (API key redacted).
-- Added config settings: `useJito` and `jitoTip` with validation.
+- Made swap settings fully editable in the UI (swap API key is redacted when displayed).
+- Added config settings: `swapApiBaseUrl`, `preflight`, `maxPriceImpact`, `inkMode`, `explorerBaseUrl`.
 
 ### Swap CLI and worker
 - Removed `--slippage`, `--priority-fee`, and `--jito` from the swap CLI surface.
 - Swap worker now loads swap config and applies slippage/priority/jito/txVersion/debug settings internally.
 - Added wallet pubkey vs. private key mismatch guard in the worker (fails fast with clear error).
-- Swap worker now sets RPC/API key env vars from config when missing.
+- Swap worker now reads swap API base URL/key and behavior flags directly from config (no swap env vars).
 - Moved `validateSwapPayload` into `lib/swap/validateSwapPayload.js`.
 
 ### Swap engine / diagnostics

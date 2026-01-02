@@ -65,7 +65,7 @@ describe('swap worker IPC forwarding', () => {
         showQuoteDetails: false,
         useJito: false,
         jitoTip: 0.0001,
-        swapAPIKey: 'stub',
+        swapApiKey: 'stub',
         DEBUG_MODE: false,
       }, null, 2),
       'utf8'

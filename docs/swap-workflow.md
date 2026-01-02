@@ -64,7 +64,7 @@ CLI summary + HUD updates
 - SolanaTracker RPC HTTP:
   - Creates client via `createSolanaTrackerRPCClient()`.
   - Uses `rpc.sendTransaction(...)` and optionally `rpc.simulateTransaction(...)` (via `swapV3`).
-  - Requires: RPC HTTP endpoint (`SOLANATRACKER_RPC_HTTP_URL` or `SOLANA_RPC_URL`).
+  - Requires: RPC HTTP endpoint (`SOLANATRACKER_RPC_HTTP_URL`, or `swapConfig.rpcUrl` fallback).
 - SolanaTracker Swap API (via `swapV3.buildSwapTx`):
   - HTTP GET to swap builder base URL (default `https://swap-v2.solanatracker.io/swap`).
   - Required query params: `from`, `to`, `fromAmount`, `slippage`, `payer`.
@@ -78,7 +78,7 @@ CLI summary + HUD updates
   - Optional: `priorityFeeLevel`, `txVersion`.
   - Required: `x-api-key`.
 - Solana RPC calls:
-  - `rpc.simulateTransaction(base64, { encoding: 'base64' })` when `SWAP_PREFLIGHT=true`.
+  - `rpc.simulateTransaction(base64, { encoding: 'base64' })` when `swapConfig.preflight=true`.
   - `rpc.sendTransaction(base64, { encoding: 'base64' })` always (unless `dryRun`).
 
 ### `lib/warchest/workers/txMonitorWorker.js` (confirmation)
@@ -187,11 +187,12 @@ Location: `lib/swap/swapConfig.js` (via `loadConfig()`)
 
 Key fields (required in practice):
 
-- `swapAPIKey` (string) - API key for swap builder.
+- `swapApiKey` (string) - API key for swap builder.
 - `rpcUrl` (string) - SolanaTracker RPC HTTP URL.
 
 Key fields (optional):
 
+- `swapApiBaseUrl` (string) - Swap builder base URL.
 - `slippage` (number, percent).
 - `priorityFeeLevel` (string, e.g. `low`, `medium`, `high`).
 - `txVersion` (`v0` or `legacy`).
@@ -199,6 +200,10 @@ Key fields (optional):
 - `jitoTip` (number, SOL).
 - `showQuoteDetails` (boolean).
 - `DEBUG_MODE` (boolean).
+- `preflight` (boolean).
+- `maxPriceImpact` (number or null, percent).
+- `inkMode` (boolean).
+- `explorerBaseUrl` (string).
 
 Units:
 
@@ -207,7 +212,8 @@ Units:
 
 Where it is sent:
 
-- The config is used locally to derive swap parameters and env values.
+- The config is used locally to derive swap parameters and RPC/client settings.
+  The swap API key and base URL are sourced from this config, not from env.
 
 ### 6) Build swap transaction (Swap API request)
 
@@ -268,7 +274,7 @@ Location: `lib/swap/swapV3.js`
 
 Trigger:
 
-- `SWAP_PREFLIGHT=true` in env.
+- `swapConfig.preflight=true` in swap config.
 
 Where it is sent:
 
@@ -326,6 +332,8 @@ Return fields:
 - `slippagePercent`, `priorityFeeLevel`, `txVersion`.
 - `swapQuote` (quote + raw API payload).
 - `txSummarySeed` (summary shell for HUD/logging).
+- `explorerBaseUrl` (string, optional).
+- `inkMode` (boolean).
 
 Units:
 
@@ -364,23 +372,23 @@ Units:
 
 ## Key environment variables referenced by the workflow
 
-Swap API + RPC endpoints:
+RPC + Data API:
 
-- `SOLANATRACKER_RPC_HTTP_URL` / `SOLANA_RPC_URL` / `WARCHEST_RPC_ENDPOINT` - HTTP RPC endpoint.
-- `SOLANATRACKER_SWAP_API_URL` / `SWAP_API_URL` - swap builder base URL.
-- `SOLANATRACKER_API_KEY` / `SWAP_API_KEY` / `SOLANATRACKER_SWAP_API_KEY` - swap builder API key.
+- `SOLANATRACKER_RPC_HTTP_URL` - HTTP RPC endpoint.
+- `SOLANATRACKER_API_KEY` - Data API key (used by data clients, not swap).
 - `SOLANATRACKER_DATA_ENDPOINT` - data API base URL (passed through to workers).
 
-Swap behavior:
+Swap behavior (config-driven):
 
-- `SWAP_PREFLIGHT=true` - enable preflight simulation.
-- `SC_SWAP_MAX_PRICE_IMPACT` - max allowed price impact (%).
-- `SOLANA_WSOL_MINT` - WSOL mint override (defaults to So111...).
+- `swapConfig.preflight` - enable preflight simulation.
+- `swapConfig.maxPriceImpact` - max allowed price impact (%).
+- `swapConfig.swapApiBaseUrl` - swap builder base URL.
+- `swapConfig.swapApiKey` - swap builder API key.
+- `swapConfig.inkMode` - Ink UI mode (reduces logs for TTY UI).
 
 Worker behavior:
 
 - `SWAP_WORKER_EXECUTOR` - test-only swap executor module path.
-- `SC_INK_MODE=1` - Ink UI mode (reduces logs for TTY UI).
 
 ## Where to refactor for a new swap API
 

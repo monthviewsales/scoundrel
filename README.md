@@ -66,7 +66,6 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |
 | `WARCHEST_WS_UNSUB_TIMEOUT_MS` | WS unsubscribe timeout | `2500` |
 | `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` | Proxy settings for RPC/data | empty |
-| `SC_INK_MODE` | Force Ink UI mode for workers (suppresses console) | unset |
 | `WORKER_LOG_LEVEL` | Override worker lifecycle log level | `info` |
 
 ## Testing
@@ -338,7 +337,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
 - Options: `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
 - Internals: `lib/cli/swap.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
-- Config mode: `scoundrel swap --config` (Ink-based editor; file location and keys unchanged from previous swap config docs).
+- Config mode: `scoundrel swap --config` (Ink-based editor; keys include `rpcUrl`, `swapApiKey`, `swapApiBaseUrl`, `slippage`, `priorityFee`, `priorityFeeLevel`, `txVersion`, `showQuoteDetails`, `DEBUG_MODE`, `useJito`, `jitoTip`, `preflight`, `maxPriceImpact`, `inkMode`, `explorerBaseUrl`).
 - Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
 ### ask
