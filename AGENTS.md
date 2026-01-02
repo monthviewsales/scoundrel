@@ -7,6 +7,29 @@ Agents **must** read and follow this document before making any changes.
 
 ---
 
+## AGENTS.md Precedence
+
+- Treat this file as the **base** ruleset.
+- If you work inside a directory that contains its own `AGENTS.md`, follow that file too; **nearest file wins** when rules conflict.
+- Local rules extend or override these root rules; do not ignore them.
+
+### Known locations
+
+- `ai/AGENTS.md`
+- `docs/AGENTS.md`
+- `db/AGENTS.md`
+- `db/src/AGENTS.md`
+- `db/src/adapters/AGENTS.md`
+- `db/src/adapters/sqlite/AGENTS.md`
+- `db/migrations/AGENTS.md`
+- `db/test/AGENTS.md`
+- `lib/wallets/AGENTS.md`
+- `lib/warchest/workers/AGENTS.md`
+- `lib/warchest/workers/monitors/AGENTS.md`
+- `__tests__/warchest/workers/monitors/AGENTS.md`
+
+---
+
 ## Setup & Commands
 
 Use these commands when planning, testing, or validating changes.
@@ -17,12 +40,12 @@ Use these commands when planning, testing, or validating changes.
   - `npm test`
 - Run CI-grade tests with coverage (used by GitHub Actions):
   - `npm run test:ci`
-- Run lints / static checks (if configured):
-  - `npm run lint`
+- Run lints / static checks:
+  - `npm run lint` (syntax check via `scripts/lint.js`)
 - Run the CLI in development mode:  
-  - `NODE_ENV=development <CLI_ENTRYPOINT> ...`
+  - `NODE_ENV=development node index.js ...`
 - Run the CLI in production mode:  
-  - `NODE_ENV=production <CLI_ENTRYPOINT> ...`
+  - `NODE_ENV=production node index.js ...`
 
 > **Agent note:** If you discover more accurate commands (e.g. via `package.json`), prefer those and update this file instead of guessing.
 
@@ -47,11 +70,18 @@ Follow these rules for **all new and modified code**:
     - Parameters (`@param`)
     - Return type (`@returns`)
     - Error behavior when relevant (`@throws`)
+- **Environment variables**
+  - When adding new environment variables, document them in `README.md` and add them to `.env.sample` with a brief comment.
 
 - **Patterns**
 - Prefer small, single-responsibility modules.
 - Keep side effects at the edges (CLI entrypoints, process integration, network calls).
 - Larger services factories should be in /services and imported as needed.
+- **Hub + worker orchestration**
+  - Use `lib/warchest/hub.js` (`getHubCoordinator`) to dispatch `swap` and `txMonitor` jobs so namespace locking and shared env routing stay consistent.
+  - Avoid calling `forkWorkerWithPayload` directly for swap/txMonitor outside the hub coordinator.
+  - Worker entrypoints should use `createWorkerHarness` and `createWorkerLogger` for lifecycle logging and cleanup.
+  - Detached workers should be spawned via `spawnWorkerDetached` (from the harness) so payload files and env handling stay consistent.
 - **Readline / TTY usage**
   - When modules need `process.stdin` / `process.stdout`, reference them at the moment you create a `readline` interface (e.g. inside the function) rather than capturing them at module load time. This keeps tests free of lingering `TTYWRAP` handles when they stub `process.stdin`/`stdout`.
 

@@ -1,5 +1,7 @@
 # Wallets domain (AI agents)
 
+Inherits root `AGENTS.md`; local rules add/override.
+
 This directory hosts wallet-related helpers (registry wrappers, resolution, signing, swap plumbing, CLI UX). Current state:
 
 - `walletRegistry.js` / `registry.js` wrap the BootyBox-backed warchest registry.

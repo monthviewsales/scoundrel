@@ -11,8 +11,6 @@ const { Keypair } = require('@solana/web3.js');
 
 const workerPath = path.join(__dirname, '..', '..', '..', 'lib', 'warchest', 'workers', 'swapWorker.js');
 const mockExecutor = path.join(__dirname, '..', '..', 'fixtures', 'warchest', 'mockSwapExecutor.js');
-const monitorWorker = path.join(__dirname, '..', '..', 'fixtures', 'warchest', 'mockTxMonitorWorker.js');
-
 process.env.SWAP_WORKER_EXECUTOR = mockExecutor;
 
 // eslint-disable-next-line global-require
@@ -85,7 +83,6 @@ describe('swap worker IPC forwarding', () => {
         XDG_CONFIG_HOME: xdgConfigHome,
         SWAP_WORKER_EXECUTOR: mockExecutor,
         SWAP_WORKER_TEST_LOG: logPath,
-        TX_MONITOR_WORKER_PATH: monitorWorker,
       },
       timeoutMs: 5000,
     });
@@ -94,6 +91,8 @@ describe('swap worker IPC forwarding', () => {
     expect(result.signature).toBe('stub-sig');
     expect(result.slot).toBe(12345);
     expect(result.timing.durationMs).toBeGreaterThanOrEqual(0);
+    expect(result.monitorPayload).toBeTruthy();
+    expect(result.monitorPayload.txid).toBe('stub-txid');
     const logged = JSON.parse(fs.readFileSync(logPath, 'utf8'));
     expect(logged.walletPubkey).toBe(pubkey);
     expect(logged.side).toBe('buy');
