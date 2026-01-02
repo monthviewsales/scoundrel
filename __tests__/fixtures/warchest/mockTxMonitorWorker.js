@@ -10,4 +10,4 @@ createWorkerHarness(async (payload) => {
     fs.writeFileSync(logPath, JSON.stringify(payload, null, 2), 'utf8');
   }
   return { status: 'confirmed', slot: 999 };
-});
+}, { workerName: 'test.txMonitorWorker' });

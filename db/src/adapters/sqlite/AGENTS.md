@@ -1,5 +1,7 @@
 # src/adapters/sqlite – Agent Notes
 
+Inherits root `AGENTS.md`; local rules add/override.
+
 - `context.js` is the single `better-sqlite3` handle. It bootstraps schemas via `ensureSqliteSchema`, caches `tradeUuidMap`/`pendingSwaps`, and reads `BOOTYBOX_SQLITE_PATH` at require time. Clear caches in tests via `test/helpers/sqliteTestUtils.js`.
 - `wallets.js` and `profiles.js` are fully extracted implementations. They override the legacy adapter exports in `sqlite.js`.
 - `coins.js`, `trading.js`, and `sessions.js` currently wrap the legacy logic for those tables; migrate logic here when you touch those areas.

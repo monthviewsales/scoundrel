@@ -5,9 +5,9 @@ If Warchest remains the long-lived hub that owns BootyBox plus the SolanaTracker
 ## Recommended Node.js patterns
 
 - **Use `child_process.fork` for Scoundrel jobs.** Fork gives you IPC messaging for free so the hub can pass args (wallets, mint, RPC URL, Data API key) and receive progress/health messages without extra sockets.
-- **Prepare a small worker harness** (e.g., `scripts/warchestWorker.js`) that:
+- **Prepare a small worker harness** (`lib/warchest/workers/harness.js`) that:
   - imports BootyBox/SolanaTracker clients inside the worker (no cross-process client sharing),
-  - accepts a job payload over `process.on('message', ...)`,
+  - accepts a job payload over `process.on('message', ...)` via `createWorkerHarness`,
   - runs the requested job module (`tx`, `autopsy`, coin monitor),
   - tears down subscriptions with `await sub.unsubscribe()` and `await close()` before exit.
 - **Have the hub launch and monitor workers:**
@@ -19,7 +19,7 @@ If Warchest remains the long-lived hub that owns BootyBox plus the SolanaTracker
 
 - Each worker initializes fresh RPC/Data clients; always call `await close()` on the RPC client and unsubscribe from every subscription before sending a `process.exit(0)` or letting the worker finish.
 - Put shared helpers (wallet resolution, BootyBox open/close, status snapshot writing) into small modules the worker harness can import; avoid storing global state in the hub.
-- If two monitors might target the same mint/wallet, add a minimal guard: write a PID/tag file per `(job, mint)` in `data/warchest/` and refuse to start if it already exists.
+- If two monitors might target the same mint/wallet, add a minimal guard: use `createPidTag()` to write a lock in `data/warchest/locks/` and refuse to start if it already exists.
 - The HUD worker now tracks every WebSocket handle created by the SolanaTracker Kit client and exposes the count in health snapshots (`service.sockets`). Client restarts terminate all tracked sockets; a normal count is 1–3. Watch for growth to catch cleanup regressions early.
 
 ## When a registry is optional vs. useful
@@ -39,7 +39,7 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 - The HUD worker now follows `tx-events.json` through `createHubEventFollower` and renders a live transaction list above logs. Only the newest N events are kept (`WARCHEST_HUD_MAX_TX`, default `10`).
 - Status emojis mirror txMonitor: 🟢 confirmed, 🔴 failed, 🟡 everything else.
-- Each item pulls mint metadata through `tokenInfoService.ensureTokenInfo` (with refresh) so names, holders, price, and the 1m/5m/15m/30m price deltas appear once metadata exists. Missing metadata falls back to mint pubkeys.
+- Each item pulls mint metadata through `tokenInfoService.ensureTokenInfo` (with refresh) so names, price, and the 1m/5m/15m/30m price deltas appear once metadata exists. Missing metadata falls back to mint pubkeys.
 - Per-wallet log lines remain but are capped independently (`WARCHEST_HUD_MAX_LOGS`, default `5`).
 - Watch `data/warchest/status.json` for regressions: `ws.lastSlotAgeMs` should stay below `WARCHEST_WS_STALE_MS`, and `service.sockets` should hover around 1–3 after restarts. Rising `rssBytes` or `sockets` counts usually mean subscriptions leaked.
 
@@ -72,10 +72,10 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 ## Where to store worker modules and docs
 
-- **Code placement:** Add a dedicated folder like `lib/warchest/workers/` for job entrypoints (`tradeWorker.js`, `txWorker.js`, `autopsyWorker.js`, `coinMonitorWorker.js`, `txMonitorWorker.js`). Keep the small harness (`warchestWorkerHarness.js`) nearby so every worker shares bootstrap/teardown helpers. The HUD worker now lives in this folder.
+- **Code placement:** Keep job entrypoints in `lib/warchest/workers/` (`swapWorker.js`, `txMonitorWorker.js`, `autopsyWorker.js`, `dossierWorker.js`, `sellOpsWorker.js`). The harness lives in `lib/warchest/workers/harness.js`, and the HUD worker lives in this folder as `warchestService.js`.
 - **Shared client bootstrap:** Use `lib/warchest/client.js` to open BootyBox, create SolanaTracker RPC/Data clients, build initial wallet HUD state, and register cleanup handlers. Call `const client = await setup({ walletSpecs, mode });` and make sure to invoke `await client.close()` on shutdown so timers/subscriptions are cleared and the RPC client closes.
 - **Health snapshot hook:** In daemon mode, reuse `client.writeStatusSnapshot(health)` when `updateHealth` reports fresh metrics so other CLIs can read `data/warchest/status.json`.
-- **HUD integration:** Keep HUD-specific render/TUI code in `lib/warchest/workers/warchestService.js`, but have it consume worker results via IPC or a shared file instead of owning RPC subscriptions itself.
+- **HUD integration:** Keep HUD-specific render/TUI code in `lib/warchest/workers/warchestService.js`. It owns RPC subscriptions and also follows hub event/status files via `createHubEventFollower`.
 - **Docs:** Extend this file with per-worker “contract” snippets (payload shape, IPC messages, teardown rules) and add short READMEs in `lib/warchest/workers/` to keep code+docs co-located.
 
 ## Applicability to AI processes (dossier, autopsy)
@@ -86,40 +86,37 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 ## How the existing swap CLI fits into the worker model
 
-The current trade command (`lib/cli/trade.js`) delegates to `lib/trades.js`, which caches a SolanaTracker client per wallet alias and calls `getSwapInstructions`/`performSwap` inside the main CLI process. The lower-level engine (`lib/swapEngine.js`) adds guards for BootyBox pending-swap flags and pulls token metadata via `ensureTokenInfo` before calling `performSwapWithDetails`.
+The swap command runs through the hub coordinator:
 
-To move swaps into the same forked-worker pattern as tx/autopsy/coin monitors:
+- `lib/cli/swap.js` calls `hub.runSwap(...)`, which routes to `swapWorker` via the harness.
+- `swapWorker` delegates execution to the swap helpers under `lib/swap/` (currently `swapV3`), uses BootyBox for pending-swap guards and persistence, and emits a structured result back over IPC.
+- If a swap produces a `txid`, the parent (CLI/hub) starts `txMonitorWorker` via the hub coordinator.
 
-- **Launch trades as forked jobs:** Instead of running swaps in the CLI process, have the CLI send a `trade` job to the worker harness with `{ side, mint, amount, walletAlias, dryRun }`. The worker can reuse the same code paths (`buyToken`/`sellToken` or `performTrade`) without sharing live RPC clients.
-- **Confine client caches to the worker lifetime:** `lib/trades.js` keeps a module-level `_clientCache`. In a worker, that cache dies with the process, so you avoid long-lived WebSocket connections and can skip manual teardown. If you keep trades in-process, add explicit shutdown hooks to close the SolanaTracker client and clear the cache to match the cleanup expectations of other workers.
-- **Preserve BootyBox safety checks:** `performTrade` marks swaps as pending and clears the flag in `finally`. Keep that module untouched in the worker; the isolation prevents cross-job contamination while still avoiding concurrent swaps on the same mint.
-- **Pass config/env explicitly over IPC when needed:** The worker should receive RPC URLs and API keys (or the wallet alias used to resolve them) from the hub so it doesn’t depend on ambient env vars. That mirrors how other workers will receive mint/wallet context for monitors.
-- **Return summarized results to the CLI:** Send back the same shape the CLI prints today (txid, amounts, price impact, quote). The parent can handle log formatting while the worker stays focused on executing the swap and cleaning up RPC/Data clients before exit.
+When adding new swap-related flows, keep the CLI thin and push execution into the worker so RPC clients and subscriptions stay short-lived.
 
-### Swap worker contract (worker-based trade flow)
+### Swap worker contract (current)
 
 - **Entrypoint:** `lib/warchest/workers/swapWorker.js` (forked via the harness).
 - **Payload fields:**
   - `side`: `'buy'` or `'sell'` (required)
   - `mint`: SPL mint (Base58, 32–44 chars)
   - `amount`: number, percentage string (e.g., `'50%'`), or `'auto'` for sells
-  - `walletAlias` (preferred) or `walletPrivateKey` (fallback/test hook)
+  - `walletAlias` (preferred), or `walletId`/`walletPubkey`/`walletPrivateKey` as fallbacks
   - `dryRun` boolean
-  - swap settings (slippage, priority fee, Jito, tx version, debug flags) are sourced from swap config.
+  - `detachMonitor` boolean to run tx monitoring in a detached process
+  - swap settings (slippage, priority fee, tx version, debug flags) are sourced from swap config.
 - **Validation:** The worker rejects invalid sides, mint formats, negative/empty amounts, or missing wallet context before attempting a swap.
-- **Execution:** A fresh swap client is created from `swapEngine.performTrade`, using the provided keypair and mint/amount context. Each invocation owns its own SolanaTracker client and closes when the process exits.
-- **Response envelope:** `{ txid, signature, slot, timing, tokensReceivedDecimal?, solReceivedDecimal?, totalFees?, priceImpact?, quote?, dryRun? }` where `timing` includes `startedAt`, `endedAt`, and `durationMs`.
-- **CLI integration:** `lib/cli/trade.js` now forks the swap worker through the harness, forwards the normalized payload, and surfaces txid/signature/timing results in the CLI output. Errors from the worker propagate to the caller.
+- **Execution:** A fresh swap client is created from the swap helpers under `lib/swap/`, using the provided keypair and mint/amount context. Each invocation owns its own SolanaTracker client and closes when the process exits.
+- **Response envelope:** `{ txid, signature, slot, timing, tokensReceivedDecimal?, solReceivedDecimal?, totalFees?, priceImpact?, quote?, dryRun?, monitorPayload?, monitorDetach? }` where `timing` includes `startedAt`, `endedAt`, and `durationMs`.
+- **CLI integration:** `lib/cli/swap.js` dispatches through the hub coordinator, forwards the payload, and surfaces results in CLI output. Errors from the worker propagate to the caller.
 
-## How to hand off swap results to a transaction monitor and HUD
+## How swap results flow to tx monitoring + HUD
 
-When a swap worker returns a `txid`, immediately spin up a transaction-monitor job as another forked worker so the hub/CLI stays responsive and doesn’t hold RPC/WebSocket subscriptions longer than necessary.
+- The parent (CLI/hub) starts `txMonitorWorker` for non-dry-run swaps using the `monitorPayload` returned by `swapWorker`. Detached monitoring uses a background spawn path.
+- `txMonitorWorker` publishes events via `appendHubEvent` to `data/warchest/tx-events.json`; the HUD follows this file via `createHubEventFollower`.
+- Detached monitoring writes a payload file and spawns a background process; the HUD still receives events once the monitor runs.
 
-- **IPC result envelope:** Have the trade worker send `{ type: 'trade:complete', txid, walletAlias, mint, side, size, priceImpact }` over `process.send`. The parent (hub or CLI) can then launch the monitor worker with that payload.
-- **Monitor worker duties:** The monitor only needs the txid plus wallet/mint context. Use the RPC client inside the monitor to subscribe to `logsSubscribe` or poll `getTransaction` until confirmation/err. Keep it short-lived: unsubscribe/close RPC before exit.
-- **Error reporting:** If the monitor detects a confirmed error, send `{ type: 'trade:error', txid, reason }` back over IPC so the parent can log/alert. On success, send `{ type: 'trade:confirmed', txid, slot, signatureStatus }`.
-- **HUD integration:** Treat the HUD as another IPC consumer. When the parent receives `trade:confirmed`, forward `{ txid, mint, side, walletAlias, filledSize }` to the HUD process (or write to the shared status file the HUD already reads). The HUD worker can then add the position by reusing the same BootyBox/open-position helpers it already uses for wallet tracking, without needing to observe the entire swap lifecycle.
-- **No shared sockets:** Each phase (trade, monitor, HUD update) uses its own worker with fresh SolanaTracker RPC clients. The parent just relays messages, keeping the main hub lean and avoiding stuck WebSocket handles.
+This keeps long-lived subscriptions in the monitor/HUD workers while the swap worker stays short-lived.
 
 ## Retry/backoff expectations (RPC + Data helpers)
 

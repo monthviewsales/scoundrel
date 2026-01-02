@@ -12,7 +12,7 @@ const { monitorTransaction } = require('../../../lib/warchest/workers/txMonitorW
 const txInsightService = require('../../../lib/services/txInsightService');
 
 function makeTxid() {
-  return 'So11111111111111111111111111111111111111112';
+  return 'CyRxoFDzBHtuD6PcE83H1SUtCqFkcApDTBJpnZpX9BSgVtN3FdZkRqQUWgimYGPzBX7SbseZxWSnjEvGz5eoQA5';
 }
 
 describe('txMonitorWorker.monitorTransaction', () => {

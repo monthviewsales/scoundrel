@@ -7,8 +7,17 @@ jest.mock('../../lib/logger', () => ({
 }));
 
 jest.mock('../../lib/warchest/workers/harness', () => ({
-  forkWorkerWithPayload: jest.fn(() => Promise.resolve({ result: { txid: 'worker-txid' } })),
   buildWorkerEnv: jest.fn(() => ({})),
+}));
+
+const mockHub = {
+  runSwap: jest.fn(() => Promise.resolve({ result: { txid: 'worker-txid' } })),
+  runTxMonitor: jest.fn(() => Promise.resolve({ status: 'confirmed' })),
+};
+
+jest.mock('../../lib/warchest/hub', () => ({
+  getHubCoordinator: jest.fn(() => mockHub),
+  __hubMock: mockHub,
 }));
 
 jest.mock('../../lib/wallets/resolver', () => {
@@ -52,7 +61,7 @@ jest.mock('../../lib/wallets/resolver', () => {
 });
 
 const logger = require('../../lib/logger');
-const { forkWorkerWithPayload } = require('../../lib/warchest/workers/harness');
+const { __hubMock } = require('../../lib/warchest/hub');
 const tradeCli = require('../../lib/cli/swap');
 
 function setStdoutTty(stdoutIsTty) {
@@ -75,7 +84,8 @@ function setStdoutTty(stdoutIsTty) {
 
 describe('trade CLI (worker-based)', () => {
   beforeEach(() => {
-    forkWorkerWithPayload.mockClear();
+    __hubMock.runSwap.mockClear();
+    __hubMock.runTxMonitor.mockClear();
     logger.info.mockClear();
     logger.debug.mockClear();
     logger.warn.mockClear();
@@ -92,7 +102,7 @@ describe('trade CLI (worker-based)', () => {
       restoreTty();
     }
 
-    expect(forkWorkerWithPayload).toHaveBeenCalled();
+    expect(__hubMock.runSwap).toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('txid: worker-txid'));
   });
 
@@ -108,8 +118,8 @@ describe('trade CLI (worker-based)', () => {
       restoreTty();
     }
 
-    const call = forkWorkerWithPayload.mock.calls[0] || [];
-    const options = call[1] || {};
-    expect(options.payload).toEqual(expect.objectContaining({ detachMonitor: true }));
+    const call = __hubMock.runSwap.mock.calls[0] || [];
+    const payload = call[0] || {};
+    expect(payload).toEqual(expect.objectContaining({ detachMonitor: true }));
   });
 });
