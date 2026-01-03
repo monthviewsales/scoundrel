@@ -7,13 +7,10 @@ This document describes the current end-to-end swap workflow so you can plan a r
 1. CLI validates input, resolves wallet alias, and builds a swap payload.
 2. Hub coordinator spawns `swapWorker` with the payload over IPC.
 3. `swapWorker` validates payload, resolves the wallet secret, and loads swap config.
-4. `swapWorker` calls `swapV3.executeSwapV3()` to:
-   - build a transaction via SolanaTracker Swap API
-   - sign it locally
-   - optionally preflight
-   - send it via SolanaTracker RPC
-5. `swapWorker` returns a result plus a `monitorPayload`.
-6. CLI (via hub) runs `txMonitor` to confirm/persist the swap.
+4. `swapWorker` selects the swap provider (`swapV3` default, `raptor` when `SWAP_API_PROVIDER=raptor`).
+5. The provider pipeline builds a transaction (or quote-only for dry-run), signs locally, optionally preflights, and sends via SolanaTracker RPC.
+6. `swapWorker` returns a result plus a `monitorPayload` (dry-run skips monitor).
+7. CLI (via hub) runs `txMonitor` to confirm/persist the swap.
 
 ## Workflow diagram (current)
 
@@ -30,8 +27,9 @@ swapWorker
   |-- validate payload
   |-- resolve wallet secret
   |-- load swap config
+  |-- select provider (swapV3 or raptor)
   |
-  |  swapV3.executeSwapV3()
+  |  swapV3.executeSwapV3() OR swapRaptor.executeSwapRaptor()
   |    |-- HTTP GET swap builder (SolanaTracker Swap API)
   |    |-- sign locally (Solana Kit)
   |    |-- optional simulate (RPC)
@@ -70,6 +68,12 @@ CLI summary + HUD updates
   - Required query params: `from`, `to`, `fromAmount`, `slippage`, `payer`.
   - Optional query params: `priorityFeeLevel`, `txVersion`.
   - Required header: `x-api-key`.
+- Raptor Swap API (via `swapRaptor` when `SWAP_API_PROVIDER=raptor`):
+  - HTTP GET `/quote` for dry-run (base URL `swapApiBaseUrl`).
+  - HTTP POST `/quote-and-swap` for live swaps (base URL `swapApiBaseUrl`).
+  - Required query/body fields: `inputMint`, `outputMint`, `amount` (base units), `slippageBps`, `userPublicKey`.
+  - Required header: `x-api-key` (Scoundrel also sends `x-api-headers` with the same key).
+  - Amounts must be in **base units**; `swapWorker` converts from human units using BootyBox decimals.
 
 ### `lib/swap/swapV3.js` (swap pipeline)
 - Swap builder HTTP call:
@@ -78,8 +82,8 @@ CLI summary + HUD updates
   - Optional: `priorityFeeLevel`, `txVersion`.
   - Required: `x-api-key`.
 - Solana RPC calls:
-  - `rpc.simulateTransaction(base64, { encoding: 'base64' })` when `swapConfig.preflight=true`.
   - `rpc.sendTransaction(base64, { encoding: 'base64' })` always (unless `dryRun`).
+  - Preflight/simulation is skipped for Raptor (not advertised in Raptor docs).
 
 ### `lib/warchest/workers/txMonitorWorker.js` (confirmation)
 - SolanaTracker RPC:
@@ -192,6 +196,7 @@ Key fields (required in practice):
 
 Key fields (optional):
 
+- `swapApiProvider` (string) - `swapV3` (default) or `raptor`.
 - `swapApiBaseUrl` (string) - Swap builder base URL.
 - `slippage` (number, percent).
 - `priorityFeeLevel` (string, e.g. `low`, `medium`, `high`).
@@ -238,6 +243,21 @@ Where it is sent:
 
 - HTTP GET to `{swapApiBaseUrl}` (default `https://swap-v2.solanatracker.io/swap`)
 - Query params: `from`, `to`, `fromAmount`, `slippage`, `payer`, and optional `priorityFeeLevel`, `txVersion`
+
+### 6b) Raptor quote + swap (when `SWAP_API_PROVIDER=raptor`)
+
+Dry-run:
+- HTTP GET `{swapApiBaseUrl}/quote`
+- Required query params: `inputMint`, `outputMint`, `amount` (base units), `slippageBps`
+
+Live swap:
+- HTTP POST `{swapApiBaseUrl}/quote-and-swap`
+- Required body fields: `userPublicKey`, `inputMint`, `outputMint`, `amount` (base units), `slippageBps`
+- Optional body fields: `priorityFee`, `txVersion`
+
+Units:
+- `amount` must be in **base units** (lamports for SOL, token base units for SPL tokens).
+- `swapWorker` converts from human units using BootyBox metadata (`coins.decimals`).
 - Header: `x-api-key: <swapApiKey>`
 
 Response:
@@ -402,3 +422,16 @@ Secondary integration points:
 - `lib/cli/swap.js` (payload shape, progress events)
 - `lib/swap/swapConfig.js` (API config defaults)
 - `lib/warchest/workers/txMonitorWorker.js` (post-send persistence)
+### `lib/swap/swapRaptor.js` (raptor pipeline)
+- Quote HTTP call:
+  - Endpoint: `swapApiBaseUrl` (defaults to `/quote`).
+  - Required: `inputMint`, `outputMint`, `amount` (base units), `slippageBps`.
+  - Required: `x-api-key` (also sends `x-api-headers`).
+- Quote + swap HTTP call:
+  - Endpoint: `swapApiBaseUrl` (defaults to `/quote-and-swap`).
+  - Required: `userPublicKey`, `inputMint`, `outputMint`, `amount` (base units), `slippageBps`.
+  - Optional: `priorityFee`, `txVersion`.
+  - Required: `x-api-key` (also sends `x-api-headers`).
+- Solana RPC calls:
+  - `rpc.simulateTransaction(base64, { encoding: 'base64' })` when `swapConfig.preflight=true`.
+  - `rpc.sendTransaction(base64, { encoding: 'base64' })` always (unless `dryRun`).
