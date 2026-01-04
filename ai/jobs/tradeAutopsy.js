@@ -1,6 +1,6 @@
 'use strict';
 
-const defaultClient = require('../client');
+const defaultClient = require('../gptClient');
 const tradeAutopsySchema = require('../schemas/trade_autopsy_v2.schema.json');
 
 const SYSTEM = [

@@ -9,7 +9,7 @@ jest.mock('openai', () => {
   return MockOpenAI;
 });
 
-describe('ai/client helpers', () => {
+describe('ai/gptClient helpers', () => {
   let clientModule;
   let parseResponsesJSON;
   let callResponses;
@@ -17,7 +17,7 @@ describe('ai/client helpers', () => {
 
   beforeAll(() => {
     process.env.OPENAI_API_KEY = 'test-key';
-    clientModule = require('../ai/client');
+    clientModule = require('../ai/gptClient');
     ({ parseResponsesJSON, callResponses } = clientModule);
     OpenAI = require('openai');
   });

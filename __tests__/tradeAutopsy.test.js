@@ -1,4 +1,4 @@
-jest.mock('../ai/client', () => {
+jest.mock('../ai/gptClient', () => {
   const mockCallResponses = jest.fn();
   const mockParseResponsesJSON = jest.fn();
   const mockLog = { debug: jest.fn() };
@@ -16,7 +16,7 @@ describe('tradeAutopsy job', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    clientMock = require('../ai/client').__mock;
+    clientMock = require('../ai/gptClient').__mock;
     ({ analyzeTradeAutopsy } = require('../ai/jobs/tradeAutopsy'));
   });
 
