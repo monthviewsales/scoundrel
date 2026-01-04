@@ -1,4 +1,4 @@
-jest.mock('../ai/client', () => {
+jest.mock('../ai/gptClient', () => {
   const mockCallResponses = jest.fn();
   const mockParseResponsesJSON = jest.fn();
   return {
@@ -14,7 +14,7 @@ describe('tuneStrategy job', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    mockClient = require('../ai/client').__mock;
+    mockClient = require('../ai/gptClient').__mock;
     ({ run } = require('../ai/jobs/tuneStrategy'));
   });
 

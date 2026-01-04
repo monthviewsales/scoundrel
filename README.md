@@ -41,6 +41,7 @@ npm test
 
 - A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
 - An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
+- An [xAI](https://x.ai/) account for Grok-backed DevScan summaries.
 - Node.js 22 LTS and npm.
 - SQLite accessible to Node (BootyBox stores data in `db/bootybox.db`, override via `BOOTYBOX_SQLITE_PATH`).
 - Copy `.env.sample` to `.env` and fill in the variables noted in this README.
@@ -53,9 +54,12 @@ Common env vars (full list in `.env.sample`):
 | --- | --- | --- |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-4.1-mini` |
+| `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
+| `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
 | `SOLANATRACKER_RPC_HTTP_URL` | SolanaTracker HTTP RPC endpoint | required for RPC usage |
 | `SOLANATRACKER_RPC_WS_URL` | SolanaTracker WebSocket endpoint | required for WS usage |
+| `DEVSCAN_API_KEY` | DevScan public API access | required for DevScan lookups |
 | `SWAP_API_PROVIDER` | Swap engine provider (`swapV3` or `raptor`) | `swapV3` |
 | `BOOTYBOX_SQLITE_PATH` | SQLite DB location | `db/bootybox.db` |
 | `FEATURE_MINT_COUNT` | Default mint sample size for dossiers | `8` |
@@ -72,6 +76,10 @@ Common env vars (full list in `.env.sample`):
 | `KIT_RPC_RETRY_BASE_MS` | Base backoff delay for RPC retries (ms) | `200` |
 | `KIT_RPC_RETRY_MAX_MS` | Max backoff delay for RPC retries (ms) | `2000` |
 | `KIT_RPC_LOG_PAYLOAD` | Log full RPC payloads when set to `full` | empty |
+
+AI clients:
+- OpenAI powers dossier + autopsy summaries.
+- Grok (xAI) powers `devscan` summaries; set `xAI_API_KEY` and optionally `DEVSCAN_RESPONSES_MODEL`.
 
 ## Testing
 
@@ -289,6 +297,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
+- `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
 - `warchestd <action>` — Launch the HUD follower in the foreground, clean legacy daemon artifacts, or show hub status.
 - `test` — Environment + dependency smoke test.
@@ -302,6 +311,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `swap` — Execute swaps or manage swap config.
 - `ask` — Q&A against saved profiles.
 - `addcoin` — Fetch and persist token metadata.
+- `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `wallet` — Manage the local wallet registry.
 - `warchestd` — Run HUD follower or show status.
 - `test` — Environment + DB self-check.
@@ -360,6 +370,12 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
 - `--force` skips cache; when `SAVE_RAW` is on, writes token info to `data/addcoin/<mint>-<runId>.json`.
 
+### devscan
+- Queries DevScan for a token mint and/or developer wallet; supports `--mint`, `--dev`, `--devtokens`.
+- Runs Grok summaries by default; use `--raw-only` to skip AI.
+- Env: `DEVSCAN_API_KEY`, `xAI_API_KEY`, optional `DEVSCAN_RESPONSES_MODEL`.
+- Artifacts land under `data/devscan/<segments>/{raw,prompt,response}/` when enabled.
+
 ### wallet `[add|list|remove|set-color]` [args]
 - Wallet registry backed by BootyBox. `--solo` opens a picker for quick lookups.
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
@@ -381,6 +397,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `./profiles/autopsy-<wallet>-<mint>-<ts>.json` — trade autopsy payload + AI output
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 - `./data/autopsy/<wallet>/<mint>/{raw,parsed,enriched}/` — campaign artifacts gated by `SAVE_*`
+- `./data/devscan/<segments>/{raw,prompt,response}/` — DevScan artifacts and Grok summaries
 - `./data/warchest/{tx-events.json,status.json}` — Hub/HUD event feed + health snapshot
 
 ---

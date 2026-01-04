@@ -1,7 +1,7 @@
 'use strict';
 
 // ai/jobs/tuneStrategy.js
-const { callResponses, parseResponsesJSON } = require('../client');
+const { callResponses, parseResponsesJSON } = require('../gptClient');
 const schema = require('../schemas/tuneStrategy.v1.schema.json');
 
 const NAME = 'tune_strategy_v1';

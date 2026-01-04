@@ -22,7 +22,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 
 1. `lib/solanaTrackerDataClient.js` binds the official `@solana-tracker/data-api` SDK to per-endpoint helpers under `lib/solanaTrackerData/methods/` (each with Jest coverage). RPC helpers live under `lib/solana/rpcMethods/` when raw RPC access is needed.
 2. Harvesters (e.g., `lib/dossier.js`, `lib/autopsy.js`) gather trades, OHLCV, metadata, and assemble merged payloads under `./data/dossier/<alias>/` and `./data/autopsy/<wallet>/<mint>/`.
-3. AI jobs in `ai/jobs/*.js` call `ai/client.js` (Responses API) with strict schemas from `ai/schemas/`; parsed output writes to `./profiles/` and, when configured, to SQLite via BootyBox.
+3. AI jobs in `ai/jobs/*.js` call `ai/gptClient.js` (Responses API) with strict schemas from `ai/schemas/`; parsed output writes to `./profiles/` and, when configured, to SQLite via BootyBox.
 4. DB access is centralized through the `db` module (SQLite-only); higher-level persistors sit in `lib/persist/`.
 
 ## Key directories
@@ -37,7 +37,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 ## Runtime requirements
 
 - Node.js 22+, SQLite write access for `db/bootybox.db` (override via `BOOTYBOX_SQLITE_PATH`).
-- Env vars: `OPENAI_API_KEY`, `SOLANATRACKER_API_KEY`, optional `OPENAI_RESPONSES_MODEL` (default `gpt-5.1` in `ai/client.js`), `NODE_ENV`, `BOOTYBOX_SQLITE_PATH`.
+- Env vars: `OPENAI_API_KEY`, `SOLANATRACKER_API_KEY`, optional `OPENAI_RESPONSES_MODEL` (default `gpt-5.1` in `ai/gptClient.js`), `NODE_ENV`, `BOOTYBOX_SQLITE_PATH`.
 - Install deps: `npm install`. Run tests: `npm test` (Jest, per-module coverage expected). Lints run via `npm run lint` if configured.
 
 ## Coding conventions to remember

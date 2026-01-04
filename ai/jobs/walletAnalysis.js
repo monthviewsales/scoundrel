@@ -1,7 +1,7 @@
 'use strict';
 
 // ai/jobs/walletAnalysis.js
-const defaultClient = require('../client');
+const defaultClient = require('../gptClient');
 
 const SYSTEM = [
   // === Voice, audience & overall task ===
