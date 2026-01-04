@@ -12,16 +12,28 @@ jest.mock('../../lib/warchest/workers/workerLogger', () => ({
   }),
 }));
 
-jest.mock('../../lib/logger', () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  solanaTrackerData: () => ({
+jest.mock('../../lib/solanaTrackerDataClient', () => ({
+  createSolanaTrackerDataClient: jest.fn(() => ({})),
+}));
+
+jest.mock('../../lib/services/txInsightService', () => ({}));
+
+jest.mock('../../lib/logger', () => {
+  const logger = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-  }),
-}));
+    child: jest.fn(() => logger),
+  };
+  return {
+    ...logger,
+    solanaTrackerData: () => ({
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    }),
+  };
+});
 
 describe('refreshPnlPositionsForWallet', () => {
   beforeEach(() => {
