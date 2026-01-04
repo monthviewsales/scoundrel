@@ -6,10 +6,14 @@
   const log = require('../lib/log');
 
   // Default to the latest GPT-5.1 model; can be overridden via OPENAI_RESPONSES_MODEL.
-  const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.1';
-  const openAIKey = process.env.OPENAI_API_KEY;
+  const DEFAULT_MODEL = 'grok-4-1-fast-reasoning';
+  const xAIApiKey = process.env.xAI_API_KEY;
 
-  const client = new OpenAI({ apiKey: openAIKey });
+  const client = new OpenAI({ 
+    apiKey: xAIApiKey,
+    baseURL: 'https://api.x.ai/v1',
+    timeout: 360000,
+  });
 
 /**
  * Call OpenAI Responses API with Structured Outputs (GPT-5.1-friendly).

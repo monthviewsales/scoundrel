@@ -41,3 +41,20 @@ module.exports = { createXJob, runXJob };
 const client = createAIClient();
 const { runXJob } = createXJob(client);
 ```
+
+## Recent patterns (DevScan + Grok)
+- DevScan summaries use Grok (xAI) client; keep the default client for that job as `grokClient`.
+- Do not reuse `OPENAI_RESPONSES_MODEL` for Grok jobs. Use a job-specific override (e.g., `DEVSCAN_RESPONSES_MODEL`) or the Grok default.
+- Ensure the Grok client base URL includes `/v1` (`https://api.x.ai/v1`) to avoid 404s.
+- If an AI job runs from a CLI flow, wire artifacts through `createCommandRun`:
+  - raw payloads: `artifacts.write('raw', ...)`
+  - prompt payloads: `artifacts.write('prompt', 'prompt', payload)`
+  - response payloads: `artifacts.write('response', 'response', result)`
+- Use `persistProfileSnapshot` for AI outputs when you want a consistent DB archive.
+
+## Tests
+- Add unit tests for new CLI AI flows under `__tests__/cli/`.
+- Mock network and AI calls (e.g., `global.fetch`, job modules) and assert:
+  - artifact write intent (`createCommandRun` → `artifacts.write`)
+  - AI job invocation (or skip when `--raw-only` / `runAnalysis=false`)
+  - persistence hooks (`persistProfileSnapshot`) when analysis runs

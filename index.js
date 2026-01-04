@@ -126,7 +126,7 @@ program
     .description('Research & validation tooling for memecoin trading using SolanaTracker + OpenAI')
     .version(resolveVersion());
 
-program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  DEVSCAN_API_KEY             Required for DevScan API access\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
+program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  xAI_API_KEY                 Required for Grok-backed DevScan summaries\n  DEVSCAN_RESPONSES_MODEL     (default: grok-4-1-fast-reasoning)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  DEVSCAN_API_KEY             Required for DevScan API access\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
 program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n`);
 
 program
@@ -452,7 +452,7 @@ program
     .option('--dev <wallet>', 'Developer wallet address to query')
     .option('--devtokens <wallet>', 'Developer wallet address to list tokens for')
     .option('--raw-only', 'Skip OpenAI analysis and only write raw artifacts')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel devscan --mint <MINT>\n  $ scoundrel devscan --dev <WALLET>\n  $ scoundrel devscan --devtokens <WALLET>\n  $ scoundrel devscan --mint <MINT> --dev <WALLET>\n\nNotes:\n  • Requires DEVSCAN_API_KEY in the environment.\n  • Uses OPENAI_API_KEY for AI summaries unless --raw-only is set.\n  • Writes JSON artifacts under ./data/devscan/.\n`)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel devscan --mint <MINT>\n  $ scoundrel devscan --dev <WALLET>\n  $ scoundrel devscan --devtokens <WALLET>\n  $ scoundrel devscan --mint <MINT> --dev <WALLET>\n\nNotes:\n  • Requires DEVSCAN_API_KEY in the environment.\n  • Uses xAI_API_KEY for AI summaries unless --raw-only is set.\n  • Writes JSON artifacts under ./data/devscan/.\n`)
     .action(async (opts) => {
         const mint = opts && opts.mint ? String(opts.mint).trim() : '';
         const developerWallet = opts && opts.dev ? String(opts.dev).trim() : '';
@@ -486,8 +486,8 @@ program
             process.exitCode = 1;
             return;
         }
-        if (runAnalysis && !process.env.OPENAI_API_KEY) {
-            logger.error('[scoundrel] OPENAI_API_KEY is required for devscan AI summaries');
+        if (runAnalysis && !process.env.xAI_API_KEY) {
+            logger.error('[scoundrel] xAI_API_KEY is required for devscan AI summaries');
             process.exitCode = 1;
             return;
         }
@@ -495,6 +495,7 @@ program
         try {
             const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'devscanWorker.js');
             const { result } = await forkWorkerWithPayload(workerPath, {
+                timeoutMs: 60000,
                 payload: {
                     mint: mint || null,
                     developerWallet: developerWallet || null,

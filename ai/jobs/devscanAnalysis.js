@@ -1,6 +1,6 @@
 'use strict';
 
-const defaultClient = require('../gptClient');
+const defaultClient = require('../grokClient');
 const devscanSchema = require('../schemas/devscan.freeform.v1.schema.json');
 
 const SYSTEM = [
@@ -9,6 +9,8 @@ const SYSTEM = [
   'Your job is to summarize the token and/or developer data for a trading operator.',
   'Use ONLY the provided payload. Do not invent data.',
   'If a section is missing, explicitly say it is unavailable.',
+  'If a section mentions a twitter or X profile for a dev or deployer tell me more abou the accounts views and followers.',
+  'If the data is for a Solana memecoin and contains a mint address do a search for it on X and give me a report on how much and by who is mentioning it.',
   'Return concise, structured Markdown with clear headings.',
   'Include a short risks section if any warnings or red flags appear in the data.',
   'At the end, fill the JSON summary field (see schema) without printing it in markdown.'
