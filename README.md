@@ -56,6 +56,7 @@ Common env vars (full list in `.env.sample`):
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
 | `SOLANATRACKER_RPC_HTTP_URL` | SolanaTracker HTTP RPC endpoint | required for RPC usage |
 | `SOLANATRACKER_RPC_WS_URL` | SolanaTracker WebSocket endpoint | required for WS usage |
+| `DEVSCAN_API_KEY` | DevScan public API access | required for DevScan lookups |
 | `SWAP_API_PROVIDER` | Swap engine provider (`swapV3` or `raptor`) | `swapV3` |
 | `BOOTYBOX_SQLITE_PATH` | SQLite DB location | `db/bootybox.db` |
 | `FEATURE_MINT_COUNT` | Default mint sample size for dossiers | `8` |
