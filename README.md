@@ -28,17 +28,52 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 
 ---
 
+## Quick Start
+
+```bash
+npm install
+cp .env.sample .env
+node index.js --help
+npm test
+```
+
 ## Requirements
 
 - A [SolanaTracker.io](https://www.solanatracker.io/?ref=0NGJ5PPN) account (used for wallet and trade history).
 - An [OpenAI](https://openai.com/) account and the knowledge to operate its APIs.
 - Node.js 22 LTS and npm.
 - SQLite accessible to Node (BootyBox stores data in `db/bootybox.db`, override via `BOOTYBOX_SQLITE_PATH`).
+- Copy `.env.sample` to `.env` and fill in the variables noted in this README.
+
+## Environment Variables
+
+Common env vars (full list in `.env.sample`):
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | OpenAI Responses access | required |
+| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-4.1-mini` |
+| `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
+| `SOLANATRACKER_RPC_HTTP_URL` | SolanaTracker HTTP RPC endpoint | required for RPC usage |
+| `SOLANATRACKER_RPC_WS_URL` | SolanaTracker WebSocket endpoint | required for WS usage |
+| `SWAP_API_PROVIDER` | Swap engine provider (`swapV3` or `raptor`) | `swapV3` |
+| `BOOTYBOX_SQLITE_PATH` | SQLite DB location | `db/bootybox.db` |
+| `FEATURE_MINT_COUNT` | Default mint sample size for dossiers | `8` |
+| `HARVEST_LIMIT` | Max trades per harvest | `100` |
+| `WARCHEST_HUD_MAX_TX` | HUD recent tx limit | `10` |
+| `WARCHEST_HUD_MAX_LOGS` | HUD per-wallet log limit | `5` |
+| `WARCHEST_WS_STALE_MS` | WS heartbeat stale threshold | `20000` |
+| `WARCHEST_WS_RESTART_GAP_MS` | Minimum WS restart gap | `30000` |
+| `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |
+| `WARCHEST_WS_UNSUB_TIMEOUT_MS` | WS unsubscribe timeout | `2500` |
+| `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` | Proxy settings for RPC/data | empty |
+| `WORKER_LOG_LEVEL` | Override worker lifecycle log level | `info` |
 
 ## Testing
 
 - Run the full suite with `npm test`.
 - For CI-grade runs with coverage output to `artifacts/coverage/`, use `npm run test:ci` (also used by GitHub Actions).
+- Run static checks with `npm run lint` (syntax validation).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
 
 ## Database Access (BootyBox)
@@ -46,7 +81,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 BootyBox now lives natively under `/db` (no git submodule) and exports the full helper surface (coins, positions, sc_* tables, warchest registry). Import it directly via `require('../db')` from application modules and tests.
 
 - `init()` must run before calling other helpers; it initializes the SQLite adapter and schema.
-- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`lib/cli/warchestCli.js`) and are wrapped under `lib/wallets/walletRegistry.js`.
+- Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`lib/cli/walletCli.js`) and are wrapped under `lib/wallets/walletRegistry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
 - Loader coverage includes `db/test/*.test.js`, which run alongside the rest of Jest.
 
@@ -59,13 +94,13 @@ If you add a new persistence path, implement it inside BootyBox so the helper su
 ## Architecture
 
 ```
-SolanaTrackerDataClient ──▶ /lib/dossier.js
+SolanaTrackerDataClient ──▶ /lib/cli/dossier.js
                           └─ trades + chart + meta (merged JSON)
 
-/lib/dossier.js ──▶ /ai/jobs/walletAnalysis.js (Responses API)
-                     └─ writes to ./profiles/<name>.json + operator_summary markdown
+/lib/cli/dossier.js ──▶ /ai/jobs/walletAnalysis.js (Responses API)
+                         └─ writes to ./profiles/<name>.json + operator_summary markdown
 
-CLI commands ───────────▶ /lib/*.js processors
+CLI commands ───────────▶ /lib/cli/*.js processors
 ```
 
 - **Data Source**: SolanaTracker Data API (`getWalletTrades`, `getWalletChart`).
@@ -88,7 +123,7 @@ const rpcMethods = createRpcMethods(rpc, rpcSubs);
 const balance = await rpcMethods.getSolBalance('walletPubkey');
 ```
 
-### HTTP helpers (all return Promises)
+### HTTP helpers (selected, all return Promises)
 
 | Helper | Signature | Notes |
 | --- | --- | --- |
@@ -98,16 +133,21 @@ const balance = await rpcMethods.getSolBalance('walletPubkey');
 | `getMultipleAccounts` | `(pubkeys: string[], opts?) => Promise<{ accounts, raw }>` | Batched account infos.
 | `getFirstAvailableBlock` | `() => Promise<number>` | Earliest slot SolanaTracker serves.
 | `getTransaction` | `(signatureOrSignatures: string \| string[], opts?) => Promise<tx \| tx[] \| null>` | Accepts a single signature or an array. Returns `null` (or `null` entries in the array) when a signature is unknown. Each tx includes `{ signature, slot, blockTime, transaction, meta, err, status, raw }`. |
+| `getSignatureStatus` | `(signature: string, opts?) => Promise<{ signature, confirmationStatus, err, slot, raw } | null>` | Lightweight status probe.
+| `sendTransaction` | `(wireTxnBase64: string, opts?) => Promise<any>` | Pass-through to RPC `sendTransaction` (returns signature on success).
+| `simulateTransaction` | `(wireTxnBase64: string, opts?) => Promise<any>` | Pass-through to RPC `simulateTransaction`.
+| `fetchSignatureDiagnostics` | `(signature: string, opts?) => Promise<{ signatureStatus?, txMeta? }>` | Best-effort status + transaction diagnostics.
 
 ### WebSocket helpers
 
-Every subscription returns `{ subscriptionId, unsubscribe }`, accepts an `onUpdate` callback, and (where supported by SolanaTracker) honors options plus an optional `onError` handler. Note that `slotSubscribe` on the current SolanaTracker RPC endpoint does **not** accept any parameters.
+The RPC wrapper exposes these subscription helpers (availability depends on the RPC endpoint; SolanaTracker mainnet only supports a subset):
 
 - `subscribeAccount(pubkey, onUpdate, opts?)`
-- `subscribeBlock(onUpdate, opts?)`
-- `subscribeSlot(onUpdate, opts?)`
-- `subscribeSlotsUpdates(onUpdate, opts?)`
+- `subscribeSlot(onUpdate)`
 - `subscribeLogs(filter, onUpdate, opts?)`
+- `subscribeBlock(onUpdate, opts?)`
+- `subscribeSlotsUpdates(onUpdate, opts?)`
+- `subscribeSignature(signature, onUpdate, opts?)`
 
 WebSocket calls honor `HTTPS_PROXY` / `HTTP_PROXY` env vars (plus `NO_PROXY`) so subscription traffic can traverse locked-down networks.
 Use `scripts/testRpcSubs.js` to verify both HTTP + WS access with your SolanaTracker credentials.
@@ -128,8 +168,9 @@ Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC
   - `subscribeLogs` – program / wallet logs for higher-level activity.
 - **Not supported on this endpoint**
   - `blockSubscribe` currently returns a JSON-RPC `Method not found` error on SolanaTracker’s mainnet RPC and should be treated as unavailable.
+  - Other subscription helpers may return `Method not found` depending on the RPC cluster; treat them as best-effort unless proven.
 - **Testing your setup**
-  - Use `npm run test:ws` (runs `scripts/testRpcSubs.js`) to verify that your HTTP + WebSocket credentials, proxy settings, and network allow `slotSubscribe` to receive events.
+  - Use `node scripts/testRpcSubs.js` to verify that your HTTP + WebSocket credentials, proxy settings, and network allow `slotSubscribe` to receive events.
 
 For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
@@ -146,6 +187,7 @@ The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on
 - HUD shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
   - `WARCHEST_HUD_MAX_TX` (default `10`) – max transactions displayed.
   - `WARCHEST_HUD_MAX_LOGS` (default `5`) – max recent logs per wallet.
+- See `.env.sample` for the full set of warchest and proxy defaults.
 - Each RPC client tracks its live WebSocket handles; `service.sockets` in health snapshots shows the active count so leaked sockets can be spotted and terminated on restart.
 
 ### Reading `data/warchest/status.json`
@@ -185,8 +227,6 @@ const risk  = await data.getTokenRiskScores('Mint...');
 | `getTokenHoldersTop100`, `getLatestTokens`, `getMultipleTokens` | supply discovery feeds. |
 | `getTrendingTokens`, `getTokensByVolumeWithTimeframe`, `getTokenOverview` | curated discovery endpoints. |
 | `getTokenPrice`, `getMultipleTokenPrices` | wrap `/price` + `/price/multi` with retries. |
-
-These price endpoints are now used by the HUD worker to display live USD estimates for SOL and each token in the warchest.
 | `getWalletTokens`, `getBasicWalletInformation` | wallet state snapshots. |
 | `getWalletTrades` | paginated harvest with optional `startTime` / `endTime` filtering and cursor handling. |
 | `getWalletChart` | portfolio curve, aliased as `getWalletPortfolioChart` for CLI consistency. |
@@ -200,6 +240,8 @@ These price endpoints are now used by the HUD worker to display live USD estimat
 | `healthCheck` | lightweight readiness probe used by dossier + CLI smoke tests. |
 | `getUserTokenTrades` | wallet + mint–specific trades, replaces legacy REST integration. |
 
+These price endpoints are now used by the HUD worker to display live USD estimates for SOL and each token in the warchest.
+
 All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
 
 Token metadata caching is now handled by `/lib/services/tokenInfoService.js`, ensuring dossier, autopsy, and future processors all use a unified, hardened metadata pipeline.
@@ -208,10 +250,12 @@ Token metadata caching is now handled by `/lib/services/tokenInfoService.js`, en
 
 Wallet-related helpers now live under `lib/wallets/`:
 
-- `registry.js` – thin wrapper over the BootyBox-backed warchest registry (no behavior changes).
+- `walletRegistry.js` – thin wrapper over the BootyBox-backed warchest registry (no behavior changes).
+- `walletSelection.js` – shared CLI/TUI selection helpers (aliases, colors, default funding).
+- `walletManagement.js` – orchestration helpers for add/list/remove/set-color flows.
 - `resolver.js` – resolves aliases or pubkeys to registry records or watch-only passthroughs.
 - `state.js` – shared live SOL/token state wrapper.
-- `scanner.js` – passthrough to the raw RPC wallet scanner.
+- `WalletScanner.js` – passthrough to the raw RPC wallet scanner.
 - `getWalletForSwap.js` – builds a swap-ready runtime wallet (signer + pubkey verification) from registry rows.
 
 BootyBox remains the source of truth for persisted wallets. Keep key material protected when adding swap/signing support.
@@ -228,7 +272,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 > Run `node index.js --help` or append `--help` to any command for flags & examples.
 
--**Quick reference**
+- **Quick reference**
   
 - `research <walletId>` — (deprecated) Alias for `dossier --harvest-only`; harvests wallet trades + chart + per-mint user trades without calling AI.
 - `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
@@ -237,11 +281,24 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
-- `warchest [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
+- `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
 - `warchestd <action>` — Launch the HUD follower in the foreground, clean legacy daemon artifacts, or show hub status.
 - `test` — Environment + dependency smoke test.
 
-## Architecture
+## CLI Command Index
+
+- `research` — Deprecated alias for `dossier --harvest-only`.
+- `dossier` — Wallet harvest + optional AI profile build.
+- `autopsy` — Wallet + mint campaign analysis.
+- `tx` — Inspect transaction(s), optionally as swaps.
+- `swap` — Execute swaps or manage swap config.
+- `ask` — Q&A against saved profiles.
+- `addcoin` — Fetch and persist token metadata.
+- `wallet` — Manage the local wallet registry.
+- `warchestd` — Run HUD follower or show status.
+- `test` — Environment + DB self-check.
+
+## Warchest architecture
 
 - Worker harness + hub live under `lib/warchest/workers/` and `lib/warchest/hubCoordinator.js`, coordinating swap/monitor/HUD jobs via IPC.
 - Hub status + HUD events are written to `data/warchest/status.json` and `data/warchest/tx-events.json`; the HUD follows these files instead of daemon PID files.
@@ -259,6 +316,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
   - `--limit <num>` cap trades
   - `--feature-mint-count <num>` override mint sampling
   - `--resend` re-run AI on latest merged payload without new data pulls
+  - `--track-kol` upsert this wallet into the KOL registry (requires `--name`)
   - `--harvest-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
 - Default: writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, and persists an `sc_profiles` snapshot.
 - With `--harvest-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
@@ -268,17 +326,21 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
   - user token trades, token metadata, price range, PnL, ATH, OHLCV window, derived metrics
 - Runs `tradeAutopsy` AI job, prints graded analysis, and saves `profiles/autopsy-<wallet>-<mint>-<ts>.json`.
 - Raw/parsed/enriched artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
+- Options: `--trade-uuid <uuid>` (DB-driven autopsy), `--wallet <alias|address>`, `--mint <mint>`, `--no-tui` for non-interactive runs.
 
-### tx `<signature>` [--sig ...] [--swap --wallet <alias|address> --mint <mint>]
+### tx `<signature>` [--sig ...] [--swap --wallet <alias|address> --mint <mint>] [--session]
 - Fetches transaction(s) via `rpcMethods.getTransaction`.
 - Prints status, slot/block time, network fee, and per-account SOL deltas.
 - Swap mode adds wallet/mint deltas, decodes errors, and upserts fee-only or swap events to `sc_trades` when the wallet is tracked.
+- `--session` launches an interactive review session after inspection.
 
 ### swap `<mint>` (plus config mode)
 - Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
 - Options: `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
 - Internals: `lib/cli/swap.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
-- Config mode: `scoundrel swap --config` (Ink-based editor; file location and keys unchanged from previous swap config docs).
+- Config mode: `scoundrel swap --config` (Ink-based editor; keys include `rpcUrl`, `swapApiKey`, `swapDiscountKey`, `swapApiProvider`, `swapApiBaseUrl`, `slippage`, `priorityFee`, `priorityFeeLevel`, `txVersion`, `showQuoteDetails`, `DEBUG_MODE`, `useJito`, `jitoTip`, `preflight`, `maxPriceImpact`, `inkMode`, `explorerBaseUrl`).
+- When switching to Raptor, set `SWAP_API_PROVIDER=raptor` and point `swapApiBaseUrl` to your Raptor base URL (for example `https://raptor-beta.solanatracker.io`).
+- Note: Raptor swaps skip `preflight` simulation (not advertised in Raptor docs).
 - Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
 ### ask
@@ -290,7 +352,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
 - `--force` skips cache; when `SAVE_RAW` is on, writes token info to `data/addcoin/<mint>-<runId>.json`.
 
-### warchest `[add|list|remove|set-color]` [args]
+### wallet `[add|list|remove|set-color]` [args]
 - Wallet registry backed by BootyBox. `--solo` opens a picker for quick lookups.
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
@@ -357,11 +419,4 @@ All AI jobs enforce **strict JSON Schema**. The wallet profile currently include
 
 ## Maintenance Notes
 
-- The legacy HTTP integration under `integrations/solanatracker/userTokenTrades.js` is now fully deprecated.
-  All callers use the official SDK `getUserTokenTrades` method.  
-  The file remains only for historical reference and may be removed in a future development cycle.
-
-
-# Scoundrel — a VAULT77 🔐77 relic
-
-> *Unearthed from VAULT77, Scoundrel is a trench-ops toolkit. It harvests and analyzes top wallets, distills trading playbooks, and feeds them to our bots so we can live to fight another day.*
+- The legacy SolanaTracker REST integration has been removed; all callers use the SDK `getUserTokenTrades` method.

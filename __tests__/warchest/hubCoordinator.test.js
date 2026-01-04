@@ -35,7 +35,7 @@ function waitForFile(target, attempts = 60) {
 }
 
 describe('warchest hub coordinator', () => {
-  test('routes swap into tx monitor and propagates HUD event', async () => {
+  test('routes swap and propagates HUD event', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'warchest-hub-'));
     const eventPath = path.join(tempDir, 'events.json');
     const wallet = makeWallet();

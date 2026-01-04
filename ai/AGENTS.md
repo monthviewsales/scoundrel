@@ -1,6 +1,7 @@
 # ai/
 
 Rules for all LLMs generating code in the /ai directory.
+Inherits root `AGENTS.md`; local rules add/override.
 
 ## Clients
 - Do NOT import or destructure global clients at module load.

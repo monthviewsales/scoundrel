@@ -1,5 +1,7 @@
 # Monitors – Agent Notes
 
+Inherits root `AGENTS.md`; local rules add/override.
+
 This directory holds helpers shared by warchest monitor workers (coin, tx, etc.).
 
 - Use CommonJS modules with JSDoc for every exported function.

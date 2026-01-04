@@ -10,11 +10,11 @@ createWorkerHarness(async (payload) => {
   return {
     echo: payload,
     env: {
-      rpc: process.env.WARCHEST_RPC_ENDPOINT,
+      rpc: process.env.SOLANATRACKER_RPC_HTTP_URL,
       data: process.env.WARCHEST_DATA_ENDPOINT,
       wallets: process.env.WARCHEST_WALLET_IDS,
       booty: process.env.WARCHEST_BOOTYBOX_PATH,
       extra: process.env.EXTRA_SAMPLE_VAR,
     },
   };
-});
+}, { workerName: 'test.echoWorker' });

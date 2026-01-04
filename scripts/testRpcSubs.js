@@ -43,9 +43,18 @@ async function main() {
       const acctIterable = await acctSub.subscribe();
       const acctIter = acctIterable[Symbol.asyncIterator]();
 
+      let acctTimeout = null;
       try {
         console.log('[testRpcSubs] waiting for first account event (move some SOL)...');
-        const { value: acctValue, done } = await acctIter.next();
+        const timeoutPromise = new Promise((resolve) => {
+          acctTimeout = setTimeout(() => resolve({ timeout: true }), 45_000);
+        });
+        const nextResult = await Promise.race([acctIter.next(), timeoutPromise]);
+        if (nextResult && nextResult.timeout) {
+          console.log('[testRpcSubs] no account change detected within 45s; continuing.');
+          return;
+        }
+        const { value: acctValue, done } = nextResult;
 
         if (done) {
           console.log('[testRpcSubs] iterator completed before any account event');
@@ -58,6 +67,7 @@ async function main() {
           }
         }
       } finally {
+        if (acctTimeout) clearTimeout(acctTimeout);
         if (typeof acctIterable.return === 'function') await acctIterable.return();
       }
     } else {

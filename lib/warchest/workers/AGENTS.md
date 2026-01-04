@@ -1,5 +1,7 @@
 # AGENTS
 
+Inherits root `AGENTS.md`; local rules add/override.
+
 This directory contains warchest worker entrypoints.
 
 - Use **CommonJS** modules and add **JSDoc** for every exported helper.

@@ -14,13 +14,14 @@ const monitorWorker = path.join(__dirname, '..', '..', 'fixtures', 'warchest', '
 
 // eslint-disable-next-line global-require
 const { forkWorkerWithPayload } = require('../../../lib/warchest/workers/harness');
+const { createHubCoordinator } = require('../../../lib/warchest/hubCoordinator');
 
 function makeSecretKey() {
   const kp = Keypair.generate();
   return { secret: bs58.encode(kp.secretKey), pubkey: kp.publicKey.toBase58() };
 }
 
-describe('swap worker spawns tx monitor', () => {
+describe('swap worker tx monitor handoff', () => {
   test('propagates swap context into monitor worker IPC', async () => {
     const { secret } = makeSecretKey();
     const logPath = path.join(os.tmpdir(), `tx-monitor-log-${Date.now()}.json`);
@@ -41,7 +42,7 @@ describe('swap worker spawns tx monitor', () => {
         showQuoteDetails: false,
         useJito: false,
         jitoTip: 0.0001,
-        swapAPIKey: 'stub',
+        swapApiKey: 'stub',
         DEBUG_MODE: false,
       }, null, 2),
       'utf8'
@@ -58,13 +59,25 @@ describe('swap worker spawns tx monitor', () => {
         HOME: tempHome,
         XDG_CONFIG_HOME: xdgConfigHome,
         SWAP_WORKER_EXECUTOR: mockExecutor,
-        TX_MONITOR_WORKER_PATH: monitorWorker,
-        TX_MONITOR_TEST_LOG: logPath,
       },
       timeoutMs: 5000,
     });
 
     expect(result.txid).toBe('stub-txid');
+    expect(result.monitorPayload).toBeTruthy();
+
+    const coordinator = createHubCoordinator({
+      txMonitorWorkerPath: monitorWorker,
+      lockPrefix: `test-${Date.now()}`,
+    });
+
+    await coordinator.runTxMonitor(result.monitorPayload, {
+      env: { TX_MONITOR_TEST_LOG: logPath },
+      timeoutMs: 5000,
+    });
+
+    coordinator.close();
+
     for (let i = 0; i < 10 && !fs.existsSync(logPath); i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 100));
