@@ -73,6 +73,7 @@ Follow these rules for **all new and modified code**:
 - **Environment variables**
   - When adding new environment variables, document them in `README.md` and add them to `.env.sample` with a brief comment.
   - Swap provider selection is controlled by `SWAP_API_PROVIDER` (`swapV3` default, `raptor` to use Raptor endpoints).
+  - RPC retry tuning uses `KIT_RPC_MAX_RETRIES`, `KIT_RPC_RETRY_BASE_MS`, and `KIT_RPC_RETRY_MAX_MS`.
 
 - **Patterns**
 - Prefer small, single-responsibility modules.
@@ -83,6 +84,10 @@ Follow these rules for **all new and modified code**:
   - Avoid calling `forkWorkerWithPayload` directly for swap/txMonitor outside the hub coordinator.
   - Worker entrypoints should use `createWorkerHarness` and `createWorkerLogger` for lifecycle logging and cleanup.
   - Detached workers should be spawned via `spawnWorkerDetached` (from the harness) so payload files and env handling stay consistent.
+- **Solana error handling**
+  - Use `lib/solana/errors` (`classifySolanaError`, `formatSolanaErrorMessage`) to normalize Solana/RPC errors.
+  - Include `errorSummary` in HUD-facing payloads when available (tx monitor events and summaries).
+  - Keep transport retry logic in `lib/solanaTrackerRPCClient.js` limited to read-only RPC calls.
 - **Readline / TTY usage**
   - When modules need `process.stdin` / `process.stdout`, reference them at the moment you create a `readline` interface (e.g. inside the function) rather than capturing them at module load time. This keeps tests free of lingering `TTYWRAP` handles when they stub `process.stdin`/`stdout`.
 

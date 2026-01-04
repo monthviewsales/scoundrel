@@ -68,6 +68,10 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_WS_UNSUB_TIMEOUT_MS` | WS unsubscribe timeout | `2500` |
 | `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` | Proxy settings for RPC/data | empty |
 | `WORKER_LOG_LEVEL` | Override worker lifecycle log level | `info` |
+| `KIT_RPC_MAX_RETRIES` | Retry count for retryable RPC reads | `1` |
+| `KIT_RPC_RETRY_BASE_MS` | Base backoff delay for RPC retries (ms) | `200` |
+| `KIT_RPC_RETRY_MAX_MS` | Max backoff delay for RPC retries (ms) | `2000` |
+| `KIT_RPC_LOG_PAYLOAD` | Log full RPC payloads when set to `full` | empty |
 
 ## Testing
 
@@ -75,6 +79,10 @@ Common env vars (full list in `.env.sample`):
 - For CI-grade runs with coverage output to `artifacts/coverage/`, use `npm run test:ci` (also used by GitHub Actions).
 - Run static checks with `npm run lint` (syntax validation).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
+
+## Error Handling Notes
+
+- See `docs/solana-error-taxonomy.md` for how Solana/RPC errors are classified and surfaced in HUD events.
 
 ## Database Access (BootyBox)
 
