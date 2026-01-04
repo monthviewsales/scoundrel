@@ -72,6 +72,7 @@ Follow these rules for **all new and modified code**:
     - Error behavior when relevant (`@throws`)
 - **Environment variables**
   - When adding new environment variables, document them in `README.md` and add them to `.env.sample` with a brief comment.
+  - Swap provider selection is controlled by `SWAP_API_PROVIDER` (`swapV3` default, `raptor` to use Raptor endpoints).
 
 - **Patterns**
 - Prefer small, single-responsibility modules.

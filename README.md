@@ -56,6 +56,7 @@ Common env vars (full list in `.env.sample`):
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
 | `SOLANATRACKER_RPC_HTTP_URL` | SolanaTracker HTTP RPC endpoint | required for RPC usage |
 | `SOLANATRACKER_RPC_WS_URL` | SolanaTracker WebSocket endpoint | required for WS usage |
+| `SWAP_API_PROVIDER` | Swap engine provider (`swapV3` or `raptor`) | `swapV3` |
 | `BOOTYBOX_SQLITE_PATH` | SQLite DB location | `db/bootybox.db` |
 | `FEATURE_MINT_COUNT` | Default mint sample size for dossiers | `8` |
 | `HARVEST_LIMIT` | Max trades per harvest | `100` |
@@ -66,7 +67,6 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |
 | `WARCHEST_WS_UNSUB_TIMEOUT_MS` | WS unsubscribe timeout | `2500` |
 | `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` | Proxy settings for RPC/data | empty |
-| `SC_INK_MODE` | Force Ink UI mode for workers (suppresses console) | unset |
 | `WORKER_LOG_LEVEL` | Override worker lifecycle log level | `info` |
 
 ## Testing
@@ -338,7 +338,9 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
 - Options: `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
 - Internals: `lib/cli/swap.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
-- Config mode: `scoundrel swap --config` (Ink-based editor; file location and keys unchanged from previous swap config docs).
+- Config mode: `scoundrel swap --config` (Ink-based editor; keys include `rpcUrl`, `swapApiKey`, `swapDiscountKey`, `swapApiProvider`, `swapApiBaseUrl`, `slippage`, `priorityFee`, `priorityFeeLevel`, `txVersion`, `showQuoteDetails`, `DEBUG_MODE`, `useJito`, `jitoTip`, `preflight`, `maxPriceImpact`, `inkMode`, `explorerBaseUrl`).
+- When switching to Raptor, set `SWAP_API_PROVIDER=raptor` and point `swapApiBaseUrl` to your Raptor base URL (for example `https://raptor-beta.solanatracker.io`).
+- Note: Raptor swaps skip `preflight` simulation (not advertised in Raptor docs).
 - Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
 ### ask
