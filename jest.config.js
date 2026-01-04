@@ -15,4 +15,12 @@ module.exports = {
   testPathIgnorePatterns: ['/__tests__/fixtures/'],
   coverageDirectory: 'artifacts/coverage',
   coverageReporters: ['text', 'lcov'],
+  coverageThreshold: {
+    global: {
+      branches: 20,
+      functions: 20,
+      lines: 20,
+      statements: 20,
+    },
+  },
 };

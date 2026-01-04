@@ -60,3 +60,88 @@ describe('solanaTrackerRPCClient proxy logging', () => {
     expect(proxyLog).not.toContain('token=123');
   });
 });
+
+describe('solanaTrackerRPCClient retry handling', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    Object.keys(process.env).forEach((key) => {
+      if (!(key in originalEnv)) delete process.env[key];
+    });
+    Object.entries(originalEnv).forEach(([key, value]) => {
+      process.env[key] = value;
+    });
+    jest.resetModules();
+    jest.clearAllMocks();
+    jest.restoreAllMocks();
+  });
+
+  test('retries transient errors for read-only RPC calls', async () => {
+    process.env.KIT_RPC_MAX_RETRIES = '1';
+    const sendMock = jest.fn()
+      .mockRejectedValueOnce(Object.assign(new Error('fetch failed'), { code: 'ECONNRESET' }))
+      .mockResolvedValueOnce({ value: 1 });
+
+    const warnMessages = [];
+    let resultPromise;
+
+    jest.isolateModules(() => {
+      jest.doMock('@solana/kit', () => ({
+        createSolanaRpc: jest.fn(() => ({
+          getBalance: () => ({ send: sendMock }),
+          sendTransaction: () => ({ send: jest.fn() }),
+        })),
+        createSolanaRpcSubscriptions: jest.fn(() => null),
+      }));
+
+      jest.doMock('../lib/logger', () => ({
+        child: () => ({
+          info: () => {},
+          warn: (msg, meta) => warnMessages.push({ msg, meta }),
+          debug: () => {},
+          error: () => {},
+        }),
+      }));
+
+      const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
+      const { rpc } = createSolanaTrackerRPCClient({ httpUrl: 'http://rpc.example.com', wsUrl: null });
+      resultPromise = rpc.getBalance('addr').send();
+    });
+
+    await resultPromise;
+    expect(sendMock).toHaveBeenCalledTimes(2);
+    expect(warnMessages.some((entry) => String(entry.msg).includes('rpc.send retry'))).toBe(true);
+  });
+
+  test('does not retry non-read RPC calls', async () => {
+    process.env.KIT_RPC_MAX_RETRIES = '2';
+    const sendTxMock = jest.fn()
+      .mockRejectedValueOnce(Object.assign(new Error('fetch failed'), { code: 'ECONNRESET' }));
+    let resultPromise;
+
+    jest.isolateModules(() => {
+      jest.doMock('@solana/kit', () => ({
+        createSolanaRpc: jest.fn(() => ({
+          sendTransaction: () => ({ send: sendTxMock }),
+        })),
+        createSolanaRpcSubscriptions: jest.fn(() => null),
+      }));
+
+      jest.doMock('../lib/logger', () => ({
+        child: () => ({
+          info: () => {},
+          warn: () => {},
+          debug: () => {},
+          error: () => {},
+        }),
+      }));
+
+      const { createSolanaTrackerRPCClient } = require('../lib/solanaTrackerRPCClient');
+      const { rpc } = createSolanaTrackerRPCClient({ httpUrl: 'http://rpc.example.com', wsUrl: null });
+      resultPromise = rpc.sendTransaction('payload', { encoding: 'base64' }).send().catch(() => {});
+    });
+
+    await resultPromise;
+    expect(sendTxMock).toHaveBeenCalledTimes(1);
+  });
+});

@@ -76,6 +76,8 @@ describe('txMonitorWorker.monitorTransaction', () => {
 
     expect(result.status).toBe('failed');
     expect(result.slot).toBe(5);
+    expect(result.errorSummary).toBeTruthy();
+    expect(result.errorSummary.kind).toBe('instruction_error');
   });
 
   test('fails fast when transaction lookups keep failing', async () => {
