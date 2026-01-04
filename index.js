@@ -447,15 +447,17 @@ program
 
 program
     .command('devscan')
-    .description('Fetch DevScan token/developer data and persist raw JSON artifacts')
+    .description('Fetch DevScan token/developer data, persist artifacts, and optionally summarize with AI')
     .option('--mint <address>', 'Token mint address to query')
     .option('--dev <wallet>', 'Developer wallet address to query')
     .option('--devtokens <wallet>', 'Developer wallet address to list tokens for')
-    .addHelpText('after', `\nExamples:\n  $ scoundrel devscan --mint <MINT>\n  $ scoundrel devscan --dev <WALLET>\n  $ scoundrel devscan --devtokens <WALLET>\n  $ scoundrel devscan --mint <MINT> --dev <WALLET>\n\nNotes:\n  • Requires DEVSCAN_API_KEY in the environment.\n  • Writes raw JSON artifacts under ./data/devscan/.\n`)
+    .option('--raw-only', 'Skip OpenAI analysis and only write raw artifacts')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel devscan --mint <MINT>\n  $ scoundrel devscan --dev <WALLET>\n  $ scoundrel devscan --devtokens <WALLET>\n  $ scoundrel devscan --mint <MINT> --dev <WALLET>\n\nNotes:\n  • Requires DEVSCAN_API_KEY in the environment.\n  • Uses OPENAI_API_KEY for AI summaries unless --raw-only is set.\n  • Writes JSON artifacts under ./data/devscan/.\n`)
     .action(async (opts) => {
         const mint = opts && opts.mint ? String(opts.mint).trim() : '';
         const developerWallet = opts && opts.dev ? String(opts.dev).trim() : '';
         const developerTokensWallet = opts && opts.devtokens ? String(opts.devtokens).trim() : '';
+        const runAnalysis = !(opts && opts.rawOnly);
 
         if (!mint && !developerWallet && !developerTokensWallet) {
             logger.error('[scoundrel] devscan requires --mint, --dev, or --devtokens');
@@ -484,6 +486,11 @@ program
             process.exitCode = 1;
             return;
         }
+        if (runAnalysis && !process.env.OPENAI_API_KEY) {
+            logger.error('[scoundrel] OPENAI_API_KEY is required for devscan AI summaries');
+            process.exitCode = 1;
+            return;
+        }
 
         try {
             const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'devscanWorker.js');
@@ -492,12 +499,13 @@ program
                     mint: mint || null,
                     developerWallet: developerWallet || null,
                     developerTokensWallet: developerTokensWallet || null,
+                    runAnalysis,
                 },
             });
 
-            if (result && result.mint) {
-                if (result.mint.artifactPath) {
-                    logger.info(`[scoundrel] devscan token artifact: ${result.mint.artifactPath}`);
+            if (result && result.token) {
+                if (result.token.artifactPath) {
+                    logger.info(`[scoundrel] devscan token artifact: ${result.token.artifactPath}`);
                 } else {
                     logger.info('[scoundrel] devscan token response captured (artifact save disabled).');
                 }
@@ -515,6 +523,18 @@ program
                 } else {
                     logger.info('[scoundrel] devscan developer tokens response captured (artifact save disabled).');
                 }
+            }
+
+            if (result && result.promptPath) {
+                logger.info(`[scoundrel] devscan prompt artifact: ${result.promptPath}`);
+            }
+            if (result && result.responsePath) {
+                logger.info(`[scoundrel] devscan response artifact: ${result.responsePath}`);
+            }
+
+            if (result && result.openAiResult && result.openAiResult.markdown) {
+                logger.info('\n=== DevScan Summary ===\n');
+                logger.info(result.openAiResult.markdown);
             }
         } catch (err) {
             let message = err?.message || '';
