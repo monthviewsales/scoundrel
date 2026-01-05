@@ -55,6 +55,9 @@ Use these commands when planning, testing, or validating changes.
 
 Follow these rules for **all new and modified code**:
 
+- **Commit messages**
+  - Prefer fuller commit messages (title + body). Use commit `6477c2456592d018f1b7f8cf8bc52e551a242fbe` as the template for style and depth.
+
 - **Module system**
   - Use **CommonJS** everywhere.
   - Imports: `const foo = require('./foo');`
