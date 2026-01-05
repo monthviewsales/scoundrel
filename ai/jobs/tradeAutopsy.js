@@ -1,7 +1,14 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { randomUUID } = require('crypto');
+const OpenAI = require('openai');
 const defaultClient = require('../gptClient');
 const tradeAutopsySchema = require('../schemas/trade_autopsy_v2.schema.json');
+
+const AUTOPSY_VECTOR_STORE_ID = process.env.AUTOPSY_VECTOR_STORE_ID || 'vs_695c25edadd481918b3be75989e5b8eb';
 
 const SYSTEM = [
   "You are Warlord's trade autopsy engine.",
@@ -36,6 +43,55 @@ const RESPONSE_SCHEMA = tradeAutopsySchema;
  */
 function createTradeAutopsy(client) {
   const { callResponses, parseResponsesJSON, log } = client || defaultClient;
+  const logger = log || console;
+
+  async function saveAutopsyToVectorStore({ analysis, payload }) {
+    if (!AUTOPSY_VECTOR_STORE_ID) {
+      logger.warn('[tradeAutopsy] Missing vector store id; skipping vector store ingest');
+      return;
+    }
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      logger.warn('[tradeAutopsy] OPENAI_API_KEY missing; skipping vector store ingest');
+      return;
+    }
+
+    const campaign = payload?.campaign || {};
+    const token = payload?.token || {};
+    const wallet = payload?.wallet || {};
+    const metadata = {
+      kind: 'autopsy.analysis',
+      generatedAt: new Date().toISOString(),
+      walletAddress: wallet.address || null,
+      walletLabel: wallet.label || null,
+      mint: token.mint || null,
+      tokenSymbol: token.symbol || null,
+      campaignStart: campaign.startTimestamp || null,
+      campaignEnd: campaign.endTimestamp || null,
+      analysis,
+    };
+
+    const content = JSON.stringify(metadata);
+    const tmpPath = path.join(os.tmpdir(), `autopsy-${randomUUID()}.json`);
+    try {
+      logger.warn('[tradeAutopsy] Ingesting autopsy into vector store', { vectorStore: AUTOPSY_VECTOR_STORE_ID });
+      await fs.promises.writeFile(tmpPath, content, 'utf8');
+      const openai = new OpenAI({ apiKey });
+      const file = await openai.files.create({
+        file: fs.createReadStream(tmpPath),
+        purpose: 'assistants',
+      });
+      logger.debug('[tradeAutopsy] Uploaded file for vector store', { fileId: file.id });
+      await openai.beta.vectorStores.fileBatches.create(AUTOPSY_VECTOR_STORE_ID, {
+        fileIds: [file.id],
+      });
+      logger.warn('[tradeAutopsy] Stored analysis in vector store', { vectorStore: AUTOPSY_VECTOR_STORE_ID, fileId: file.id });
+    } catch (err) {
+      logger.warn('[tradeAutopsy] Failed to store analysis in vector store:', err?.message || err);
+    } finally {
+      try { await fs.promises.unlink(tmpPath); } catch (_) {}
+    }
+  }
 
   /**
    * Run the trade autopsy Responses job.
@@ -58,7 +114,9 @@ function createTradeAutopsy(client) {
     });
 
     const out = parseResponsesJSON(res);
-    log.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 256));
+    logger.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 256));
+    await saveAutopsyToVectorStore({ analysis: out, payload })
+      .catch((err) => logger.warn('[tradeAutopsy] vector store ingest failed:', err?.message));
     return out;
   }
 
