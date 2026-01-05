@@ -1,7 +1,15 @@
 'use strict';
 
-// ai/jobs/walletAnalysis.js
+// ai/jobs/walletDossier.js
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { randomUUID } = require('crypto');
+const OpenAI = require('openai');
 const defaultClient = require('../gptClient');
+
+// Vector store that will hold dossier responses. Override via env when needed.
+const DOSSIER_VECTOR_STORE_ID = process.env.DOSSIER_VECTOR_STORE_ID || 'vs_695c1a78e9f48191a718f1ba937e5c88';
 
 const SYSTEM = [
   // === Voice, audience & overall task ===
@@ -123,6 +131,47 @@ const RESPONSE_SCHEMA = {
  */
 function createWalletAnalysis(client) {
   const { callResponses, parseResponsesJSON, log } = client || defaultClient;
+  const logger = log || console;
+
+  async function saveAnalysisToVectorStore({ analysis, merged }) {
+    if (!DOSSIER_VECTOR_STORE_ID) {
+      logger.warn('[walletDossier] Missing vector store id; skipping vector store ingest');
+      return;
+    }
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      logger.warn('[walletDossier] OPENAI_API_KEY missing; skipping vector store ingest');
+      return;
+    }
+    // Build payload with minimal metadata to aid retrieval.
+    const payload = {
+      kind: 'dossier.analysis',
+      generatedAt: new Date().toISOString(),
+      walletAlias: merged?.walletAlias || merged?.walletName || null,
+      walletPubkey: merged?.wallet || merged?.walletId || null,
+      analysis
+    };
+    const content = JSON.stringify(payload);
+    const tmpPath = path.join(os.tmpdir(), `dossier-${randomUUID()}.json`);
+    try {
+      logger.warn('[walletDossier] Ingesting dossier into vector store', { vectorStore: DOSSIER_VECTOR_STORE_ID });
+      await fs.promises.writeFile(tmpPath, content, 'utf8');
+      const openai = new OpenAI({ apiKey });
+      const file = await openai.files.create({
+        file: fs.createReadStream(tmpPath),
+        purpose: 'assistants'
+      });
+      logger.debug('[walletDossier] Uploaded file for vector store', { fileId: file.id });
+      await openai.beta.vectorStores.fileBatches.create(DOSSIER_VECTOR_STORE_ID, {
+        fileIds: [file.id]
+      });
+      logger.warn('[walletDossier] Stored analysis in vector store', { vectorStore: DOSSIER_VECTOR_STORE_ID, fileId: file.id });
+    } catch (err) {
+      logger.warn('[walletDossier] Failed to store analysis in vector store:', err.message);
+    } finally {
+      try { await fs.promises.unlink(tmpPath); } catch (_) {}
+    }
+  }
 
   /**
    * Run the wallet analysis Responses job and normalize the envelope.
@@ -131,7 +180,7 @@ function createWalletAnalysis(client) {
    */
   async function analyzeWallet({ merged, model, purpose }) {
     if (!merged) {
-      throw new Error('[walletAnalysis] missing merged payload');
+      throw new Error('[walletDossier] missing merged payload');
     }
 
     const res = await callResponses({
@@ -162,7 +211,11 @@ function createWalletAnalysis(client) {
       out = { version: 'dossier.freeform.v1', markdown: String(text || '').trim() };
     }
 
-    log.debug('[walletAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
+    logger.debug('[walletDossier] model output (truncated):', JSON.stringify(out).slice(0, 300));
+
+    // Persist into the configured OpenAI vector store (wait to ensure upload completes).
+    await saveAnalysisToVectorStore({ analysis: out, merged })
+      .catch((err) => logger.warn('[walletDossier] vector store ingest failed:', err?.message));
     return out;
   }
 

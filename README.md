@@ -113,7 +113,7 @@ If you add a new persistence path, implement it inside BootyBox so the helper su
 SolanaTrackerDataClient ──▶ /lib/cli/dossier.js
                           └─ trades + chart + meta (merged JSON)
 
-/lib/cli/dossier.js ──▶ /ai/jobs/walletAnalysis.js (Responses API)
+/lib/cli/dossier.js ──▶ /ai/jobs/walletDossier.js (Responses API)
                          └─ writes to ./profiles/<name>.json + operator_summary markdown
 
 CLI commands ───────────▶ /lib/cli/*.js processors

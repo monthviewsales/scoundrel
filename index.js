@@ -289,7 +289,7 @@ program
                 const latestPath = latest.path;
                 logger.info(`[scoundrel] Reusing merged payload: ${latestPath}`);
                 const merged = latest.data;
-                const { analyzeWallet } = require('./ai/jobs/walletAnalysis');
+                const { analyzeWallet } = require('./ai/jobs/walletDossier');
                 const aiOut = await analyzeWallet({ merged });
                 const openAiResult = aiOut && aiOut.version ? aiOut : { version: 'dossier.freeform.v1', markdown: String(aiOut || '') };
 
@@ -950,7 +950,7 @@ program
         const pathsToCheck = [
             join(__dirname, 'lib', 'cli', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
-            join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
+            join(__dirname, 'ai', 'jobs', 'walletDossier.js'),
             join(__dirname, 'lib', 'cli', 'ask.js'),
         ];
         logger.info('\n[scoundrel] core files:');

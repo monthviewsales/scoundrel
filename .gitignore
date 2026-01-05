@@ -101,6 +101,8 @@ profiles/
 data/
 
 autopsy/
+!lib/autopsy/
+!lib/autopsy/**
 
 db/db_backup.zip
 
