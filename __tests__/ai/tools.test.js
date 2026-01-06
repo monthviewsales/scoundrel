@@ -10,6 +10,10 @@ describe('ai tools registry', () => {
     expect(names).toContain('solanaTrackerData.getWalletChart');
     expect(names).toContain('solanaTrackerData.getPriceRange');
     expect(names).toContain('solanaTrackerData.getTokenOverview');
+    expect(names).toContain('solanaTrackerData.getTokenPrice');
+    expect(names).toContain('solanaTrackerData.getTokenSnapshotNow');
+    expect(names).toContain('solanaTrackerData.getTokenRiskScores');
+    expect(names).toContain('solanaTrackerData.getAthPrice');
     expect(names).toContain('walletChart.normalizeChartPoints');
     expect(names).toContain('tradeMints.isBase58Mint');
     expect(names).toContain('autopsy.extractPrice');

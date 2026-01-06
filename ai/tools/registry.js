@@ -151,6 +151,110 @@ const toolDefinitions = [
     },
   },
   {
+    name: 'solanaTrackerData.getTokenPrice',
+    description: 'Fetch the latest token price snapshot from SolanaTracker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mint: { type: 'string' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['mint'],
+      additionalProperties: false,
+    },
+    handler: async ({ mint, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getTokenPrice(mint);
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
+    name: 'solanaTrackerData.getTokenSnapshotNow',
+    description: 'Fetch the latest token snapshot (overview + pricing) from SolanaTracker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mint: { type: 'string' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['mint'],
+      additionalProperties: false,
+    },
+    handler: async ({ mint, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getTokenSnapshotNow(mint);
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
+    name: 'solanaTrackerData.getTokenRiskScores',
+    description: 'Fetch SolanaTracker token risk scores.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mint: { type: 'string' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['mint'],
+      additionalProperties: false,
+    },
+    handler: async ({ mint, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getTokenRiskScores(mint);
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
+    name: 'solanaTrackerData.getAthPrice',
+    description: 'Fetch the token all-time-high price from SolanaTracker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mint: { type: 'string' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['mint'],
+      additionalProperties: false,
+    },
+    handler: async ({ mint, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getAthPrice(mint);
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
     name: 'walletChart.normalizeChartPoints',
     description: 'Normalize raw wallet chart points to sorted {t, pnl} entries.',
     parameters: {
