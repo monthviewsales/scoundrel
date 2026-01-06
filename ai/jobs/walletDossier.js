@@ -162,7 +162,7 @@ function createWalletAnalysis(client) {
         purpose: 'assistants'
       });
       logger.debug('[walletDossier] Uploaded file for vector store', { fileId: file.id });
-      await openai.beta.vectorStores.fileBatches.create(DOSSIER_VECTOR_STORE_ID, {
+      await openai.vectorStores.fileBatches.create(DOSSIER_VECTOR_STORE_ID, {
         fileIds: [file.id]
       });
       logger.warn('[walletDossier] Stored analysis in vector store', { vectorStore: DOSSIER_VECTOR_STORE_ID, fileId: file.id });

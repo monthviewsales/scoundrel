@@ -20,7 +20,7 @@ const SYSTEM = [
   // 🔥 UNITS & FIELD MEANING (CRITICAL) 🔥
   "Pay very close attention to units:",
   "- Fields under marketContext.tokenPnL such as realized, total_invested, total_sold, total, sold_usd and total_sold are all DENOMINATED IN USD, not SOL.",
-  "- campaign.metrics.realizedPnLSol is ALSO denominated in USD, even though the key name includes 'Sol'. Treat it as USD profit.",
+  "- campaign.metrics.realizedPnLUsd, avgEntryPrice, and avgExitPrice are denominated in USD. Treat them as USD values.",
   "- For each trade: amount = token units, priceUsd = USD per token, volume = USD notional for that trade, and volumeSol = SOL actually spent/received.",
   "- When you talk about profit, loss, capital, and returns, treat these values as USD unless you explicitly say you are converting into SOL.",
   "- Never call a USD amount 'SOL' in your text. If you say 'x SOL', that must refer to a quantity of SOL, not USD.",
@@ -82,7 +82,7 @@ function createTradeAutopsy(client) {
         purpose: 'assistants',
       });
       logger.debug('[tradeAutopsy] Uploaded file for vector store', { fileId: file.id });
-      await openai.beta.vectorStores.fileBatches.create(AUTOPSY_VECTOR_STORE_ID, {
+      await openai.vectorStores.fileBatches.create(AUTOPSY_VECTOR_STORE_ID, {
         fileIds: [file.id],
       });
       logger.warn('[tradeAutopsy] Stored analysis in vector store', { vectorStore: AUTOPSY_VECTOR_STORE_ID, fileId: file.id });

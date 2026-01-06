@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "devscan_developer_v1",
+  "description": "Structured output schema for DevScan developer reports.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "devscan.developer.v1" },
+    "markdown": { "type": "string" },
+    "entity_type": { "type": "string", "const": "developer" },
+    "target": { "type": ["string", "null"] },
+    "developer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "wallet": { "type": ["string", "null"] },
+        "name": { "type": ["string", "null"] },
+        "rating": { "type": ["number", "null"] },
+        "totalTokensCreated": { "type": ["number", "null"] },
+        "migrationCount": { "type": ["number", "null"] },
+        "feesCollected": { "type": ["number", "null"] },
+        "x_handles": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": [
+        "wallet",
+        "name",
+        "rating",
+        "totalTokensCreated",
+        "migrationCount",
+        "feesCollected",
+        "x_handles"
+      ]
+    },
+    "tokens_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "number" },
+        "alive": { "type": "number" },
+        "dead": { "type": "number" },
+        "migrated": { "type": "number" },
+        "top_market_caps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mint": { "type": "string" },
+              "symbol": { "type": ["string", "null"] },
+              "marketCapUsd": { "type": ["number", "null"] },
+              "status": { "type": ["string", "null"] }
+            },
+            "required": ["mint", "symbol", "marketCapUsd", "status"]
+          }
+        },
+        "recent_mints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mint": { "type": "string" },
+              "symbol": { "type": ["string", "null"] },
+              "createdAt": { "type": ["string", "null"] },
+              "status": { "type": ["string", "null"] }
+            },
+            "required": ["mint", "symbol", "createdAt", "status"]
+          }
+        }
+      },
+      "required": ["total", "alive", "dead", "migrated", "top_market_caps", "recent_mints"]
+    },
+    "x_profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "handle": { "type": "string" },
+          "url": { "type": ["string", "null"] },
+          "followers": { "type": ["number", "null"] },
+          "avg_views": { "type": ["number", "null"] },
+          "notes": { "type": "string" }
+        },
+        "required": ["handle", "url", "followers", "avg_views", "notes"]
+      }
+    },
+    "x_mints_mentioned": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "mint": { "type": "string" },
+          "last_60m": { "type": ["number", "null"] },
+          "last_30m": { "type": ["number", "null"] },
+          "last_5m": { "type": ["number", "null"] },
+          "notes": { "type": "string" }
+        },
+        "required": ["mint", "last_60m", "last_30m", "last_5m", "notes"]
+      }
+    },
+    "highlights": { "type": "array", "items": { "type": "string" } },
+    "risk_flags": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": [
+    "version",
+    "markdown",
+    "entity_type",
+    "target",
+    "developer",
+    "tokens_summary",
+    "x_profiles",
+    "x_mints_mentioned",
+    "highlights",
+    "risk_flags",
+    "confidence"
+  ]
+}
