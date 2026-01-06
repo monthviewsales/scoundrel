@@ -4,6 +4,7 @@
 > It harvests and analyzes the trading patterns of top wallets, relays strategies, and keeps the link open to save our futures.*
 
 Docs: For a high-level repo overview (LLM-friendly), see `docs/scoundrel-overview.md`.
+For creating new CLI analysis flows (dossier/autopsy/devscan pattern), see `docs/analysis-flow-factory.md`.
 
 ## 📡 Connect with VAULT77
 

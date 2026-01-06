@@ -27,6 +27,9 @@ const { runXJob } = createXJob(defaultClient);
 module.exports = { createXJob, runXJob };
 ```
 
+## Shared Patterns
+- For creating new CLI analysis flows (dossier/autopsy/devscan pattern), follow `docs/analysis-flow-factory.md`.
+
 ## Forbidden
 - ❌ `const { callResponses } = require('../client')` (no global destructuring)
 - ❌ Creating AI clients inside runXJob

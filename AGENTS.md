@@ -13,6 +13,10 @@ Agents **must** read and follow this document before making any changes.
 - If you work inside a directory that contains its own `AGENTS.md`, follow that file too; **nearest file wins** when rules conflict.
 - Local rules extend or override these root rules; do not ignore them.
 
+## Shared Patterns
+
+- For creating new CLI analysis flows (dossier/autopsy/devscan pattern), follow `docs/analysis-flow-factory.md`.
+
 ### Known locations
 
 - `ai/AGENTS.md`
