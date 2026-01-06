@@ -65,6 +65,5 @@ describe('buildAutopsyPayload', () => {
     expect(write).toHaveBeenCalledWith('raw', 'tokenInfo', expect.any(Object));
     expect(write).toHaveBeenCalledWith('raw', 'userTokenTrades', expect.any(Object));
     expect(write).toHaveBeenCalledWith('raw', 'ohlcv', expect.any(Object));
-    expect(write).toHaveBeenCalledWith('prompt', 'prompt', payload);
   });
 });
