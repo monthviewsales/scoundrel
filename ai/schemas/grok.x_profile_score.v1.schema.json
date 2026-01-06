@@ -1,0 +1,40 @@
+{
+  "title": "grok_x_profile_score_v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "grok.x_profile_score.v1" },
+    "handle": { "type": "string" },
+    "displayName": { "type": ["string", "null"] },
+    "score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "tier": { "type": "string", "enum": ["elite", "strong", "average", "weak", "unknown"] },
+    "reasons": { "type": "array", "items": { "type": "string" } },
+    "x_activity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "last_60m": { "type": ["number", "null"] },
+        "last_30m": { "type": ["number", "null"] },
+        "last_5m": { "type": ["number", "null"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["last_60m", "last_30m", "last_5m", "notes"]
+    },
+    "strengths": { "type": "array", "items": { "type": "string" } },
+    "concerns": { "type": "array", "items": { "type": "string" } },
+    "risk_flags": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": [
+    "version",
+    "handle",
+    "score",
+    "tier",
+    "reasons",
+    "x_activity",
+    "strengths",
+    "concerns",
+    "risk_flags",
+    "confidence"
+  ]
+}

@@ -14,6 +14,8 @@ const {
   extractFees,
 } = require('../../lib/autopsy/tradeExtractors');
 const { createSolanaTrackerDataClient } = require('../../lib/solanaTrackerDataClient');
+const { runGrokProfileScore } = require('../jobs/grokProfileScore');
+const { runGrokMintSearchReport } = require('../jobs/grokMintSearchReport');
 
 /**
  * @typedef {Object} ToolDefinition
@@ -253,6 +255,52 @@ const toolDefinitions = [
         }
       }
     },
+  },
+  {
+    name: 'grok.scoreProfile',
+    description: 'Score an X profile using Grok with a structured JSON response.',
+    parameters: {
+      type: 'object',
+      properties: {
+        handle: { type: 'string' },
+        profileUrl: { type: 'string' },
+        profile: { type: 'object' },
+        model: { type: 'string' },
+        purpose: { type: 'string' },
+      },
+      required: ['handle'],
+      additionalProperties: false,
+    },
+    handler: async ({ handle, profileUrl, profile, model, purpose }) => runGrokProfileScore({
+      handle,
+      profileUrl,
+      profile,
+      model,
+      purpose,
+    }),
+  },
+  {
+    name: 'grok.searchMintReport',
+    description: 'Search X for a mint and return a DevScan-style structured report.',
+    parameters: {
+      type: 'object',
+      properties: {
+        mint: { type: 'string' },
+        symbol: { type: 'string' },
+        aliases: { type: 'array', items: { type: 'string' } },
+        model: { type: 'string' },
+        purpose: { type: 'string' },
+      },
+      required: ['mint'],
+      additionalProperties: false,
+    },
+    handler: async ({ mint, symbol, aliases, model, purpose }) => runGrokMintSearchReport({
+      mint,
+      symbol,
+      aliases,
+      model,
+      purpose,
+    }),
   },
   {
     name: 'walletChart.normalizeChartPoints',

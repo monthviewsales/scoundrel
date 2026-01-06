@@ -1,0 +1,36 @@
+{
+  "title": "grok_mint_search_report_v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "grok.mint_search_report.v1" },
+    "mint": { "type": "string" },
+    "symbol": { "type": ["string", "null"] },
+    "summary": { "type": "string" },
+    "x_mentions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": { "type": "string" },
+        "last_60m": { "type": ["number", "null"] },
+        "last_30m": { "type": ["number", "null"] },
+        "last_5m": { "type": ["number", "null"] },
+        "top_accounts": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "required": ["query", "last_60m", "last_30m", "last_5m", "top_accounts", "notes"]
+    },
+    "highlights": { "type": "array", "items": { "type": "string" } },
+    "risk_flags": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": [
+    "version",
+    "mint",
+    "summary",
+    "x_mentions",
+    "highlights",
+    "risk_flags",
+    "confidence"
+  ]
+}

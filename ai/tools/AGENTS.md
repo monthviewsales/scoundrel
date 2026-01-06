@@ -36,3 +36,4 @@ The catalog is exported via `ai/tools/index.js`:
 - Do not import or create AI clients in this directory.
 - Prefer reusing helper modules in `/lib` or `/ai` over inline logic.
 - If a tool creates a SolanaTracker data client, close it in a finally block.
+- If a tool wraps Grok/X logic, implement it as an AI job under `ai/jobs` and call it from the tool.
