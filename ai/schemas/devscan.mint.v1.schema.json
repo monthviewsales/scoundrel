@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "devscan_mint_v1",
+  "description": "Structured output schema for DevScan mint reports.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "devscan.mint.v1" },
+    "markdown": { "type": "string" },
+    "entity_type": { "type": "string", "const": "mint" },
+    "target": { "type": ["string", "null"] },
+    "mint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": { "type": ["string", "null"] },
+        "symbol": { "type": ["string", "null"] },
+        "name": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "createdAt": { "type": ["string", "null"] },
+        "priceUsd": { "type": ["number", "null"] },
+        "marketCapUsd": { "type": ["number", "null"] },
+        "migrated": { "type": ["boolean", "null"] },
+        "creatorWallet": { "type": ["string", "null"] },
+        "launchPlatform": { "type": ["string", "null"] }
+      },
+      "required": [
+        "address",
+        "symbol",
+        "name",
+        "status",
+        "createdAt",
+        "priceUsd",
+        "marketCapUsd",
+        "migrated",
+        "creatorWallet",
+        "launchPlatform"
+      ]
+    },
+    "developer": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "wallet": { "type": ["string", "null"] },
+        "name": { "type": ["string", "null"] },
+        "rating": { "type": ["number", "null"] },
+        "x_handles": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["wallet", "name", "rating", "x_handles"]
+    },
+    "x_mentions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": { "type": ["string", "null"] },
+        "last_60m": { "type": ["number", "null"] },
+        "last_30m": { "type": ["number", "null"] },
+        "last_5m": { "type": ["number", "null"] },
+        "top_accounts": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "required": ["query", "last_60m", "last_30m", "last_5m", "top_accounts", "notes"]
+    },
+    "x_profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "handle": { "type": "string" },
+          "url": { "type": ["string", "null"] },
+          "followers": { "type": ["number", "null"] },
+          "avg_views": { "type": ["number", "null"] },
+          "notes": { "type": "string" }
+        },
+        "required": ["handle", "url", "followers", "avg_views", "notes"]
+      }
+    },
+    "highlights": { "type": "array", "items": { "type": "string" } },
+    "risk_flags": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": [
+    "version",
+    "markdown",
+    "entity_type",
+    "target",
+    "mint",
+    "developer",
+    "x_mentions",
+    "x_profiles",
+    "highlights",
+    "risk_flags",
+    "confidence"
+  ]
+}
