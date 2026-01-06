@@ -5,6 +5,7 @@
 
 Docs: For a high-level repo overview (LLM-friendly), see `docs/scoundrel-overview.md`.
 For creating new CLI analysis flows (dossier/autopsy/devscan pattern), see `docs/analysis-flow-factory.md`.
+For agentic tool registration, see the tool registry at `ai/tools/index.js` and guidelines in `ai/tools/AGENTS.md`.
 
 ## 📡 Connect with VAULT77
 

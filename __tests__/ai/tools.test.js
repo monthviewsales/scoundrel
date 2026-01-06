@@ -6,6 +6,10 @@ describe('ai tools registry', () => {
   test('listTools exposes tool schemas', () => {
     const tools = listTools();
     const names = tools.map((tool) => tool.name);
+    expect(names).toContain('solanaTrackerData.getWalletTrades');
+    expect(names).toContain('solanaTrackerData.getWalletChart');
+    expect(names).toContain('solanaTrackerData.getPriceRange');
+    expect(names).toContain('solanaTrackerData.getTokenOverview');
     expect(names).toContain('walletChart.normalizeChartPoints');
     expect(names).toContain('tradeMints.isBase58Mint');
     expect(names).toContain('autopsy.extractPrice');

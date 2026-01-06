@@ -13,6 +13,7 @@ const {
   extractPrice,
   extractFees,
 } = require('../../lib/autopsy/tradeExtractors');
+const { createSolanaTrackerDataClient } = require('../../lib/solanaTrackerDataClient');
 
 /**
  * @typedef {Object} ToolDefinition
@@ -24,6 +25,131 @@ const {
 
 /** @type {ToolDefinition[]} */
 const toolDefinitions = [
+  {
+    name: 'solanaTrackerData.getWalletTrades',
+    description: 'Fetch wallet trades from SolanaTracker with optional time filtering.',
+    parameters: {
+      type: 'object',
+      properties: {
+        wallet: { type: 'string' },
+        limit: { type: 'integer', minimum: 1 },
+        startTime: { type: 'number' },
+        endTime: { type: 'number' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['wallet'],
+      additionalProperties: false,
+    },
+    handler: async ({
+      wallet,
+      limit,
+      startTime,
+      endTime,
+      apiKey,
+      baseUrl,
+      maxAttempts,
+      retryBaseMs,
+    }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getWalletTrades({ wallet, limit, startTime, endTime });
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
+    name: 'solanaTrackerData.getWalletChart',
+    description: 'Fetch wallet chart (PnL history) from SolanaTracker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        wallet: { type: 'string' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['wallet'],
+      additionalProperties: false,
+    },
+    handler: async ({ wallet, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getWalletChart(wallet);
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
+    name: 'solanaTrackerData.getPriceRange',
+    description: 'Fetch a token price range for a time window from SolanaTracker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tokenAddress: { type: 'string' },
+        timeFrom: { type: 'number' },
+        timeTo: { type: 'number' },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      required: ['tokenAddress', 'timeFrom', 'timeTo'],
+      additionalProperties: false,
+    },
+    handler: async ({
+      tokenAddress,
+      timeFrom,
+      timeTo,
+      apiKey,
+      baseUrl,
+      maxAttempts,
+      retryBaseMs,
+    }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getPriceRange(tokenAddress, timeFrom, timeTo);
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
+  {
+    name: 'solanaTrackerData.getTokenOverview',
+    description: 'Fetch the token overview feed from SolanaTracker.',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: { type: 'integer', minimum: 1 },
+        apiKey: { type: 'string' },
+        baseUrl: { type: 'string' },
+        maxAttempts: { type: 'integer', minimum: 1 },
+        retryBaseMs: { type: 'number', minimum: 0 },
+      },
+      additionalProperties: false,
+    },
+    handler: async ({ limit, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+      const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
+      try {
+        return await client.getTokenOverview({ limit });
+      } finally {
+        if (client && typeof client.close === 'function') {
+          await client.close();
+        }
+      }
+    },
+  },
   {
     name: 'walletChart.normalizeChartPoints',
     description: 'Normalize raw wallet chart points to sorted {t, pnl} entries.',
