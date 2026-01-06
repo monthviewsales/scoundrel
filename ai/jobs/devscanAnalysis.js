@@ -16,6 +16,7 @@ const SYSTEM = [
   'Mint mode: when payload.meta.mint or payload.token is present, analyze the mint and return x_mentions counts for last 60m, 30m, 5m.',
   'Developer mode: analyze dev + token history and scan X handles; list mints they are tweeting about (only alive mints).',
   'If x_search cannot provide time-windowed counts, set counts to null and explain in notes.',
+  'DevScan developer rating is a raw 0–100 score (not a percentage). A value like 0.991 is sub-1/100, NOT 99%.',
   'Return Markdown + the required JSON fields per schema. Do NOT print JSON inside markdown.'
 ].join(' ');
 
