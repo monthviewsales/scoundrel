@@ -1,0 +1,399 @@
+{
+    "token": {
+      "name": "OFFICIAL TRUMP",
+      "symbol": "TRUMP",
+      "mint": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+      "uri": "https://arweave.net/cSCP0h2n1crjeSWE9KF-XtLciJalDNFs7Vf-Sm0NNY0",
+      "decimals": 6,
+      "description": "",
+      "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Farweave.net%2FVQrPjACwnQRmxdKBTqNwPiyo65x7LAT773t8Kd7YBzw",
+      "hasFileMetaData": true,
+      "strictSocials": {},
+      "creation": {
+        "creator": "5e2qRc1DNEXmyxP8qwPwJhRWjef7usLyi7v5xjqLr5G7",
+        "created_tx": "3RVpxfaDscntzr4abnmjkkN1cDPthzpxG3Pgt6PksmvhzNDFXxCPPxnKByjPJK4vsmXueD3zxuhYq5PpwCuyigLR",
+        "created_time": 1737122459
+      }
+    },
+    "pools": [
+      {
+        "poolId": "9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2",
+        "liquidity": {
+          "quote": 59296415.973807,
+          "usd": 155628439.81815374
+        },
+        "price": {
+          "quote": 5.450809412775287,
+          "usd": 5.450809412775287
+        },
+        "tokenSupply": 999999204.6472,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 5450805077.458758,
+          "usd": 5450805077.458758
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1767737288118,
+        "createdAt": 1737196771000,
+        "deployer": "FbMxP3GVq8TQ36nbYgx4NP9iygMpwAwFWJwW81ioCiSF",
+        "txns": {
+          "buys": 2083948,
+          "sells": 1926093,
+          "total": 4010041,
+          "volume": 23874267969,
+          "volume24h": 25832613
+        }
+      },
+      {
+        "poolId": "3C5YE97HADPDxZehYq9Cis8AXr9aNyrUsczKzE1nDbW9",
+        "liquidity": {
+          "quote": 7403858.130921,
+          "usd": 17115850.002138615
+        },
+        "price": {
+          "quote": 5.447476995653927,
+          "usd": 5.447476995653927
+        },
+        "tokenSupply": 999999204.6472,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 5447472662.987845,
+          "usd": 5447472662.987845
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1767737288117,
+        "deployer": "BhHHQP4z4QUebvtkGinNK8vLfdz2XqshLmunAGjexoHW",
+        "txns": {
+          "buys": 312145,
+          "sells": 216584,
+          "total": 528729,
+          "volume": 269045506,
+          "volume24h": 4928176
+        }
+      },
+      {
+        "poolId": "GQsPr4RJk9AZkkfWHud7v4MtotcxhaYzZHdsPCg9vNvW",
+        "liquidity": {
+          "quote": 1414.488140793296,
+          "usd": 198929.97205725353
+        },
+        "price": {
+          "quote": 0.038688810196574455,
+          "usd": 5.441094703711368
+        },
+        "tokenSupply": 999999204.6472,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 38688779.42532094,
+          "usd": 5441090376.12146
+        },
+        "market": "raydium-clmm",
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "deployer": "AshdxLbGf43Eau3wh3WmYCx41NByS2K3KAKDyeR15Q5Z",
+        "lastUpdated": 1767737288122,
+        "txns": {
+          "buys": 188093,
+          "sells": 167297,
+          "total": 355390,
+          "volume": 170272771,
+          "volume24h": 15852
+        }
+      },
+      {
+        "poolId": "6XMrsTeFC8gYmVasKaBuVwU4fyAVPJLHd8jno82JBhS5",
+        "liquidity": {
+          "quote": 11.645810766,
+          "usd": 123245.19145060121
+        },
+        "price": {
+          "quote": 0.03871955899268149,
+          "usd": 5.440018547781011
+        },
+        "tokenSupply": 999999204.6472,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 38719528.196971826,
+          "usd": 5440014221.047027
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1767736897471,
+        "deployer": "3BumMudVscCz5dkAWu9icPvumKgkv29oqfkR4TH8E3Wj"
+      },
+      {
+        "poolId": "A8nPhpCJqtqHdqUk35Uj9Hy2YsGXFkCZGuNwvkD3k7VC",
+        "liquidity": {
+          "quote": 4367.22277,
+          "usd": 115669.26309874238
+        },
+        "price": {
+          "quote": 5.37417951605184,
+          "usd": 5.37417951605184
+        },
+        "tokenSupply": 999999204.661633,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 5374175241.76068,
+          "usd": 5374175241.76068
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1767722297079,
+        "deployer": "8tKLhRyFC3RsQ41APTqKdzr9DdeGqV2RtRgSjVgsY4xb"
+      },
+      {
+        "poolId": "71HuFmuYAFEFUna2x2R4HJjrFNQHGuagW3gUMFToL9tk",
+        "liquidity": {
+          "quote": 88.842246494,
+          "usd": 91922.17974949426
+        },
+        "price": {
+          "quote": 0.03871287447247857,
+          "usd": 5.43599797225218
+        },
+        "tokenSupply": 999999204.6472,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 38712843.68208546,
+          "usd": 5435993648.715972
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1767736763525,
+        "createdAt": 1737175011000,
+        "deployer": "9Y7KcsQ8XvkAdFpTDQpeTQtqMxcVXvFWEi66R7872kr1"
+      },
+      {
+        "poolId": "4CTUHtiHrPHFT4Zc1qNScrposmM7xfupU7EVDWCR7PZw",
+        "liquidity": {
+          "quote": 66.978957117,
+          "usd": 90722.38410976036
+        },
+        "price": {
+          "quote": 0.0385602086037424,
+          "usd": 5.33597201482035
+        },
+        "tokenSupply": 999999204.663236,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 38560177.935390875,
+          "usd": 5335967770.925635
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1767720640077,
+        "deployer": "GpQkufRFxppWwSNGbb9tWGPXMAzxVE8742A6dFymVrzz"
+      },
+      {
+        "poolId": "6nD6d8gG17wakW6Wu5URktBZQp3uxp5orgPa576QXigJ",
+        "liquidity": {
+          "quote": 69836.01283869997,
+          "usd": 69836.01283869997
+        },
+        "price": {
+          "quote": 6.7884903598148,
+          "usd": 6.7884903598148
+        },
+        "tokenSupply": 999999252.576263,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 6788485285.935963,
+          "usd": 6788485285.935963
+        },
+        "market": "orca",
+        "quoteToken": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1763591879439,
+        "deployer": null
+      },
+      {
+        "poolId": "3DDBu1BGiYTYbCqvKRHJCMQngLNSJCrHffBEFnPUWf2d",
+        "liquidity": {
+          "quote": 7.963519926,
+          "usd": 36474.35250182968
+        },
+        "price": {
+          "quote": 0.051435624592965364,
+          "usd": 7.299382286029589
+        },
+        "tokenSupply": 999999254.175558,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 51435586.23101935,
+          "usd": 7299376841.9718685
+        },
+        "market": "meteora-dlmm",
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "lastUpdated": 1763374209604,
+        "deployer": "2F19ZXrvQDCoYXdBoFBiBcEmgrAKYAheZHnQxZksHQhN"
+      },
+      {
+        "poolId": "CsVe97sDiaXkVfVjiwyYp4zKZXD7TckaRcLVgqbFuUay",
+        "liquidity": {
+          "quote": 182.2392229790568,
+          "usd": 25712.46141661396
+        },
+        "price": {
+          "quote": 0.03922399314112783,
+          "usd": 5.534184100218006
+        },
+        "tokenSupply": 999999204.6472,
+        "lpBurn": 0,
+        "tokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
+        "marketCap": {
+          "quote": 39223961.94421506,
+          "usd": 5534179698.589187
+        },
+        "market": "raydium-clmm",
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "deployer": "FZVdsFTRTWwZEy6XC5GCtHNWdcAwiQtAeJ2NSpH6cQNz",
+        "lastUpdated": 1767734492586,
+        "createdAt": 1737166166982
+      }
+    ],
+    "events": {
+      "1m": {
+        "priceChangePercentage": 0.4999999999999918
+      },
+      "5m": {
+        "priceChangePercentage": 0.4999999999999918
+      },
+      "15m": {
+        "priceChangePercentage": 0.4999999999999918
+      },
+      "30m": {
+        "priceChangePercentage": 0.4999999999999918
+      },
+      "1h": {
+        "priceChangePercentage": 1.0024999999999946
+      },
+      "2h": {
+        "priceChangePercentage": 1.0024999999999946
+      },
+      "3h": {
+        "priceChangePercentage": 2.015050062499999
+      },
+      "4h": {
+        "priceChangePercentage": 2.015050062499999
+      },
+      "5h": {
+        "priceChangePercentage": -1.4851240690190342
+      },
+      "6h": {
+        "priceChangePercentage": -1.4851240690190342
+      },
+      "12h": {
+        "priceChangePercentage": -3.9114796198453115
+      },
+      "24h": {
+        "priceChangePercentage": -3.9114796198453115
+      }
+    },
+    "risk": {
+      "snipers": {
+        "count": 0,
+        "totalBalance": 0,
+        "totalPercentage": 0,
+        "wallets": []
+      },
+      "insiders": {
+        "count": 0,
+        "totalBalance": 0,
+        "totalPercentage": 0,
+        "wallets": []
+      },
+      "top10": 88.12630000000001,
+      "dev": {
+        "percentage": 0.0149,
+        "amount": 149262.102878
+      },
+      "fees": {
+        "jito": 692.6073495969997,
+        "network": 42.671709085,
+        "axiom": 11.744039357,
+        "helius-sender": 3.787158893,
+        "bullx": 1.104382776,
+        "photon": 2.204634993,
+        "trojan": 14.628317872,
+        "vector": 0.475537853,
+        "bloom": 0.793924227,
+        "0slot": 37.675582165,
+        "nextblock": 31.685900907,
+        "soltradingbot": 0.302173121,
+        "maestro": 2.864852855,
+        "padre": 0.003592798,
+        "totalTrading": 34.121455852,
+        "totalTips": 808.4277006469997,
+        "total": 842.5491564989998
+      },
+      "rugged": false,
+      "risks": [],
+      "score": 0,
+      "jupiterVerified": true
+    },
+    "buys": 70,
+    "sells": 57,
+    "txns": 127,
+    "holders": 638770,
+    "totalVolume": 818977
+  }
