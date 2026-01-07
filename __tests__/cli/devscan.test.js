@@ -96,15 +96,35 @@ test('runDevscan runs analysis and persists profile snapshot', async () => {
   mockFetchJson({ success: true, data: { mintAddress: 'Mint2' } });
 
   mockAnalyzeDevscan.mockResolvedValue({
-    version: 'devscan.freeform.v1',
+    version: 'devscan.mint.v1',
     markdown: '# ok',
-    summary: {
-      entity_type: 'token',
-      target: 'Mint2',
-      highlights: [],
-      risk_flags: [],
-      confidence: 0.5,
+    entity_type: 'mint',
+    target: 'Mint2',
+    mint: {
+      address: 'Mint2',
+      symbol: null,
+      name: null,
+      status: null,
+      createdAt: null,
+      priceUsd: null,
+      marketCapUsd: null,
+      migrated: null,
+      creatorWallet: null,
+      launchPlatform: null,
     },
+    developer: null,
+    x_mentions: {
+      query: 'Mint2',
+      last_60m: null,
+      last_30m: null,
+      last_5m: null,
+      top_accounts: [],
+      notes: 'no data',
+    },
+    x_profiles: [],
+    highlights: [],
+    risk_flags: [],
+    confidence: 0.5,
   });
 
   const result = await runDevscan({

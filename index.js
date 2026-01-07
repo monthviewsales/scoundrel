@@ -23,6 +23,7 @@ const {
 const warchestModule = require('./lib/cli/walletCli');
 const warchestService = require('./lib/cli/warchest');
 const { forkWorkerWithPayload } = require('./lib/warchest/workers/harness');
+const { getHubCoordinator, closeHubCoordinator } = require('./lib/warchest/hub');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
     : warchestModule && typeof warchestModule.run === 'function'
@@ -289,7 +290,7 @@ program
                 const latestPath = latest.path;
                 logger.info(`[scoundrel] Reusing merged payload: ${latestPath}`);
                 const merged = latest.data;
-                const { analyzeWallet } = require('./ai/jobs/walletAnalysis');
+                const { analyzeWallet } = require('./ai/jobs/walletDossier');
                 const aiOut = await analyzeWallet({ merged });
                 const openAiResult = aiOut && aiOut.version ? aiOut : { version: 'dossier.freeform.v1', markdown: String(aiOut || '') };
 
@@ -556,6 +557,61 @@ program
                 logger.error(`[scoundrel] devscan response: ${util.inspect(err.body, { depth: 4, breakLength: 120 })}`);
             }
             process.exitCode = 1;
+        }
+    });
+
+program
+    .command('target-list')
+    .description('Fetch target list candidates from SolanaTracker (volume + trending) and write raw artifacts')
+    .option('--daemon', 'Run in background on interval (uses WARCHEST_TARGET_LIST_INTERVAL_MS)')
+    .option('--interval <ms|OFF>', 'Override interval in ms (or OFF to disable)')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel target-list\n  $ scoundrel target-list --interval 600000\n  $ scoundrel target-list --daemon\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/target-list/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`)
+    .action(async (opts) => {
+        const intervalMs = opts && opts.interval ? String(opts.interval).trim() : undefined;
+        const runOnce = !(opts && opts.daemon);
+        const payload = {
+            runOnce,
+            ...(intervalMs ? { intervalMs } : {}),
+        };
+
+        const hub = getHubCoordinator();
+        try {
+            const result = await hub.runTargetList(payload, {
+                detached: !runOnce,
+                timeoutMs: runOnce ? 60000 : undefined,
+            });
+
+            if (!runOnce) {
+                logger.info(`[scoundrel] target list worker detached (pid=${result.pid})`);
+                logger.info(`[scoundrel] payload file: ${result.payloadFile}`);
+                return;
+            }
+
+            if (result && result.artifacts) {
+                const { volumePath, trendingPath } = result.artifacts;
+                if (volumePath) {
+                    logger.info(`[scoundrel] target list volume artifact: ${volumePath}`);
+                } else {
+                    logger.info('[scoundrel] target list volume response captured (artifact save disabled).');
+                }
+                if (trendingPath) {
+                    logger.info(`[scoundrel] target list trending artifact: ${trendingPath}`);
+                } else {
+                    logger.info('[scoundrel] target list trending response captured (artifact save disabled).');
+                }
+            }
+            if (result && result.counts) {
+                const { volume, trending } = result.counts;
+                if (volume != null || trending != null) {
+                    logger.info(`[scoundrel] target list counts: volume=${volume ?? 'n/a'} trending=${trending ?? 'n/a'}`);
+                }
+            }
+        } catch (err) {
+            const message = err?.message || String(err);
+            logger.error(`[scoundrel] target list failed: ${message}`);
+            process.exitCode = 1;
+        } finally {
+            closeHubCoordinator();
         }
     });
 
@@ -950,7 +1006,7 @@ program
         const pathsToCheck = [
             join(__dirname, 'lib', 'cli', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
-            join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
+            join(__dirname, 'ai', 'jobs', 'walletDossier.js'),
             join(__dirname, 'lib', 'cli', 'ask.js'),
         ];
         logger.info('\n[scoundrel] core files:');

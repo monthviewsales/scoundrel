@@ -1,0 +1,696 @@
+[
+{
+    "token": {
+      "name": "Brevis  CION",
+      "symbol": "BRVE-SOL",
+      "mint": "82SKc3isUiArMAfC9xW9UeGRCB4QneHCcUaMBnWiWq3L",
+      "uri": "https://ipfs-forward.solanatracker.io/ipfs/bafkreie6cbfh4p6ygiiruihxwfutnjjsbcj6uiarr7j2noyrzfzd23y72u",
+      "decimals": 6,
+      "isMutable": false,
+      "description": "",
+      "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreihiuperq23ujiiiawnq73qmxtvhkz7x626a4yvzpaxxx4ucipgjhu",
+      "twitter": "https://x.com/brevis_zk",
+      "telegram": "",
+      "website": "https://brevis.network/",
+      "attributes": [],
+      "properties": {
+        "category": "image",
+        "files": [
+          {
+            "uri": "https://ipfs.io/ipfs/bafkreihiuperq23ujiiiawnq73qmxtvhkz7x626a4yvzpaxxx4ucipgjhu",
+            "type": "image/*"
+          }
+        ],
+        "creators": [
+          {
+            "address": "B1CExAJyqrfM5WCP7kzmPmwBXnoR5W3HY8W6SL5kCivf",
+            "share": 100
+          }
+        ]
+      },
+      "extensions": {
+        "twitter": "https://x.com/brevis_zk",
+        "website": "https://brevis.network/",
+        "telegram": ""
+      },
+      "hasFileMetaData": true,
+      "strictSocials": {
+        "twitter": "https://x.com/brevis_zk",
+        "website": "https://ipfs.io/ipfs/bafkreihiuperq23ujiiiawnq73qmxtvhkz7x626a4yvzpaxxx4ucipgjhu"
+      },
+      "creation": {
+        "creator": "B1CExAJyqrfM5WCP7kzmPmwBXnoR5W3HY8W6SL5kCivf",
+        "created_tx": "42SxEF6nxBLziUxZw88t8UVf2cuctNurQqpr9gHijdFexCa44twUrwcuRcnS4Sf5JcPUUaAKf4Wr3eWPzF4XdMDT",
+        "created_time": 1767735235
+      }
+    },
+    "pools": [
+      {
+        "poolId": "8vuGz933wcYPRQBYn9nXfdvDyTTfQ2VMWEJYfFocfgwK",
+        "liquidity": {
+          "quote": 319395199.4460718,
+          "usd": 44921802025.06488
+        },
+        "price": {
+          "quote": 0.000001447182,
+          "usd": 0.00020354101567895996
+        },
+        "tokenSupply": 999999999.999549,
+        "lpBurn": 0,
+        "tokenAddress": "82SKc3isUiArMAfC9xW9UeGRCB4QneHCcUaMBnWiWq3L",
+        "marketCap": {
+          "quote": 1447.1819999993475,
+          "usd": 203541.01567886816
+        },
+        "market": "meteora-dyn-v2",
+        "meteoraDynV2": {
+          "baseLiquidity": {
+            "base": 379.948295301,
+            "usd": 0.07733506193105494
+          },
+          "quoteLiquidity": {
+            "quote": 319395199.445522,
+            "usd": 44921802024.98755
+          }
+        },
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "deployer": "B1CExAJyqrfM5WCP7kzmPmwBXnoR5W3HY8W6SL5kCivf",
+        "lastUpdated": 1767737291947,
+        "createdAt": 1767735235371,
+        "txns": {
+          "buys": 2845,
+          "sells": 379,
+          "total": 3224,
+          "volume": 1815275,
+          "volume24h": 1815275
+        }
+      }
+    ],
+    "events": {
+      "1m": {
+        "priceChangePercentage": 0.40237360517844595
+      },
+      "5m": {
+        "priceChangePercentage": 12.807945407284956
+      },
+      "15m": {
+        "priceChangePercentage": 21.474302163706533
+      },
+      "30m": {
+        "priceChangePercentage": 49.96653344088738
+      },
+      "1h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "2h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "3h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "4h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "5h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "6h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "12h": {
+        "priceChangePercentage": 130.04684723292777
+      },
+      "24h": {
+        "priceChangePercentage": 130.04684723292777
+      }
+    },
+    "risk": {
+      "snipers": {
+        "count": 14,
+        "totalBalance": 0.015956,
+        "totalPercentage": 0,
+        "wallets": [
+          {
+            "wallet": "Hy8NRecuetHjfzS5BrNK29j3BkSjYw7yeVeBQ6sxvKhD",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "3vHuehcKEDZKESvpFCk7fpBxeS2TEvugtMDW2GG4hCeb",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "h6ebd664qHtB23mHfT7cAD42eks23t7oQj9a5rUUcnt",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "BBey99MUeE7npbQJxjEJSRQsSzvLjs53fVq2N26iTmVg",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "DjSCQ1o2XUNe9cKQTvUJaQF8VNcmwJp3Jk7zq7kwTfYj",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "FfVzGLXkGkHqTFAgVeaHdVeHet5ycxsQnQfoJ1dW7pzn",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "CRTN1MmPGV4N3AiB5EWcR58WX9emV2LGt8vD2Xf91BzB",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "7ML2kaAahHBhHJtfJk4j5rSQa6CkbLZ3K9U9rSEPXQJ6",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "HsFCnxvjSexXVJpMWrL4qeKJDo17Vgr6zqTT83djRwyb",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "CjWAfcN7bHdQ9azRkbhh7j2ughLt2JaWRXakGBRECWUo",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "4JP9dFUsWHy3ZmVTNhC9Rrz89bQD4zj53fJjdRWd72J8",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "3p6hWbxp93sNW88vt8qd1TkwU6pzUBzSaTRTq817uzKf",
+            "balance": 0.015956,
+            "percentage": 0
+          },
+          {
+            "wallet": "6tgUncDmMeDvbzjmPWNNtLXuokQasHRek7h4TCVe2BGq",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "FWX6naUT2tCGavNRaUh3gmdyBKJ4w6RpJ8jje7LQ3RAe",
+            "balance": 0,
+            "percentage": 0
+          }
+        ]
+      },
+      "insiders": {
+        "count": 0,
+        "totalBalance": 0,
+        "totalPercentage": 0,
+        "wallets": []
+      },
+      "top10": 63.00290000000001,
+      "dev": {
+        "percentage": 0,
+        "amount": 0
+      },
+      "fees": {
+        "jito": 0.000214,
+        "network": 0.000159006,
+        "0slot": 0.0001,
+        "trojan": 0.0002,
+        "totalTrading": 0.0002,
+        "totalTips": 0.000473006,
+        "total": 0.000673006
+      },
+      "rugged": false,
+      "risks": [
+        {
+          "name": "LP Burned",
+          "description": "Allows the owner to remove liquidity at any time.",
+          "value": "0%",
+          "level": "danger",
+          "score": 4000
+        },
+        {
+          "name": "Top 10 Holders",
+          "description": "Top 10 holders own more than 63.00% of the total supply.",
+          "value": "63.00%",
+          "level": "danger",
+          "score": 5000
+        }
+      ],
+      "score": 6
+    },
+    "buys": 1155,
+    "sells": 354,
+    "txns": 1509,
+    "holders": 1461,
+    "totalVolume": 269546
+  },
+  {
+    "token": {
+      "name": "neuralink COiN TOKEN",
+      "symbol": "Neuralink",
+      "mint": "Eu2BWfrTvMAUP6iCyaNVMBFiHJ6rhyvTgKAgh2j6PKvD",
+      "uri": "https://ipfs-forward.solanatracker.io/ipfs/bafkreigih4hrgxhho46aectlvzjyil2tt3wsaleksdeitxqlpc2mz2423q",
+      "decimals": 6,
+      "isMutable": false,
+      "description": "Creating a general-purpose, high-bandwidth interface to the brain",
+      "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreid6dbgapzdifuw7u6nf74a2elacioe5d2drtnttmo5hqigh4ag2ja",
+      "twitter": "https://x.com/neuralink",
+      "telegram": "",
+      "website": "https://t.co/6b194MZWNg",
+      "attributes": [],
+      "properties": {
+        "category": "image",
+        "files": [
+          {
+            "uri": "https://ipfs.io/ipfs/bafkreid6dbgapzdifuw7u6nf74a2elacioe5d2drtnttmo5hqigh4ag2ja",
+            "type": "image/*"
+          }
+        ],
+        "creators": [
+          {
+            "address": "8gyM4e5E6BSHELdPchGZYbahtEVcT8pQLpUZJYCWf2jk",
+            "share": 100
+          }
+        ]
+      },
+      "extensions": {
+        "twitter": "https://x.com/neuralink",
+        "website": "https://t.co/6b194MZWNg",
+        "telegram": ""
+      },
+      "hasFileMetaData": true,
+      "strictSocials": {
+        "twitter": "https://x.com/neuralink",
+        "website": "https://t.co/6b194MZWNg"
+      },
+      "creation": {
+        "creator": "8gyM4e5E6BSHELdPchGZYbahtEVcT8pQLpUZJYCWf2jk",
+        "created_tx": "RwdWrX2SRGUJmnGUCBXt8SkNc61FWMPWTXxFp7eNYDmvSuQ8nw5kZWMTfYnNuT6EFdnR7o2JvR9yS4JrS8BwbvF",
+        "created_time": 1767729389
+      }
+    },
+    "pools": [
+      {
+        "poolId": "6SR7yzFVqvc1LYvFmZqswQrEY99pZ5FdhZimeAAwyoCG",
+        "liquidity": {
+          "quote": 176916300.36548838,
+          "usd": 24882650189.51
+        },
+        "price": {
+          "quote": 0.00000523947,
+          "usd": 0.0007369128730314779
+        },
+        "tokenSupply": 999999999.999775,
+        "lpBurn": 0,
+        "tokenAddress": "Eu2BWfrTvMAUP6iCyaNVMBFiHJ6rhyvTgKAgh2j6PKvD",
+        "marketCap": {
+          "quote": 5239.469999998822,
+          "usd": 736912.8730313121
+        },
+        "market": "meteora-dyn-v2",
+        "meteoraDynV2": {
+          "baseLiquidity": {
+            "base": 511.194890155,
+            "usd": 0.3767060951831318
+          },
+          "quoteLiquidity": {
+            "quote": 176916300.36281,
+            "usd": 24882650189.133293
+          }
+        },
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "deployer": "8gyM4e5E6BSHELdPchGZYbahtEVcT8pQLpUZJYCWf2jk",
+        "lastUpdated": 1767737293149,
+        "createdAt": 1767729388776,
+        "txns": {
+          "buys": 10862,
+          "sells": 2712,
+          "total": 13574,
+          "volume": 6222444,
+          "volume24h": 6222444
+        }
+      }
+    ],
+    "events": {
+      "1m": {
+        "priceChangePercentage": -0.5927167308858214
+      },
+      "5m": {
+        "priceChangePercentage": 6.029098039962036
+      },
+      "15m": {
+        "priceChangePercentage": 8.556056219294868
+      },
+      "30m": {
+        "priceChangePercentage": 26.670371747681365
+      },
+      "1h": {
+        "priceChangePercentage": 60.641397541857735
+      },
+      "2h": {
+        "priceChangePercentage": 176.42666950845808
+      },
+      "3h": {
+        "priceChangePercentage": 316.4192744150627
+      },
+      "4h": {
+        "priceChangePercentage": 316.4192744150627
+      },
+      "5h": {
+        "priceChangePercentage": 316.4192744150627
+      },
+      "6h": {
+        "priceChangePercentage": 316.4192744150627
+      },
+      "12h": {
+        "priceChangePercentage": 316.4192744150627
+      },
+      "24h": {
+        "priceChangePercentage": 316.4192744150627
+      }
+    },
+    "risk": {
+      "snipers": {
+        "count": 14,
+        "totalBalance": 0.007978,
+        "totalPercentage": 0,
+        "wallets": [
+          {
+            "wallet": "FfVzGLXkGkHqTFAgVeaHdVeHet5ycxsQnQfoJ1dW7pzn",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "h6ebd664qHtB23mHfT7cAD42eks23t7oQj9a5rUUcnt",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "CRTN1MmPGV4N3AiB5EWcR58WX9emV2LGt8vD2Xf91BzB",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "BBey99MUeE7npbQJxjEJSRQsSzvLjs53fVq2N26iTmVg",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "CjWAfcN7bHdQ9azRkbhh7j2ughLt2JaWRXakGBRECWUo",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "HsFCnxvjSexXVJpMWrL4qeKJDo17Vgr6zqTT83djRwyb",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "FWX6naUT2tCGavNRaUh3gmdyBKJ4w6RpJ8jje7LQ3RAe",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "3vHuehcKEDZKESvpFCk7fpBxeS2TEvugtMDW2GG4hCeb",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "Hy8NRecuetHjfzS5BrNK29j3BkSjYw7yeVeBQ6sxvKhD",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "DjSCQ1o2XUNe9cKQTvUJaQF8VNcmwJp3Jk7zq7kwTfYj",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "4JP9dFUsWHy3ZmVTNhC9Rrz89bQD4zj53fJjdRWd72J8",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "7ML2kaAahHBhHJtfJk4j5rSQa6CkbLZ3K9U9rSEPXQJ6",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "3p6hWbxp93sNW88vt8qd1TkwU6pzUBzSaTRTq817uzKf",
+            "balance": 0.007978,
+            "percentage": 0
+          },
+          {
+            "wallet": "6tgUncDmMeDvbzjmPWNNtLXuokQasHRek7h4TCVe2BGq",
+            "balance": 0,
+            "percentage": 0
+          }
+        ]
+      },
+      "insiders": {
+        "count": 0,
+        "totalBalance": 0,
+        "totalPercentage": 0,
+        "wallets": []
+      },
+      "top10": 80.53219999999999,
+      "dev": {
+        "percentage": 0,
+        "amount": 0
+      },
+      "fees": {
+        "jito": 0.00031,
+        "network": 0.000625,
+        "0slot": 0.00021,
+        "totalTrading": 0,
+        "totalTips": 0.0011450000000000002,
+        "total": 0.0011450000000000002
+      },
+      "rugged": false,
+      "risks": [
+        {
+          "name": "LP Burned",
+          "description": "Allows the owner to remove liquidity at any time.",
+          "value": "0%",
+          "level": "danger",
+          "score": 4000
+        },
+        {
+          "name": "Top 10 Holders",
+          "description": "Top 10 holders own more than 80.53% of the total supply.",
+          "value": "80.53%",
+          "level": "danger",
+          "score": 5000
+        }
+      ],
+      "score": 6
+    },
+    "buys": 3000,
+    "sells": 902,
+    "txns": 3902,
+    "holders": 4298,
+    "totalVolume": 258766
+  },
+  {
+    "token": {
+      "name": "fuck i should've held",
+      "symbol": "fish",
+      "mint": "DAtb56aGx77CYvzbmy8SnkMxUPnvVBiUvz8hAfwFRqkk",
+      "uri": "https://ipfs-forward.solanatracker.io/ipfs/QmPCUBwkoLeGT1Ux9Ntabmi5U98orZJyX2aziJLptEeq8D",
+      "decimals": 6,
+      "isMutable": false,
+      "description": "",
+      "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2FQmYieapCtPpDi6BJt8gWWWneUNNaG2apzh7i9nVABoCwns",
+      "twitter": "https://x.com/i/communities/2008637755178578172",
+      "telegram": "",
+      "website": "",
+      "extensions": {
+        "twitter": "https://x.com/i/communities/2008637755178578172",
+        "website": "",
+        "telegram": ""
+      },
+      "hasFileMetaData": true,
+      "strictSocials": {
+        "twitter": "https://x.com/i/communities/2008637755178578172"
+      },
+      "creation": {
+        "creator": "AyCrLvWXE7TfhmQMk5hafBe3jXE9hmcD7KUY5Taiqqnv",
+        "created_tx": "ML4Nb3eZ3T4pKCA3ErEbYkqcSJXt7UHHcd8d49mfNRtbkbhsoLtJRh8ar32QdLyoYcimAPcn2bG7ZspQkS6Ej55",
+        "created_time": 1767736254
+      }
+    },
+    "pools": [
+      {
+        "poolId": "C8zUZdKyoFEsrZGDkaqMFGpYQczPBMSqiK2nxgVwTyLr",
+        "liquidity": {
+          "quote": 429.230160577,
+          "usd": 120739.39952802847
+        },
+        "price": {
+          "quote": 5.743930895461088e-7,
+          "usd": 0.00008078635088412569
+        },
+        "tokenSupply": 999998970.273509,
+        "lpBurn": 0,
+        "tokenAddress": "DAtb56aGx77CYvzbmy8SnkMxUPnvVBiUvz8hAfwFRqkk",
+        "marketCap": {
+          "quote": 574.3924980783282,
+          "usd": 80786.26769628006
+        },
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "market": "pumpfun-amm",
+        "pumpfun-amm": {
+          "isMayhemMode": false,
+          "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        "deployer": "AyCrLvWXE7TfhmQMk5hafBe3jXE9hmcD7KUY5Taiqqnv",
+        "lastUpdated": 1767737293193,
+        "createdAt": 1767736253887,
+        "txns": {
+          "buys": 1250,
+          "sells": 965,
+          "total": 2215,
+          "volume": 1188080,
+          "volume24h": 1188080
+        }
+      }
+    ],
+    "events": {
+      "1m": {
+        "priceChangePercentage": 3.688344286838784
+      },
+      "5m": {
+        "priceChangePercentage": 8.821670141026674
+      },
+      "15m": {
+        "priceChangePercentage": 56.75916093717363
+      },
+      "30m": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "1h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "2h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "3h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "4h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "5h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "6h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "12h": {
+        "priceChangePercentage": 72.87774864693031
+      },
+      "24h": {
+        "priceChangePercentage": 72.87774864693031
+      }
+    },
+    "risk": {
+      "snipers": {
+        "count": 5,
+        "totalBalance": 14466618.647441,
+        "totalPercentage": 1.4467,
+        "wallets": [
+          {
+            "wallet": "9zuX2rLyghQia3SWG6GTfRN5oUtFkUREGzb2XetgY4vt",
+            "balance": 9568297.074455,
+            "percentage": 0.95683
+          },
+          {
+            "wallet": "BhTAs9wf1AUZ9eyiUgUFdCe2TN77HinTYN1ZLvVaJzeu",
+            "balance": 4898190.944358,
+            "percentage": 0.48982
+          },
+          {
+            "wallet": "EGeNRu58UEqU1u1J5g8LZq25zJN1h6n4Sf2W3BNubRkP",
+            "balance": 130.628628,
+            "percentage": 0.000013062862786937138
+          },
+          {
+            "wallet": "JDVDy2dwc3YzUsYQM1rmCqEuY2mg2KnqDFzjvnNYLyWX",
+            "balance": 0,
+            "percentage": 0
+          },
+          {
+            "wallet": "EaimNCHkQhdAdsroKckxRGbiiKYgxDkb3iUawqGUwuzj",
+            "balance": 0,
+            "percentage": 0
+          }
+        ]
+      },
+      "insiders": {
+        "count": 1,
+        "totalBalance": 1,
+        "totalPercentage": 0,
+        "wallets": [
+          {
+            "wallet": "HwGqFnPY6H2sGFoDUMYqr63geoR6Tb8yrfnKGLMnARzj",
+            "balance": 1,
+            "percentage": 9.999999990000001e-8
+          }
+        ]
+      },
+      "top10": 15.9784,
+      "dev": {
+        "percentage": 0,
+        "amount": 0
+      },
+      "fees": {
+        "jito": 0.000003,
+        "network": 0.000018,
+        "totalTrading": 0,
+        "totalTips": 0.000021000000000000002,
+        "total": 0.000021000000000000002
+      },
+      "rugged": false,
+      "risks": [
+        {
+          "name": "LP Burned",
+          "description": "Allows the owner to remove liquidity at any time.",
+          "value": "0%",
+          "level": "danger",
+          "score": 4000
+        },
+        {
+          "name": "Top 10 Holders",
+          "description": "Top 10 holders own more than 15.98% of the total supply.",
+          "value": "15.98%",
+          "level": "danger",
+          "score": 5000
+        }
+      ],
+      "score": 6
+    },
+    "buys": 822,
+    "sells": 799,
+    "txns": 1621,
+    "holders": 330,
+    "totalVolume": 257891
+  }
+]

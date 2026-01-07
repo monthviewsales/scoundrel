@@ -1,7 +1,7 @@
 jest.mock('../ai/gptClient', () => {
   const mockCallResponses = jest.fn();
   const mockParseResponsesJSON = jest.fn();
-  const mockLog = { debug: jest.fn() };
+  const mockLog = { debug: jest.fn(), warn: jest.fn() };
   return {
     callResponses: mockCallResponses,
     parseResponsesJSON: mockParseResponsesJSON,
