@@ -98,8 +98,42 @@ function removeTarget(mint) {
   return info.changes || 0;
 }
 
+/**
+ * Prune stale targets by status + age.
+ *
+ * Rules:
+ * - approved: never removed
+ * - archived: removed after archivedTtlMs
+ * - rejected: removed immediately
+ * - others: removed after staleMs
+ *
+ * @param {{ now?: number, staleMs?: number, archivedTtlMs?: number }} [options]
+ * @returns {number} number of rows removed
+ */
+function pruneTargets(options = {}) {
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const staleMs = Number.isFinite(options.staleMs) ? options.staleMs : 2 * 60 * 60 * 1000;
+  const archivedTtlMs = Number.isFinite(options.archivedTtlMs) ? options.archivedTtlMs : 7 * 24 * 60 * 60 * 1000;
+
+  const staleCutoff = now - staleMs;
+  const archivedCutoff = now - archivedTtlMs;
+
+  const info = db.prepare(
+    `DELETE FROM sc_targets
+     WHERE status = 'rejected'
+        OR (status = 'archived' AND (last_checked_at IS NULL OR last_checked_at < @archivedCutoff))
+        OR (status NOT IN ('approved','archived','rejected') AND (last_checked_at IS NULL OR last_checked_at < @staleCutoff))`
+  ).run({
+    staleCutoff,
+    archivedCutoff,
+  });
+
+  return info.changes || 0;
+}
+
 module.exports = {
   addUpdateTarget,
   getTarget,
   removeTarget,
+  pruneTargets,
 };

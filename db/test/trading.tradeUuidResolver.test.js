@@ -1,38 +1,17 @@
 'use strict';
 
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
-
-function clearRequireCache(matcher) {
-  for (const k of Object.keys(require.cache)) {
-    if (matcher(k)) delete require.cache[k];
-  }
-}
+const { createIsolatedAdapter } = require('./helpers/sqliteTestUtils');
 
 describe('trade_uuid resolver: closed_at=0 open runs are discoverable', () => {
   let tmpDir;
-  let dbPath;
+  let context;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scoundrel-bootybox-'));
-    dbPath = path.join(tmpDir, 'bootybox.test.db');
-
-    process.env.BOOTYBOX_SQLITE_PATH = dbPath;
-
-    // IMPORTANT: ensure a fresh init against this sqlite file
-    clearRequireCache((k) => k.includes(`${path.sep}db${path.sep}src${path.sep}adapters${path.sep}sqlite`));
-    clearRequireCache((k) => k.endsWith(`${path.sep}db${path.sep}src${path.sep}adapters${path.sep}sqlite${path.sep}context.js`));
-    clearRequireCache((k) => k.endsWith(`${path.sep}db${path.sep}src${path.sep}adapters${path.sep}sqliteSchema.js`));
+    ({ tmpDir, context } = createIsolatedAdapter());
   });
 
   afterEach(() => {
-    // Attempt to close db cleanly (if adapter exposes it)
-    try {
-      const ctx = require('../src/adapters/sqlite/context');
-      if (typeof ctx.closeDb === 'function') ctx.closeDb();
-    } catch (_) {}
-
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   });
 
@@ -61,7 +40,7 @@ describe('trade_uuid resolver: closed_at=0 open runs are discoverable', () => {
       );
     }
 
-    const { db } = require('../src/adapters/sqlite/context');
+    const { db } = context;
 
     const walletId = 1;
     const walletAlias = 'test';

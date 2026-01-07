@@ -142,6 +142,57 @@ describe('targets submodule', () => {
     expect(removed).toBe(1);
     expect(adapter.getTarget('mint-abc')).toBeNull();
   });
+
+  test('prunes targets by status and last_checked_at', () => {
+    const now = Date.now();
+    const twoHoursAgo = now - 2 * 60 * 60 * 1000 - 1000;
+    const eightDaysAgo = now - 8 * 24 * 60 * 60 * 1000;
+
+    adapter.addUpdateTarget({
+      mint: 'mint-approved',
+      status: 'approved',
+      lastCheckedAt: eightDaysAgo,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-archived-stale',
+      status: 'archived',
+      lastCheckedAt: eightDaysAgo,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-archived-fresh',
+      status: 'archived',
+      lastCheckedAt: now,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-rejected',
+      status: 'rejected',
+      lastCheckedAt: now,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-stale',
+      status: 'watching',
+      lastCheckedAt: twoHoursAgo,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-fresh',
+      status: 'new',
+      lastCheckedAt: now,
+    });
+
+    const pruned = adapter.pruneTargets({
+      now,
+      staleMs: 2 * 60 * 60 * 1000,
+      archivedTtlMs: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    expect(pruned).toBe(3);
+    expect(adapter.getTarget('mint-approved')).toBeTruthy();
+    expect(adapter.getTarget('mint-archived-fresh')).toBeTruthy();
+    expect(adapter.getTarget('mint-fresh')).toBeTruthy();
+    expect(adapter.getTarget('mint-archived-stale')).toBeNull();
+    expect(adapter.getTarget('mint-rejected')).toBeNull();
+    expect(adapter.getTarget('mint-stale')).toBeNull();
+  });
 });
 
 describe('coins submodule', () => {

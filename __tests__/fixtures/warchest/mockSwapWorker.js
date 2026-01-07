@@ -13,24 +13,28 @@ createWorkerHarness(async (payload) => {
     require('fs').writeFileSync(logPath, JSON.stringify(logPayload, null, 2), 'utf8');
   }
 
-  appendHubEvent(
-    {
-      txid,
-      status: 'confirmed',
-      context: {
-        wallet: payload.walletAlias || payload.wallet,
-        mint: payload.mint || null,
-        side: payload.side || null,
-      },
-      observedAt: new Date().toISOString(),
+  const eventPayload = {
+    txid,
+    status: 'confirmed',
+    context: {
+      wallet: payload.walletAlias || payload.wallet,
+      mint: payload.mint || null,
+      side: payload.side || null,
     },
-    eventPath,
-  );
+    observedAt: new Date().toISOString(),
+  };
+
+  const disableWrites =
+    process.env.DISABLE_HUB_EVENT_WRITE === '1' || process.env.DISABLE_HUB_EVENT_WRITE === 'true';
+  if (!disableWrites) {
+    appendHubEvent(eventPayload, eventPath);
+  }
 
   return {
     txid,
     signature: 'stub-sig',
     slot: 1,
     walletPubkey: payload.wallet || payload.walletAlias || null,
+    event: eventPayload,
   };
 }, { workerName: 'test.swapWorker' });
