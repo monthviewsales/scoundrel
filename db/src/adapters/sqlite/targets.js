@@ -82,7 +82,8 @@ function addUpdateTarget(target) {
  */
 function getTarget(mint) {
   if (!mint) return null;
-  return db.prepare('SELECT * FROM sc_targets WHERE mint = ?').get(mint);
+  const row = db.prepare('SELECT * FROM sc_targets WHERE mint = ?').get(mint);
+  return row || null;
 }
 
 /**

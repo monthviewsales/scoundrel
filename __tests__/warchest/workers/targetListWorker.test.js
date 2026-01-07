@@ -14,6 +14,21 @@ jest.mock('../../../lib/persist/jsonArtifacts', () => ({
   })),
 }));
 
+jest.mock('../../../lib/services/tokenInfoService', () => ({
+  ensureTokenInfo: jest.fn(async ({ mint }) => ({
+    token: { mint, symbol: 'SYM', name: 'Sample' },
+  })),
+}));
+
+jest.mock('../../../lib/warchest/events', () => ({
+  appendHubEvent: jest.fn(),
+}));
+
+jest.mock('../../../db', () => ({
+  init: jest.fn(async () => {}),
+  addUpdateTarget: jest.fn(),
+}));
+
 const {
   parseIntervalMs,
   validateTargetListPayload,
@@ -60,5 +75,6 @@ describe('targetListWorker', () => {
     expect(result.counts).toEqual({ volume: 2, trending: 1 });
     expect(result.artifacts.volumePath).toBe('/tmp/artifact.json');
     expect(result.artifacts.trendingPath).toBe('/tmp/artifact.json');
+    expect(result.summary.uniqueMints).toBe(3);
   });
 });
