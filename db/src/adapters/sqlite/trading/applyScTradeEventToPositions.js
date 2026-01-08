@@ -86,7 +86,13 @@ function applyScTradeEventToPositions(trade) {
   const source = trade.source ?? null;
 
   const lastPriceSol = calcTradePriceSol(solAmount, tokenAmount);
-  const lastPriceUsd = calcTradePriceUsd(solAmount, tokenAmount, solUsdPrice);
+  const priceUsdPerToken = toNum(trade.price_usd_per_token ?? trade.priceUsdPerToken);
+  let lastPriceUsd = calcTradePriceUsd(solAmount, tokenAmount, solUsdPrice);
+  // Fallback for non-SOL quoted trades: if we have a USD per-token quote but
+  // no SOL leg, preserve the USD entry so PnL stays accurate.
+  if (lastPriceUsd === null && priceUsdPerToken != null) {
+    lastPriceUsd = priceUsdPerToken;
+  }
 
   const getOpen = db.prepare(
     'SELECT * FROM sc_positions WHERE wallet_id = ? AND coin_mint = ? AND closed_at = 0'

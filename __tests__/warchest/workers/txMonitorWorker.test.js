@@ -4,6 +4,15 @@ jest.mock('../../../lib/services/txInsightService', () => ({
   recoverSwapInsightFromTransaction: jest.fn(async () => ({ foo: 'bar' })),
 }));
 
+jest.mock('../../../db', () => ({
+  init: jest.fn(async () => {}),
+  recordScTradeEvent: jest.fn(async () => ({})),
+}));
+
+jest.mock('../../../lib/solanaTrackerDataClient', () => ({
+  createSolanaTrackerDataClient: jest.fn(),
+}));
+
 const os = require('os');
 const path = require('path');
 
@@ -15,6 +24,8 @@ jest.mock('../../../lib/warchest/events', () => ({
 const { monitorTransaction } = require('../../../lib/warchest/workers/txMonitorWorker');
 const txInsightService = require('../../../lib/services/txInsightService');
 const { appendHubEvent } = require('../../../lib/warchest/events');
+const BootyBox = require('../../../db');
+const { createSolanaTrackerDataClient } = require('../../../lib/solanaTrackerDataClient');
 
 function makeTxid() {
   return 'CyRxoFDzBHtuD6PcE83H1SUtCqFkcApDTBJpnZpX9BSgVtN3FdZkRqQUWgimYGPzBX7SbseZxWSnjEvGz5eoQA5';
@@ -25,6 +36,14 @@ function makeHudPath() {
 }
 
 describe('txMonitorWorker.monitorTransaction', () => {
+  beforeEach(() => {
+    txInsightService.recoverSwapInsightFromTransaction.mockClear();
+    appendHubEvent.mockClear();
+    BootyBox.init.mockClear();
+    BootyBox.recordScTradeEvent.mockClear();
+    createSolanaTrackerDataClient.mockReset();
+  });
+
   test('resolves via log subscription and writes HUD event', async () => {
     const hudPath = makeHudPath();
     const unsubscribe = jest.fn();
@@ -67,6 +86,52 @@ describe('txMonitorWorker.monitorTransaction', () => {
     expect(eventPayload.context.side).toBe('buy');
     expect(eventPayload.insight).toEqual({ foo: 'bar' });
     expect(eventPayload.txSummary.statusEmoji).toBeDefined();
+  });
+
+  test('falls back to SOL/USD price fetch when quote lacks it', async () => {
+    const hudPath = makeHudPath();
+    const unsubscribe = jest.fn();
+    const rpcMethods = {
+      subscribeLogs: jest.fn(async (_filter, onUpdate) => {
+        onUpdate({ value: { signature: makeTxid(), err: null }, context: { slot: 11 } });
+        return { unsubscribe };
+      }),
+      getTransaction: jest.fn(),
+    };
+
+    txInsightService.recoverSwapInsightFromTransaction.mockResolvedValue({
+      mint: 'Mint111111111111111111111111111111111111111',
+      tokenDeltaNet: 100,
+      solDeltaNet: -1,
+      executedAt: Date.now(),
+    });
+
+    createSolanaTrackerDataClient.mockReturnValue({
+      getMultipleTokenPrices: jest.fn().mockResolvedValue({
+        So11111111111111111111111111111111111111112: { price: 123.45 },
+      }),
+    });
+
+    const result = await monitorTransaction(
+      {
+        txid: makeTxid(),
+        walletId: 42,
+        wallet: 'wallet123',
+        mint: 'Mint111111111111111111111111111111111111111',
+        side: 'buy',
+        size: 1,
+        hudEventPath: hudPath,
+        swapQuote: {},
+      },
+      {
+        rpcMethods,
+      }
+    );
+
+    expect(result.status).toBe('confirmed');
+    expect(BootyBox.recordScTradeEvent).toHaveBeenCalled();
+    const trade = BootyBox.recordScTradeEvent.mock.calls[0][0];
+    expect(trade.solUsdPrice).toBe(123.45);
   });
 
   test('falls back to polling when logs are unavailable', async () => {

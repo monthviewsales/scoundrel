@@ -9,6 +9,7 @@ const getTradesByTradeUuid = require('./trading/getTradesByTradeUuid');
 const getPnlPositionsLive = require('./trading/getPnlPositionsLive');
 const getTokenAmtByAlias = require('./trading/getTokenAmtByAlias');
 const loadOpenPositions = require('./trading/loadOpenPositions');
+const updatePositionStrategyName = require('./trading/updatePositionStrategyName');
 
 const chalk = require('chalk');
 const { logger } = require('./context');
@@ -37,6 +38,7 @@ module.exports = {
   getHighestPriceByMint: legacy.getHighestPriceByMint,
   getPendingSwapCount: legacy.getPendingSwapCount,
   getTokenAmount: legacy.getTokenAmount,
+  updatePositionStrategyName,
   isSwapPending: legacy.isSwapPending,
   logEvaluation: legacy.logEvaluation,
   markPendingSwap: legacy.markPendingSwap,
