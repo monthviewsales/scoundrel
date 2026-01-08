@@ -7,9 +7,22 @@
 
   // Default to the latest GPT-5.1 model; can be overridden via OPENAI_RESPONSES_MODEL.
   const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.1';
-  const openAIKey = process.env.OPENAI_API_KEY;
+  let client = null;
 
-  const client = new OpenAI({ apiKey: openAIKey });
+  /**
+   * Lazily create the OpenAI client to avoid requiring credentials at import time.
+   *
+   * @returns {import('openai')}
+   */
+  function getClient() {
+    if (client) return client;
+    const openAIKey = process.env.OPENAI_API_KEY;
+    if (!openAIKey) {
+      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.');
+    }
+    client = new OpenAI({ apiKey: openAIKey });
+    return client;
+  }
 
 /**
  * Call OpenAI Responses API with Structured Outputs (GPT-5.1-friendly).
@@ -90,7 +103,7 @@ async function callResponses({
     Object.assign(payload, rest);
   }
 
-  const res = await client.responses.create(payload);
+  const res = await getClient().responses.create(payload);
   return res;
 }
 
