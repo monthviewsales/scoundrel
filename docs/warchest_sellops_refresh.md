@@ -58,7 +58,7 @@ SellOps runs in `lib/warchest/workers/sellOpsWorker.js` and evaluates positions 
 - **Evaluation loop:** `payload.pollIntervalMs` (default 60s).
   - Set by the HUD sellOps orchestrator when it spawns workers.
 - **Trailing stop loop:** `payload.trailingPollMs` or strategy defaults (default 5s).
-  - `getTrailingStopConfig` reads from strategy docs; defaults live in `lib/warchest/workers/sellOps/trailingStop.js`.
+  - `getTrailingStopConfig` reads from strategy docs; defaults live in `lib/warchest/workers/sellOps/stopLogicLoader.js`.
 
 ### Trailing-stop refresh
 
