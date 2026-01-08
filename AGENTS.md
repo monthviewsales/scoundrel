@@ -49,11 +49,21 @@ Use these commands when planning, testing, or validating changes.
 
 > **Agent note:** If you discover more accurate commands (e.g. via `package.json`), prefer those and update this file instead of guessing.
 
+## Testing Notes (Logging + BootyBox)
+
+- Jest uses `jest.setup.js` to mock `lib/logger` and `db/src/utils/logger`, so unit tests do not write to production log files.
+- BootyBox is guarded in tests: `db/src/adapters/sqlite/context.js` requires `BOOTYBOX_SQLITE_PATH` to be set to a non-production file.
+- For DB-touching tests, use `db/test/helpers/sqliteTestUtils.js` (`createIsolatedAdapter`) to create a temp SQLite file, clear module caches, and clean tables between runs.
+- If a test needs to override swap config without touching disk, set `SWAP_CONFIG_JSON` with a JSON string in the test env.
+
 ---
 
 ## Code Style & Structure
 
 Follow these rules for **all new and modified code**:
+
+- **Commit messages**
+  - Prefer fuller commit messages (title + body). Use commit `6477c2456592d018f1b7f8cf8bc52e551a242fbe` as the template for style and depth.
 
 - **Module system**
   - Use **CommonJS** everywhere.

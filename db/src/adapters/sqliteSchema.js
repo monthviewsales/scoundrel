@@ -308,6 +308,29 @@ db.exec(`
     created_at   INTEGER
   );
 
+  CREATE TABLE IF NOT EXISTS sc_targets (
+    target_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    mint             TEXT NOT NULL UNIQUE,
+    symbol           TEXT,
+    name             TEXT,
+    status           TEXT NOT NULL CHECK(status IN ('new','watching','approved','rejected','archived')) DEFAULT 'new',
+    strategy         TEXT,
+    strategy_id      TEXT,
+    source           TEXT,
+    tags             TEXT,
+    notes            TEXT,
+    confidence       REAL,
+    score            REAL,
+    mint_verified    INTEGER NOT NULL DEFAULT 0,
+    created_at       INTEGER,
+    updated_at       INTEGER,
+    last_checked_at  INTEGER
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sc_targets_status ON sc_targets(status);
+  CREATE INDEX IF NOT EXISTS idx_sc_targets_strategy ON sc_targets(strategy);
+  CREATE INDEX IF NOT EXISTS idx_sc_targets_last_checked_at ON sc_targets(last_checked_at);
+
   CREATE TABLE IF NOT EXISTS sc_wallet_profiles (
     wallet          TEXT PRIMARY KEY,
     version         INTEGER,

@@ -1,6 +1,6 @@
 const originalEnv = process.env.NODE_ENV;
 
-jest.mock('../ai/client', () => {
+jest.mock('../ai/gptClient', () => {
   const mockCallResponses = jest.fn();
   const mockParseResponsesJSON = jest.fn();
   const mockLog = { debug: jest.fn() };
@@ -17,7 +17,7 @@ jest.mock('../ai/client', () => {
   };
 });
 
-const { _mock } = require('../ai/client');
+const { _mock } = require('../ai/gptClient');
 
 describe.skip('ask processor (skipped: ask.js not yet wired)', () => {
   beforeEach(() => {

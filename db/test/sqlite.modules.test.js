@@ -112,6 +112,89 @@ describe('profiles submodule', () => {
   });
 });
 
+describe('targets submodule', () => {
+  test('adds, fetches, and removes targets by mint', () => {
+    const inserted = adapter.addUpdateTarget({
+      mint: 'mint-abc',
+      symbol: 'ABC',
+      name: 'Alpha Beta Coin',
+      status: 'watching',
+      strategy: 'flash',
+      strategyId: 'flash-1',
+      source: 'target-list',
+      tags: 'pumpfun,volume',
+      notes: 'initial pass',
+      confidence: 0.72,
+      score: 0.31,
+      mintVerified: true,
+      lastCheckedAt: Date.now(),
+    });
+
+    expect(inserted.mint).toBe('mint-abc');
+    expect(inserted.status).toBe('watching');
+    expect(inserted.strategy).toBe('flash');
+
+    const fetched = adapter.getTarget('mint-abc');
+    expect(fetched).toBeTruthy();
+    expect(fetched.symbol).toBe('ABC');
+
+    const removed = adapter.removeTarget('mint-abc');
+    expect(removed).toBe(1);
+    expect(adapter.getTarget('mint-abc')).toBeNull();
+  });
+
+  test('prunes targets by status and last_checked_at', () => {
+    const now = Date.now();
+    const twoHoursAgo = now - 2 * 60 * 60 * 1000 - 1000;
+    const eightDaysAgo = now - 8 * 24 * 60 * 60 * 1000;
+
+    adapter.addUpdateTarget({
+      mint: 'mint-approved',
+      status: 'approved',
+      lastCheckedAt: eightDaysAgo,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-archived-stale',
+      status: 'archived',
+      lastCheckedAt: eightDaysAgo,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-archived-fresh',
+      status: 'archived',
+      lastCheckedAt: now,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-rejected',
+      status: 'rejected',
+      lastCheckedAt: now,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-stale',
+      status: 'watching',
+      lastCheckedAt: twoHoursAgo,
+    });
+    adapter.addUpdateTarget({
+      mint: 'mint-fresh',
+      status: 'new',
+      lastCheckedAt: now,
+    });
+
+    const pruned = adapter.pruneTargets({
+      now,
+      staleMs: 2 * 60 * 60 * 1000,
+      archivedTtlMs: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    expect(pruned).toBe(3);
+    expect(adapter.getTarget('mint-approved')).toBeTruthy();
+    expect(adapter.getTarget('mint-archived-fresh')).toBeTruthy();
+    expect(adapter.getTarget('mint-fresh')).toBeTruthy();
+    expect(adapter.getTarget('mint-archived-stale')).toBeNull();
+    expect(adapter.getTarget('mint-rejected')).toBeNull();
+    expect(adapter.getTarget('mint-stale')).toBeNull();
+  });
+});
+
 describe('coins submodule', () => {
   test('adds and retrieves coin metadata', () => {
     adapter.addOrUpdateCoin({

@@ -22,6 +22,8 @@ const {
 } = require('./lib/persist/jsonArtifacts');
 const warchestModule = require('./lib/cli/walletCli');
 const warchestService = require('./lib/cli/warchest');
+const { forkWorkerWithPayload } = require('./lib/warchest/workers/harness');
+const { getHubCoordinator, closeHubCoordinator } = require('./lib/warchest/hub');
 const warchestRun = typeof warchestModule === 'function'
     ? warchestModule
     : warchestModule && typeof warchestModule.run === 'function'
@@ -125,7 +127,7 @@ program
     .description('Research & validation tooling for memecoin trading using SolanaTracker + OpenAI')
     .version(resolveVersion());
 
-program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
+program.addHelpText('after', `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-4.1-mini)\n  xAI_API_KEY                 Required for Grok-backed DevScan summaries\n  DEVSCAN_RESPONSES_MODEL     (default: grok-4-1-fast-reasoning)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  DEVSCAN_API_KEY             Required for DevScan API access\n  NODE_ENV                    development|production (controls logging verbosity)\n`);
 program.addHelpText('after', `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n`);
 
 program
@@ -288,7 +290,7 @@ program
                 const latestPath = latest.path;
                 logger.info(`[scoundrel] Reusing merged payload: ${latestPath}`);
                 const merged = latest.data;
-                const { analyzeWallet } = require('./ai/jobs/walletAnalysis');
+                const { analyzeWallet } = require('./ai/jobs/walletDossier');
                 const aiOut = await analyzeWallet({ merged });
                 const openAiResult = aiOut && aiOut.version ? aiOut : { version: 'dossier.freeform.v1', markdown: String(aiOut || '') };
 
@@ -441,6 +443,175 @@ program
             return;
         } finally {
             try { await BootyBox.close(); } catch (_) {}
+        }
+    });
+
+program
+    .command('devscan')
+    .description('Fetch DevScan token/developer data, persist artifacts, and optionally summarize with AI')
+    .option('--mint <address>', 'Token mint address to query')
+    .option('--dev <wallet>', 'Developer wallet address to query')
+    .option('--devtokens <wallet>', 'Developer wallet address to list tokens for')
+    .option('--raw-only', 'Skip OpenAI analysis and only write raw artifacts')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel devscan --mint <MINT>\n  $ scoundrel devscan --dev <WALLET>\n  $ scoundrel devscan --devtokens <WALLET>\n  $ scoundrel devscan --mint <MINT> --dev <WALLET>\n\nNotes:\n  • Requires DEVSCAN_API_KEY in the environment.\n  • Uses xAI_API_KEY for AI summaries unless --raw-only is set.\n  • Writes JSON artifacts under ./data/devscan/.\n`)
+    .action(async (opts) => {
+        const mint = opts && opts.mint ? String(opts.mint).trim() : '';
+        const developerWallet = opts && opts.dev ? String(opts.dev).trim() : '';
+        const developerTokensWallet = opts && opts.devtokens ? String(opts.devtokens).trim() : '';
+        const runAnalysis = !(opts && opts.rawOnly);
+
+        if (!mint && !developerWallet && !developerTokensWallet) {
+            logger.error('[scoundrel] devscan requires --mint, --dev, or --devtokens');
+            process.exitCode = 1;
+            return;
+        }
+
+        if (mint && !isBase58Mint(mint)) {
+            logger.error('[scoundrel] devscan --mint must be a valid base58 address (32-44 chars)');
+            process.exitCode = 1;
+            return;
+        }
+        if (developerWallet && !isBase58Mint(developerWallet)) {
+            logger.error('[scoundrel] devscan --dev must be a valid base58 address (32-44 chars)');
+            process.exitCode = 1;
+            return;
+        }
+        if (developerTokensWallet && !isBase58Mint(developerTokensWallet)) {
+            logger.error('[scoundrel] devscan --devtokens must be a valid base58 address (32-44 chars)');
+            process.exitCode = 1;
+            return;
+        }
+
+        if (!process.env.DEVSCAN_API_KEY) {
+            logger.error('[scoundrel] DEVSCAN_API_KEY is required for devscan');
+            process.exitCode = 1;
+            return;
+        }
+        if (runAnalysis && !process.env.xAI_API_KEY) {
+            logger.error('[scoundrel] xAI_API_KEY is required for devscan AI summaries');
+            process.exitCode = 1;
+            return;
+        }
+
+        try {
+            const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'devscanWorker.js');
+            const { result } = await forkWorkerWithPayload(workerPath, {
+                timeoutMs: 60000,
+                payload: {
+                    mint: mint || null,
+                    developerWallet: developerWallet || null,
+                    developerTokensWallet: developerTokensWallet || null,
+                    runAnalysis,
+                },
+            });
+
+            if (result && result.token) {
+                if (result.token.artifactPath) {
+                    logger.info(`[scoundrel] devscan token artifact: ${result.token.artifactPath}`);
+                } else {
+                    logger.info('[scoundrel] devscan token response captured (artifact save disabled).');
+                }
+            }
+            if (result && result.developer) {
+                if (result.developer.artifactPath) {
+                    logger.info(`[scoundrel] devscan developer artifact: ${result.developer.artifactPath}`);
+                } else {
+                    logger.info('[scoundrel] devscan developer response captured (artifact save disabled).');
+                }
+            }
+            if (result && result.developerTokens) {
+                if (result.developerTokens.artifactPath) {
+                    logger.info(`[scoundrel] devscan developer tokens artifact: ${result.developerTokens.artifactPath}`);
+                } else {
+                    logger.info('[scoundrel] devscan developer tokens response captured (artifact save disabled).');
+                }
+            }
+
+            if (result && result.promptPath) {
+                logger.info(`[scoundrel] devscan prompt artifact: ${result.promptPath}`);
+            }
+            if (result && result.responsePath) {
+                logger.info(`[scoundrel] devscan response artifact: ${result.responsePath}`);
+            }
+
+            if (result && result.openAiResult && result.openAiResult.markdown) {
+                logger.info('\n=== DevScan Summary ===\n');
+                logger.info(result.openAiResult.markdown);
+            }
+        } catch (err) {
+            let message = err?.message || '';
+            if (!message && err) {
+                try {
+                    message = typeof err === 'string' ? err : JSON.stringify(err);
+                } catch (_) {
+                    message = String(err);
+                }
+            }
+            logger.error(`[scoundrel] devscan failed: ${message || '(unknown error)'}`);
+            if (err && err.devscanError) {
+                logger.error(
+                    `[scoundrel] devscan error: ${err.devscanError.code} - ${err.devscanError.message}`,
+                );
+            }
+            if (err && err.body) {
+                logger.error(`[scoundrel] devscan response: ${util.inspect(err.body, { depth: 4, breakLength: 120 })}`);
+            }
+            process.exitCode = 1;
+        }
+    });
+
+program
+    .command('target-list')
+    .description('Fetch target list candidates from SolanaTracker (volume + trending) and write raw artifacts')
+    .option('--daemon', 'Run in background on interval (uses WARCHEST_TARGET_LIST_INTERVAL_MS)')
+    .option('--interval <ms|OFF>', 'Override interval in ms (or OFF to disable)')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel target-list\n  $ scoundrel target-list --interval 600000\n  $ scoundrel target-list --daemon\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/target-list/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`)
+    .action(async (opts) => {
+        const intervalMs = opts && opts.interval ? String(opts.interval).trim() : undefined;
+        const runOnce = !(opts && opts.daemon);
+        const payload = {
+            runOnce,
+            ...(intervalMs ? { intervalMs } : {}),
+        };
+
+        const hub = getHubCoordinator();
+        try {
+            const result = await hub.runTargetList(payload, {
+                detached: !runOnce,
+                timeoutMs: runOnce ? 60000 : undefined,
+            });
+
+            if (!runOnce) {
+                logger.info(`[scoundrel] target list worker detached (pid=${result.pid})`);
+                logger.info(`[scoundrel] payload file: ${result.payloadFile}`);
+                return;
+            }
+
+            if (result && result.artifacts) {
+                const { volumePath, trendingPath } = result.artifacts;
+                if (volumePath) {
+                    logger.info(`[scoundrel] target list volume artifact: ${volumePath}`);
+                } else {
+                    logger.info('[scoundrel] target list volume response captured (artifact save disabled).');
+                }
+                if (trendingPath) {
+                    logger.info(`[scoundrel] target list trending artifact: ${trendingPath}`);
+                } else {
+                    logger.info('[scoundrel] target list trending response captured (artifact save disabled).');
+                }
+            }
+            if (result && result.counts) {
+                const { volume, trending } = result.counts;
+                if (volume != null || trending != null) {
+                    logger.info(`[scoundrel] target list counts: volume=${volume ?? 'n/a'} trending=${trending ?? 'n/a'}`);
+                }
+            }
+        } catch (err) {
+            const message = err?.message || String(err);
+            logger.error(`[scoundrel] target list failed: ${message}`);
+            process.exitCode = 1;
+        } finally {
+            closeHubCoordinator();
         }
     });
 
@@ -835,7 +1006,7 @@ program
         const pathsToCheck = [
             join(__dirname, 'lib', 'cli', 'dossier.js'),
             join(__dirname, 'ai', 'client.js'),
-            join(__dirname, 'ai', 'jobs', 'walletAnalysis.js'),
+            join(__dirname, 'ai', 'jobs', 'walletDossier.js'),
             join(__dirname, 'lib', 'cli', 'ask.js'),
         ];
         logger.info('\n[scoundrel] core files:');

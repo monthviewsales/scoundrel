@@ -1,9 +1,9 @@
 const originalEnv = process.env.OPENAI_API_KEY;
 
-jest.mock('../ai/client', () => {
+jest.mock('../ai/gptClient', () => {
   const mockCallResponses = jest.fn();
   const mockParseResponsesJSON = jest.fn();
-  const mockLog = { debug: jest.fn() };
+  const mockLog = { debug: jest.fn(), warn: jest.fn() };
   return {
     callResponses: mockCallResponses,
     parseResponsesJSON: mockParseResponsesJSON,
@@ -12,14 +12,14 @@ jest.mock('../ai/client', () => {
   };
 });
 
-describe('walletAnalysis job', () => {
+describe('walletDossier job', () => {
   let analyzeWallet;
   let clientMock;
 
   beforeEach(() => {
     jest.resetModules();
-    clientMock = require('../ai/client').__mock;
-    ({ analyzeWallet } = require('../ai/jobs/walletAnalysis'));
+    clientMock = require('../ai/gptClient').__mock;
+    ({ analyzeWallet } = require('../ai/jobs/walletDossier'));
   });
 
   afterAll(() => {
@@ -27,7 +27,7 @@ describe('walletAnalysis job', () => {
   });
 
   test('throws when merged payload missing', async () => {
-    await expect(analyzeWallet({})).rejects.toThrow('[walletAnalysis] missing merged payload');
+    await expect(analyzeWallet({})).rejects.toThrow('[walletDossier] missing merged payload');
   });
 
   test('calls Responses with schema and returns parsed payload', async () => {
