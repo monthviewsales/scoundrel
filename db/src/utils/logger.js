@@ -4,11 +4,24 @@ const rootLogger = require('../../../lib/logger');
 
 const defaultScope = 'BootyBox';
 
-const logger = rootLogger.child({ scope: defaultScope });
+/**
+ * Create a BootyBox-scoped logger that inherits the app logger transports.
+ *
+ * @returns {import('winston').Logger}
+ */
+function createBootyboxLogger() {
+  const child = rootLogger.child({ scope: defaultScope });
+  if (process.env.BOOTYBOX_LOG_LEVEL) {
+    child.level = process.env.BOOTYBOX_LOG_LEVEL;
+  }
+  return child;
+}
+
+const logger = createBootyboxLogger();
 
 // Convenience helper mirroring the main app logger style.
 logger.bootybox = function bootybox() {
-  return rootLogger.child({ scope: defaultScope });
+  return createBootyboxLogger();
 };
 
 module.exports = logger;
