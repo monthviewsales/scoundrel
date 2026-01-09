@@ -14,8 +14,6 @@ const {
   extractFees,
 } = require('../../lib/autopsy/tradeExtractors');
 const { createSolanaTrackerDataClient } = require('../../lib/solanaTrackerDataClient');
-const { runGrokProfileScore } = require('../jobs/grokProfileScore');
-const { runGrokMintSearchReport } = require('../jobs/grokMintSearchReport');
 
 /**
  * @typedef {Object} ToolDefinition
@@ -271,13 +269,16 @@ const toolDefinitions = [
       required: ['handle'],
       additionalProperties: false,
     },
-    handler: async ({ handle, profileUrl, profile, model, purpose }) => runGrokProfileScore({
-      handle,
-      profileUrl,
-      profile,
-      model,
-      purpose,
-    }),
+    handler: async ({ handle, profileUrl, profile, model, purpose }) => {
+      const { runGrokProfileScore } = require('../jobs/grokProfileScore');
+      return runGrokProfileScore({
+        handle,
+        profileUrl,
+        profile,
+        model,
+        purpose,
+      });
+    },
   },
   {
     name: 'grok.searchMintReport',
@@ -294,13 +295,16 @@ const toolDefinitions = [
       required: ['mint'],
       additionalProperties: false,
     },
-    handler: async ({ mint, symbol, aliases, model, purpose }) => runGrokMintSearchReport({
-      mint,
-      symbol,
-      aliases,
-      model,
-      purpose,
-    }),
+    handler: async ({ mint, symbol, aliases, model, purpose }) => {
+      const { runGrokMintSearchReport } = require('../jobs/grokMintSearchReport');
+      return runGrokMintSearchReport({
+        mint,
+        symbol,
+        aliases,
+        model,
+        purpose,
+      });
+    },
   },
   {
     name: 'walletChart.normalizeChartPoints',
