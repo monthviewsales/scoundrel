@@ -3,6 +3,10 @@
 const os = require('os');
 const path = require('path');
 
+if (!process.env.LOG_ROOT_DIR) {
+  process.env.LOG_ROOT_DIR = path.join(os.tmpdir(), `scoundrel-logs-${process.pid}`);
+}
+
 if (!process.env.LOG_LEVEL) {
   process.env.LOG_LEVEL = 'error';
 }
