@@ -37,7 +37,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 ## Runtime requirements
 
 - Node.js 22+, SQLite write access for `db/bootybox.db` (override via `BOOTYBOX_SQLITE_PATH`).
-- Env vars: `OPENAI_API_KEY`, `SOLANATRACKER_API_KEY`, optional `OPENAI_RESPONSES_MODEL` (default `gpt-5.1` in `ai/gptClient.js`), `NODE_ENV`, `BOOTYBOX_SQLITE_PATH`.
+- Env vars: `OPENAI_API_KEY`, `SOLANATRACKER_API_KEY`, optional `OPENAI_RESPONSES_MODEL` (default `gpt-5.2` in `ai/gptClient.js`), `NODE_ENV`, `BOOTYBOX_SQLITE_PATH`.
 - Install deps: `npm install`. Run tests: `npm test` (Jest, per-module coverage expected). Lints run via `npm run lint` if configured.
 
 ## Coding conventions to remember
