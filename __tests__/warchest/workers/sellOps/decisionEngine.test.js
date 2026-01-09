@@ -40,7 +40,7 @@ describe('sellOps decisionEngine', () => {
     const position = { strategyName: 'Flash' };
     const evaluation = { risk: { score: 40 }, warnings: [] };
     const chosen = chooseStrategy(position, docs, evaluation);
-    expect(chosen.source).toBe('db');
+    expect(chosen.source).toBe('position');
     expect(chosen.strategy.name).toBe('Flash');
   });
 

@@ -9,13 +9,18 @@ jest.mock('../ai/gptClient', () => {
 });
 
 describe('tuneStrategy job', () => {
-  let run;
+  let runTuneStrategy;
   let mockClient;
 
   beforeEach(() => {
     jest.resetModules();
     mockClient = require('../ai/gptClient').__mock;
-    ({ run } = require('../ai/jobs/tuneStrategy'));
+    ({ createTuneStrategyJob } = require('../ai/jobs/tuneStrategy'));
+    ({ runTuneStrategy } = createTuneStrategyJob({
+      callResponses: mockClient.callResponses,
+      parseResponsesJSON: mockClient.parseResponsesJSON,
+      log: {},
+    }));
   });
 
   test('delegates to callResponses and parseResponsesJSON', async () => {
@@ -23,12 +28,26 @@ describe('tuneStrategy job', () => {
     mockClient.callResponses.mockResolvedValue({ raw: true });
     mockClient.parseResponsesJSON.mockReturnValue(response);
 
-    const result = await run({ profile: { id: 1 }, currentSettings: { risk: 'low' }, model: 'gpt', temperature: 0.25 });
+    const result = await runTuneStrategy({
+      strategy: { name: 'FLASH' },
+      strategyMeta: { name: 'flash', path: '/tmp/flash.json' },
+      profile: { id: 1 },
+      history: [],
+      question: 'What should I tweak?',
+      model: 'gpt',
+      temperature: 0.25,
+    });
 
     expect(mockClient.callResponses).toHaveBeenCalledWith(expect.objectContaining({
       schema: expect.any(Object),
-      name: 'tune_strategy_v1',
-      user: { profile: { id: 1 }, currentSettings: { risk: 'low' } },
+      name: 'tune_strategy_v3',
+      user: {
+        strategy: { name: 'FLASH' },
+        strategyMeta: { name: 'flash', path: '/tmp/flash.json' },
+        profile: { id: 1 },
+        history: [],
+        question: 'What should I tweak?',
+      },
       model: 'gpt',
       temperature: 0.25
     }));

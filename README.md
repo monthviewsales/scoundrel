@@ -54,6 +54,9 @@ Common env vars (full list in `.env.sample`):
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
+| `DOTENV_SILENT` | Suppress dotenv banners | `true` |
+| `NODE_ENV` | Environment mode | `production` |
+| `LOG_LEVEL` | Global log level | `info` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-4.1-mini` |
 | `DOSSIER_VECTOR_STORE_ID` | Vector store for dossier analysis uploads | optional |
@@ -61,15 +64,19 @@ Common env vars (full list in `.env.sample`):
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
+| `SOLANATRACKER_URL` | SolanaTracker Data API base URL | `https://data.solanatracker.io` |
 | `SOLANATRACKER_RPC_HTTP_URL` | SolanaTracker HTTP RPC endpoint | required for RPC usage |
 | `SOLANATRACKER_RPC_WS_URL` | SolanaTracker WebSocket endpoint | required for WS usage |
 | `DEVSCAN_API_KEY` | DevScan public API access | required for DevScan lookups |
 | `SWAP_API_PROVIDER` | Swap engine provider (`swapV3` or `raptor`) | `swapV3` |
+| `DB_ENGINE` | BootyBox DB engine selector | `sqlite` |
 | `BOOTYBOX_SQLITE_PATH` | SQLite DB location | `db/bootybox.db` |
+| `BOOTYBOX_LOG_LEVEL` | BootyBox log level | `debug` |
 | `FEATURE_MINT_COUNT` | Default mint sample size for dossiers | `8` |
 | `HARVEST_LIMIT` | Max trades per harvest | `100` |
 | `WARCHEST_HUD_MAX_TX` | HUD recent tx limit | `10` |
 | `WARCHEST_HUD_MAX_LOGS` | HUD per-wallet log limit | `5` |
+| `SELL_OPS_OBSERVE_ONLY` | Force SellOps to run in observe-only mode (`true` disables execution) | empty |
 | `WARCHEST_TARGET_LIST_INTERVAL_MS` | Target list fetch interval (ms); set `OFF` to disable | `300000` |
 | `WARCHEST_WS_STALE_MS` | WS heartbeat stale threshold | `20000` |
 | `WARCHEST_WS_RESTART_GAP_MS` | Minimum WS restart gap | `30000` |
@@ -77,10 +84,16 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_WS_UNSUB_TIMEOUT_MS` | WS unsubscribe timeout | `2500` |
 | `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` | Proxy settings for RPC/data | empty |
 | `WORKER_LOG_LEVEL` | Override worker lifecycle log level | `info` |
+| `SC_WORKER_SILENT_CONSOLE` | Force worker console logging on/off (`1`/`0`) | empty |
 | `KIT_RPC_MAX_RETRIES` | Retry count for retryable RPC reads | `1` |
 | `KIT_RPC_RETRY_BASE_MS` | Base backoff delay for RPC retries (ms) | `200` |
 | `KIT_RPC_RETRY_MAX_MS` | Max backoff delay for RPC retries (ms) | `2000` |
 | `KIT_RPC_LOG_PAYLOAD` | Log full RPC payloads when set to `full` | empty |
+| `SAVE_PARSED` | Write parsed artifacts under `data/` | `FALSE` |
+| `SAVE_ENRICHED` | Write enriched artifacts under `data/` | `FALSE` |
+| `SAVE_RAW` | Write raw artifacts under `data/` | `FALSE` |
+| `TEST_TRADER` | Test trader label for local runs | optional |
+| `TEST_PUBKEY` | Test wallet pubkey for local runs | optional |
 
 AI clients:
 - OpenAI powers dossier + autopsy summaries.
@@ -92,6 +105,20 @@ AI clients:
 - For CI-grade runs with coverage output to `artifacts/coverage/`, use `npm run test:ci` (also used by GitHub Actions).
 - Run static checks with `npm run lint` (syntax validation).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
+
+## Strategy Tuning (CLI)
+
+Use the interactive tuner to ask questions about a strategy schema.
+
+```bash
+scoundrel tune --help
+scoundrel tune --strategy flash
+scoundrel tune -s campaign -n TraderAlias
+```
+
+Notes:
+- The tuner is Ink-only and requires a TTY (interactive terminal).
+- Use `:exit`, `:clear`, and `:help` inside the session.
 
 ## Error Handling Notes
 
@@ -301,6 +328,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
+- `tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
@@ -315,6 +343,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx` — Inspect transaction(s), optionally as swaps.
 - `swap` — Execute swaps or manage swap config.
 - `ask` — Q&A against saved profiles.
+- `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
 - `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `wallet` — Manage the local wallet registry.

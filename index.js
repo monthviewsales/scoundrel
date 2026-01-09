@@ -812,6 +812,45 @@ program
     });
 
 program
+    .command('tune-strategy')
+    .alias('tune')
+    .description('Interactive strategy tuner for memecoin sell/buy settings (OpenAI)')
+    .option('-s, --strategy <name>', 'Strategy name (flash, hybrid, campaign)')
+    .option('-p, --strategy-path <path>', 'Custom path to a strategy JSON file')
+    .option('-n, --name <traderName>', 'Optional trader profile alias (loads ./profiles/<name>.json)')
+    .option('--show-json', 'Print proposed JSON changes/patches', false)
+    .addHelpText('after', `\nExamples:\n  $ scoundrel tune-strategy --strategy flash\n  $ scoundrel tune -s hybrid\n  $ scoundrel tune --strategy-path ./lib/analysis/schemas/campaignStrategy.v1.json\n  $ scoundrel tune -n Gh0stee\n\nNotes:\n  • If no strategy is specified, a selector will prompt you to choose one.\n  • Reads strategy JSON from ./lib/analysis/schemas by name unless --strategy-path is provided.\n  • Optional profile context is loaded from ./profiles/<name>.json.\n  • Suggestions are advisory only; you manually edit strategy files.\n`)
+    .action(async (opts) => {
+        const tuneProcessor = loadProcessor('tuneStrategy');
+        let profile = null;
+
+        if (opts.name) {
+            const alias = opts.name.replace(/[^a-z0-9_-]/gi, '_');
+            const profilePath = join(process.cwd(), 'profiles', `${alias}.json`);
+            if (!existsSync(profilePath)) {
+                logger.error(`[scoundrel] profile not found: ${profilePath}`);
+                process.exit(1);
+            }
+            profile = JSON.parse(readFileSync(profilePath, 'utf8'));
+        }
+
+        try {
+            const runner = (typeof tuneProcessor === 'function') ? tuneProcessor : (tuneProcessor && tuneProcessor.run);
+            if (!runner) { logger.error('[scoundrel] ./lib/tuneStrategy must export a default function or { run }'); process.exit(1); }
+            await runner({
+                strategyName: opts.strategy,
+                strategyPath: opts.strategyPath || null,
+                profile,
+                showJson: Boolean(opts.showJson),
+            });
+            process.exit(0);
+        } catch (err) {
+            logger.error('[scoundrel] ❌ tune-strategy failed:', err?.message || err);
+            process.exit(1);
+        }
+    });
+
+program
     .command('addcoin')
     .argument('<mint>', 'Token mint address to add to the Scoundrel DB')
     .description('Fetch token metadata via SolanaTracker SDK and persist it through tokenInfoService')

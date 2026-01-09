@@ -3,8 +3,6 @@
 
 jest.mock('../../../lib/wallets/getWalletPrivateKey', () => jest.fn(async () => 'mock-secret'));
 
-const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const bs58 = require('bs58');
 const { Keypair } = require('@solana/web3.js');
@@ -47,29 +45,18 @@ describe('swap worker payload validation', () => {
 describe('swap worker IPC forwarding', () => {
   test('forwards swap results from the executor', async () => {
     const { secret, pubkey } = makeSecretKey();
-    const logPath = path.join(os.tmpdir(), `swap-worker-log-${Date.now()}.json`);
-    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'swap-worker-home-'));
-    const xdgConfigHome = path.join(tempHome, '.config');
-    const configDir = process.platform === 'darwin'
-      ? path.join(tempHome, 'Library', 'Application Support', 'com.VAULT77.scoundrel')
-      : path.join(xdgConfigHome, 'com.VAULT77.scoundrel');
-    fs.mkdirSync(configDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(configDir, 'swapConfig.json'),
-      JSON.stringify({
-        rpcUrl: 'https://rpc.example.invalid',
-        slippage: 12,
-        priorityFee: 'auto',
-        priorityFeeLevel: 'low',
-        txVersion: 'v0',
-        showQuoteDetails: false,
-        useJito: false,
-        jitoTip: 0.0001,
-        swapApiKey: 'stub',
-        DEBUG_MODE: false,
-      }, null, 2),
-      'utf8'
-    );
+    const swapConfigOverride = {
+      rpcUrl: 'https://rpc.example.invalid',
+      slippage: 12,
+      priorityFee: 'auto',
+      priorityFeeLevel: 'low',
+      txVersion: 'v0',
+      showQuoteDetails: false,
+      useJito: false,
+      jitoTip: 0.0001,
+      swapApiKey: 'stub',
+      DEBUG_MODE: false,
+    };
 
     const { result } = await forkWorkerWithPayload(workerPath, {
       payload: {
@@ -79,10 +66,8 @@ describe('swap worker IPC forwarding', () => {
         walletPrivateKey: secret,
       },
       env: {
-        HOME: tempHome,
-        XDG_CONFIG_HOME: xdgConfigHome,
         SWAP_WORKER_EXECUTOR: mockExecutor,
-        SWAP_WORKER_TEST_LOG: logPath,
+        SWAP_CONFIG_JSON: JSON.stringify(swapConfigOverride),
       },
       timeoutMs: 5000,
     });
@@ -93,9 +78,8 @@ describe('swap worker IPC forwarding', () => {
     expect(result.timing.durationMs).toBeGreaterThanOrEqual(0);
     expect(result.monitorPayload).toBeTruthy();
     expect(result.monitorPayload.txid).toBe('stub-txid');
-    const logged = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-    expect(logged.walletPubkey).toBe(pubkey);
-    expect(logged.side).toBe('buy');
-    expect(logged.slippagePercent).toBe(12);
+    expect(result.walletPubkey).toBe(pubkey);
+    expect(result.monitorPayload.side).toBe('buy');
+    expect(result.monitorPayload.slippagePercent).toBe(12);
   });
 });
