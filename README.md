@@ -104,6 +104,20 @@ AI clients:
 - Run static checks with `npm run lint` (syntax validation).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
 
+## Strategy Tuning (CLI)
+
+Use the interactive tuner to ask questions about a strategy schema.
+
+```bash
+scoundrel tune --help
+scoundrel tune --strategy flash
+scoundrel tune -s campaign -n TraderAlias
+```
+
+Notes:
+- The tuner is Ink-only and requires a TTY (interactive terminal).
+- Use `:exit`, `:clear`, and `:help` inside the session.
+
 ## Error Handling Notes
 
 - See `docs/solana-error-taxonomy.md` for how Solana/RPC errors are classified and surfaced in HUD events.
@@ -312,6 +326,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
+- `tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
@@ -326,6 +341,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx` — Inspect transaction(s), optionally as swaps.
 - `swap` — Execute swaps or manage swap config.
 - `ask` — Q&A against saved profiles.
+- `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
 - `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `wallet` — Manage the local wallet registry.
