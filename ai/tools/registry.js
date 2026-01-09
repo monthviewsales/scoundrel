@@ -157,18 +157,28 @@ const toolDefinitions = [
       type: 'object',
       properties: {
         mint: { type: 'string' },
+        tokenAddress: { type: 'string' },
+        includePriceChanges: { type: 'boolean' },
         apiKey: { type: 'string' },
         baseUrl: { type: 'string' },
         maxAttempts: { type: 'integer', minimum: 1 },
         retryBaseMs: { type: 'number', minimum: 0 },
       },
-      required: ['mint'],
+      required: [],
       additionalProperties: false,
     },
-    handler: async ({ mint, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+    handler: async ({
+      mint,
+      tokenAddress,
+      includePriceChanges,
+      apiKey,
+      baseUrl,
+      maxAttempts,
+      retryBaseMs,
+    }) => {
       const client = createSolanaTrackerDataClient({ apiKey, baseUrl, maxAttempts, retryBaseMs });
       try {
-        return await client.getTokenPrice(mint);
+        return await client.getTokenPrice({ mint, tokenAddress, includePriceChanges });
       } finally {
         if (client && typeof client.close === 'function') {
           await client.close();

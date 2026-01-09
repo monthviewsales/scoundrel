@@ -496,7 +496,7 @@ program
         try {
             const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'devscanWorker.js');
             const { result } = await forkWorkerWithPayload(workerPath, {
-                timeoutMs: 60000,
+                timeoutMs: 120000,
                 payload: {
                     mint: mint || null,
                     developerWallet: developerWallet || null,

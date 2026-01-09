@@ -7,24 +7,48 @@ const { listTools, callTool } = require('./tools');
 const devscanAnalysisTask = require('./warlordAI/tasks/devscanAnalysis');
 const grokMintSearchReportTask = require('./warlordAI/tasks/grokMintSearchReport');
 const grokProfileScoreTask = require('./warlordAI/tasks/grokProfileScore');
+const askTask = require('./warlordAI/tasks/ask');
+const tradeAutopsyTask = require('./warlordAI/tasks/tradeAutopsy');
 const tuneStrategyTask = require('./warlordAI/tasks/tuneStrategy');
+const walletDossierTask = require('./warlordAI/tasks/walletDossier');
 
 const TASKS = {
+  ask: askTask,
   devscanAnalysis: devscanAnalysisTask,
   grokMintSearchReport: grokMintSearchReportTask,
   grokProfileScore: grokProfileScoreTask,
+  tradeAutopsy: tradeAutopsyTask,
   tuneStrategy: tuneStrategyTask,
+  walletDossier: walletDossierTask,
 };
 
 const MAX_TOOL_ROUNDS = 4;
+const NETWORK_BLIP_RE = /(ENOTFOUND|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ECONNABORTED|ETIMEDOUT|socket hang up|fetch failed)/i;
+
+function isNetworkBlip(err) {
+  const message = err?.message || String(err || '');
+  return NETWORK_BLIP_RE.test(message);
+}
+
+function encodeToolName(name) {
+  const base64 = Buffer.from(String(name)).toString('base64');
+  const safe = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return `sc_tool_${safe}`;
+}
 
 function buildLocalToolSchemas() {
-  return listTools().map((tool) => ({
-    type: 'function',
-    name: tool.name,
-    description: tool.description,
-    parameters: tool.parameters,
-  }));
+  const nameMap = new Map();
+  const tools = listTools().map((tool) => {
+    const safeName = encodeToolName(tool.name);
+    nameMap.set(safeName, tool.name);
+    return {
+      type: 'function',
+      name: safeName,
+      description: tool.description,
+      parameters: tool.parameters,
+    };
+  });
+  return { tools, nameMap };
 }
 
 function buildInput(system, user) {
@@ -90,7 +114,9 @@ function createWarlordAI(clientOrOptions) {
     const provider = resolvedConfig.provider || config.provider || defaultProvider;
     const { callResponses, parseResponsesJSON, log } = resolveClient(provider);
     const enableLocalTools = provider === 'openai' && resolvedConfig.enableLocalTools !== false;
-    const localTools = enableLocalTools ? buildLocalToolSchemas() : [];
+    const { tools: localTools, nameMap: localToolNameMap } = enableLocalTools
+      ? buildLocalToolSchemas()
+      : { tools: [], nameMap: new Map() };
     const combinedTools = [];
     const seen = new Set();
     const addTool = (tool) => {
@@ -132,6 +158,8 @@ function createWarlordAI(clientOrOptions) {
     let res = await callResponses(options);
     let functionCalls = enableLocalTools ? extractFunctionCalls(res.output) : [];
     let rounds = 0;
+    let blipNoticeAdded = false;
+    const blipNotice = 'Note: A tool call failed due to a transient network blip. Mention this briefly and suggest retrying the tool, staying within the required output format.';
 
     while (functionCalls.length && rounds < MAX_TOOL_ROUNDS) {
       input.push(...res.output);
@@ -146,13 +174,18 @@ function createWarlordAI(clientOrOptions) {
           }
         }
         try {
-          const result = await callTool(call.name, args);
+          const resolvedToolName = localToolNameMap.get(call.name) || call.name;
+          const result = await callTool(resolvedToolName, args);
           toolOutputs.push({
             type: 'function_call_output',
             call_id: call.call_id,
             output: (typeof result === 'string') ? result : JSON.stringify(result),
           });
         } catch (err) {
+          if (!blipNoticeAdded && isNetworkBlip(err)) {
+            input.push({ role: 'system', content: blipNotice });
+            blipNoticeAdded = true;
+          }
           toolOutputs.push({
             type: 'function_call_output',
             call_id: call.call_id,
@@ -166,7 +199,14 @@ function createWarlordAI(clientOrOptions) {
       rounds += 1;
     }
 
-    const out = parseResponsesJSON(res);
+    let out;
+    try {
+      out = parseResponsesJSON(res);
+    } catch (err) {
+      err.response = res;
+      err.task = task;
+      throw err;
+    }
     if (log && typeof log.debug === 'function') {
       log.debug(`[warlordAI:${task}] model output (truncated):`, JSON.stringify(out).slice(0, 256));
     }

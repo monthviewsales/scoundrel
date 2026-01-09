@@ -17,6 +17,24 @@ function createDevscanAnalysis(client) {
   });
   const logger = resolvedClient.log || console;
 
+  /**
+   * Extract a best-effort text payload from a raw response.
+   * @param {any} res
+   * @returns {string}
+   */
+  function extractTextFromResponse(res) {
+    if (!res) return '';
+    if (typeof res === 'string') return res;
+    if (typeof res.output_text === 'string') return res.output_text;
+    const first = Array.isArray(res.output) && res.output[0];
+    const content = first && Array.isArray(first.content) ? first.content : [];
+    for (const c of content) {
+      if (typeof c?.text === 'string') return c.text;
+      if (typeof c?.data === 'object') return JSON.stringify(c.data);
+    }
+    return '';
+  }
+
   function buildFallback(version, payload) {
     if (version === 'devscan.mint.v1') {
       const target = payload?.meta?.mint || payload?.token?.data?.mintAddress || null;
@@ -104,13 +122,15 @@ function createDevscanAnalysis(client) {
         model,
       });
     } catch (e) {
+      const text = extractTextFromResponse(e && e.response);
       out = buildFallback(version, payload);
-      out.markdown = '';
+      out.markdown = String(text || '').trim();
     }
 
     if (!out || typeof out !== 'object' || !out.markdown) {
+      const text = typeof out === 'string' ? out : JSON.stringify(out || {});
       out = buildFallback(version, payload);
-      out.markdown = '';
+      out.markdown = String(text || '').trim();
     }
     logger.debug('[devscanAnalysis] model output (truncated):', JSON.stringify(out).slice(0, 300));
     return out;

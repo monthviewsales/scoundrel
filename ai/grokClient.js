@@ -109,12 +109,14 @@ async function callResponses({
 function parseResponsesJSON(res) {
   if (!res) throw new Error('[ai:client] Empty response');
   if (res.output_text) return JSON.parse(res.output_text);
-  const first = Array.isArray(res.output) && res.output[0];
-  const content = first && Array.isArray(first.content) ? first.content : [];
   if (!res.output_text) log.warn('[ai:client] output_text empty; falling back to manual parse of content blocks');
-  for (const c of content) {
-    if (typeof c?.text === 'string') { try { return JSON.parse(c.text); } catch (_) {} }
-    if (typeof c?.data === 'object') return c.data;
+  const outputs = Array.isArray(res.output) ? res.output : [];
+  for (const item of outputs) {
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const c of content) {
+      if (typeof c?.text === 'string') { try { return JSON.parse(c.text); } catch (_) {} }
+      if (typeof c?.data === 'object') return c.data;
+    }
   }
   throw new Error('[ai:client] Could not parse JSON from Responses output');
 }
