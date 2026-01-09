@@ -104,6 +104,20 @@ AI clients:
 - Run static checks with `npm run lint` (syntax validation).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
 
+## Strategy Tuning (CLI)
+
+Use the interactive tuner to ask questions about a strategy schema.
+
+```bash
+scoundrel tune --help
+scoundrel tune --strategy flash
+scoundrel tune -s campaign -n TraderAlias
+```
+
+Notes:
+- The tuner is Ink-only and requires a TTY (interactive terminal).
+- Use `:exit`, `:clear`, and `:help` inside the session.
+
 ## Error Handling Notes
 
 - See `docs/solana-error-taxonomy.md` for how Solana/RPC errors are classified and surfaced in HUD events.

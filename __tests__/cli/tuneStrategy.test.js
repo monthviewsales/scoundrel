@@ -3,7 +3,6 @@
 const mockRunTuneStrategy = jest.fn();
 const mockCreateCommandRun = jest.fn();
 const mockWriteArtifact = jest.fn();
-const mockCreateInterface = jest.fn();
 
 jest.mock('../../ai/jobs/tuneStrategy', () => ({
   runTuneStrategy: (...args) => mockRunTuneStrategy(...args),
@@ -11,10 +10,6 @@ jest.mock('../../ai/jobs/tuneStrategy', () => ({
 
 jest.mock('../../lib/cli/aiRun', () => ({
   createCommandRun: (...args) => mockCreateCommandRun(...args),
-}));
-
-jest.mock('readline', () => ({
-  createInterface: (...args) => mockCreateInterface(...args),
 }));
 
 beforeEach(() => {
@@ -28,26 +23,44 @@ beforeEach(() => {
 });
 
 test('tuneStrategy runs interactive chat and writes artifacts', async () => {
-  const responses = ['How should I tighten stops?', ':exit'];
-  const mockRl = {
-    question: jest.fn((prompt, cb) => cb(responses.shift())),
-    close: jest.fn(),
+  const runSession = async ({
+    strategy,
+    strategyMeta,
+    profile,
+    model,
+    temperature,
+    artifacts,
+  }) => {
+    const question = 'How should I tighten stops?';
+    const payload = {
+      strategy,
+      strategyMeta,
+      profile,
+      history: [],
+      question,
+    };
+    artifacts.write('prompt', 'prompt-1', payload);
+    const out = await mockRunTuneStrategy({
+      ...payload,
+      model,
+      temperature,
+    });
+    artifacts.write('response', 'response-1', out);
   };
-  mockCreateInterface.mockReturnValue(mockRl);
 
   mockRunTuneStrategy.mockResolvedValue({
     answer: 'Consider tighter trailing stops after 2x.',
     bullets: ['Lower trailing activation to 1.8x.'],
     actions: ['Review flash strategy stop windows.'],
     questions: [],
-    changes: {},
+    changes: '{}',
     patch: [],
     risks: [],
     rationale: '',
   });
 
   const tuneStrategy = require('../../lib/cli/tuneStrategy');
-  await tuneStrategy({ strategyName: 'flash' });
+  await tuneStrategy({ strategyName: 'flash', runSession });
 
   expect(mockCreateCommandRun).toHaveBeenCalledWith(expect.objectContaining({
     command: 'tune-strategy',
@@ -61,5 +74,4 @@ test('tuneStrategy runs interactive chat and writes artifacts', async () => {
 
   expect(mockWriteArtifact).toHaveBeenCalledWith('prompt', 'prompt-1', expect.any(Object));
   expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'response-1', expect.any(Object));
-  expect(mockRl.close).toHaveBeenCalled();
 });

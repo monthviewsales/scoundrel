@@ -40,7 +40,7 @@ describe('tuneStrategy job', () => {
 
     expect(mockClient.callResponses).toHaveBeenCalledWith(expect.objectContaining({
       schema: expect.any(Object),
-      name: 'tune_strategy_v2',
+      name: 'tune_strategy_v3',
       user: {
         strategy: { name: 'FLASH' },
         strategyMeta: { name: 'flash', path: '/tmp/flash.json' },
