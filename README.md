@@ -326,6 +326,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
+- `tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
@@ -340,6 +341,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx` — Inspect transaction(s), optionally as swaps.
 - `swap` — Execute swaps or manage swap config.
 - `ask` — Q&A against saved profiles.
+- `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
 - `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `wallet` — Manage the local wallet registry.
