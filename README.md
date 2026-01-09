@@ -58,7 +58,7 @@ Common env vars (full list in `.env.sample`):
 | `NODE_ENV` | Environment mode | `production` |
 | `LOG_LEVEL` | Global log level | `info` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
-| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-4.1-mini` |
+| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
 | `DOSSIER_VECTOR_STORE_ID` | Vector store for dossier analysis uploads | optional |
 | `AUTOPSY_VECTOR_STORE_ID` | Vector store for autopsy analysis uploads | optional |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
