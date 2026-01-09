@@ -110,7 +110,6 @@ function createTradeAutopsy(client) {
       name: 'trade_autopsy_v2_3',
       schema: RESPONSE_SCHEMA,
       user: { campaign: payload },
-      temperature: 0.2,
     });
 
     const out = parseResponsesJSON(res);
