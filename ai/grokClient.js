@@ -5,7 +5,7 @@
   const OpenAI = require('openai');
   const log = require('../lib/log');
 
-  // Default to the latest GPT-5.1 model; can be overridden via OPENAI_RESPONSES_MODEL.
+  // Default to the latest Grok model for xAI Responses.
   const DEFAULT_MODEL = 'grok-4-1-fast-reasoning';
   const xAIApiKey = process.env.xAI_API_KEY;
 
@@ -16,13 +16,14 @@
   });
 
 /**
- * Call OpenAI Responses API with Structured Outputs (GPT-5.1-friendly).
+ * Call xAI Responses API with Structured Outputs.
  * @param {Object} opts
  * @param {Object} opts.schema - JSON Schema for structured outputs
  * @param {string} [opts.name='scoundrel_job'] - Schema name
  * @param {string} [opts.system] - Optional system-level instructions
  * @param {string|Object} [opts.user] - User content or JSON payload (will be JSON.stringified if object)
- * @param {string} [opts.model=DEFAULT_MODEL] - Model name, e.g. 'gpt-5.1'
+ * @param {Array|String} [opts.input] - Optional prebuilt input list or string (overrides system/user)
+ * @param {string} [opts.model=DEFAULT_MODEL] - Model name, e.g. 'grok-4-1-fast-reasoning'
  * @param {number} [opts.temperature] - Optional temperature; only sent if explicitly provided
  * @param {string|{id:string,version?:string}} [opts.prompt] - Dashboard Prompt id or { id, version }
  * @param {Object} [opts.reasoning] - Optional reasoning config (if supported by the model)
@@ -34,6 +35,7 @@ async function callResponses({
   name = 'scoundrel_job',
   system,
   user,
+  input,
   model = DEFAULT_MODEL,
   temperature,
   prompt,
@@ -41,21 +43,22 @@ async function callResponses({
   metadata,
   ...extra
 }) {
-  const input = [];
-
-  if (typeof system === 'string' && system.trim().length) {
-    input.push({ role: 'system', content: system });
+  let resolvedInput = input;
+  if (!resolvedInput) {
+    resolvedInput = [];
+    if (typeof system === 'string' && system.trim().length) {
+      resolvedInput.push({ role: 'system', content: system });
+    }
+    const userContent = (typeof user === 'string')
+      ? user
+      : JSON.stringify(user ?? {});
+    resolvedInput.push({ role: 'user', content: userContent });
   }
-
-  const userContent = (typeof user === 'string')
-    ? user
-    : JSON.stringify(user ?? {});
-  input.push({ role: 'user', content: userContent });
 
   // Responses API structured outputs live under text.format, not response_format
   const payload = {
     model,
-    input,
+    input: resolvedInput,
     text: {
       format: {
         type: 'json_schema',
@@ -89,7 +92,7 @@ async function callResponses({
   if (extra && Object.keys(extra).length) {
     const { seed, ...rest } = extra;
     if (typeof seed !== 'undefined') {
-      log.warn('[ai:client] Ignoring unsupported `seed` parameter for Responses API (GPT-5.1); remove it at call sites if possible.');
+      log.warn('[ai:client] Ignoring unsupported `seed` parameter for Responses API; remove it at call sites if possible.');
     }
     Object.assign(payload, rest);
   }

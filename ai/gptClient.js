@@ -5,8 +5,8 @@
   const OpenAI = require('openai');
   const log = require('../lib/log');
 
-  // Default to the latest GPT-5.1 model; can be overridden via OPENAI_RESPONSES_MODEL.
-  const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.1';
+  // Default to GPT-5.2; can be overridden via OPENAI_RESPONSES_MODEL.
+  const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.2';
   let client = null;
 
   /**
@@ -31,7 +31,8 @@
  * @param {string} [opts.name='scoundrel_job'] - Schema name
  * @param {string} [opts.system] - Optional system-level instructions
  * @param {string|Object} [opts.user] - User content or JSON payload (will be JSON.stringified if object)
- * @param {string} [opts.model=DEFAULT_MODEL] - Model name, e.g. 'gpt-5.1'
+ * @param {Array|String} [opts.input] - Optional prebuilt input list or string (overrides system/user)
+ * @param {string} [opts.model=DEFAULT_MODEL] - Model name, e.g. 'gpt-5.2'
  * @param {number} [opts.temperature] - Optional temperature; only sent if explicitly provided
  * @param {string|{id:string,version?:string}} [opts.prompt] - Dashboard Prompt id or { id, version }
  * @param {Object} [opts.reasoning] - Optional reasoning config (if supported by the model)
@@ -43,6 +44,7 @@ async function callResponses({
   name = 'scoundrel_job',
   system,
   user,
+  input,
   model = DEFAULT_MODEL,
   temperature,
   prompt,
@@ -50,21 +52,22 @@ async function callResponses({
   metadata,
   ...extra
 }) {
-  const input = [];
-
-  if (typeof system === 'string' && system.trim().length) {
-    input.push({ role: 'system', content: system });
+  let resolvedInput = input;
+  if (!resolvedInput) {
+    resolvedInput = [];
+    if (typeof system === 'string' && system.trim().length) {
+      resolvedInput.push({ role: 'system', content: system });
+    }
+    const userContent = (typeof user === 'string')
+      ? user
+      : JSON.stringify(user ?? {});
+    resolvedInput.push({ role: 'user', content: userContent });
   }
-
-  const userContent = (typeof user === 'string')
-    ? user
-    : JSON.stringify(user ?? {});
-  input.push({ role: 'user', content: userContent });
 
   // Responses API structured outputs live under text.format, not response_format
   const payload = {
     model,
-    input,
+    input: resolvedInput,
     text: {
       format: {
         type: 'json_schema',
@@ -78,7 +81,13 @@ async function callResponses({
   // Some latest / reasoning models don't support temperature.
   // Only include it if the caller explicitly set a number.
   if (typeof temperature === 'number') {
-    payload.temperature = temperature;
+    const isGpt52 = typeof model === 'string' && model.startsWith('gpt-5.2');
+    const effort = reasoning && typeof reasoning === 'object' ? reasoning.effort : null;
+    if (isGpt52 && effort && effort !== 'none') {
+      log.warn('[ai:client] Ignoring temperature for GPT-5.2 unless reasoning.effort is "none".');
+    } else {
+      payload.temperature = temperature;
+    }
   }
 
   if (reasoning && typeof reasoning === 'object') {
@@ -98,7 +107,7 @@ async function callResponses({
   if (extra && Object.keys(extra).length) {
     const { seed, ...rest } = extra;
     if (typeof seed !== 'undefined') {
-      log.warn('[ai:client] Ignoring unsupported `seed` parameter for Responses API (GPT-5.1); remove it at call sites if possible.');
+      log.warn('[ai:client] Ignoring unsupported `seed` parameter for Responses API (GPT-5.2); remove it at call sites if possible.');
     }
     Object.assign(payload, rest);
   }
