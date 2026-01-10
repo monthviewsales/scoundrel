@@ -2,8 +2,6 @@
 
 const defaultClient = require('../gptClient');
 const { createWarlordAI } = require('../warlordAI');
-const { buildFinalPayload } = require('../../lib/analysis/payloadBuilders');
-const { queueVectorStoreUpload } = require('../../lib/ai/vectorStoreUpload');
 
 
 /**
@@ -35,12 +33,6 @@ function createTradeAutopsy(client) {
       model,
     });
     logger.debug('[tradeAutopsy] model output (truncated):', JSON.stringify(out).slice(0, 256));
-    const finalPayload = buildFinalPayload({ prompt: payload, response: out });
-    await queueVectorStoreUpload({
-      source: 'autopsy',
-      name: payload?.campaign?.token?.symbol || payload?.meta?.mint || null,
-      data: finalPayload,
-    }).catch((err) => logger.warn('[tradeAutopsy] vector store ingest failed:', err?.message));
     return out;
   }
 

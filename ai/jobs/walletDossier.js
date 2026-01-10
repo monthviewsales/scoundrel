@@ -2,8 +2,6 @@
 
 const defaultClient = require('../gptClient');
 const { createWarlordAI } = require('../warlordAI');
-const { buildFinalPayload } = require('../../lib/analysis/payloadBuilders');
-const { queueVectorStoreUpload } = require('../../lib/ai/vectorStoreUpload');
 
 
 /**
@@ -66,12 +64,6 @@ function createWalletAnalysis(client) {
     }
 
     logger.debug('[walletDossier] model output (truncated):', JSON.stringify(out).slice(0, 300));
-    const finalPayload = buildFinalPayload({ prompt: merged, response: out });
-    await queueVectorStoreUpload({
-      source: 'dossier',
-      name: merged?.meta?.traderName || merged?.meta?.wallet || null,
-      data: finalPayload,
-    }).catch((err) => logger.warn('[walletDossier] vector store ingest failed:', err?.message));
     return out;
   }
 
