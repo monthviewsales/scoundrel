@@ -60,7 +60,7 @@ Common env vars (full list in `.env.sample`):
 | `LOG_ROOT_DIR` | Root directory for log files | `./data/logs` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
-| `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads (autopsy, dossier, targetscan) | optional |
+| `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
@@ -89,14 +89,16 @@ Common env vars (full list in `.env.sample`):
 | `KIT_RPC_RETRY_BASE_MS` | Base backoff delay for RPC retries (ms) | `200` |
 | `KIT_RPC_RETRY_MAX_MS` | Max backoff delay for RPC retries (ms) | `2000` |
 | `KIT_RPC_LOG_PAYLOAD` | Log full RPC payloads when set to `full` | empty |
-| `SAVE_PARSED` | Write parsed artifacts under `data/` | `FALSE` |
-| `SAVE_ENRICHED` | Write enriched artifacts under `data/` | `FALSE` |
+| `SAVE_PROMPT` | Write prompt artifacts under `data/` | `FALSE` |
+| `SAVE_RESPONSE` | Write response artifacts under `data/` | `FALSE` |
+| `SAVE_PARSED` | Legacy alias for `SAVE_PROMPT` | `FALSE` |
+| `SAVE_ENRICHED` | Legacy: enable prompt + response + final artifacts | `FALSE` |
 | `SAVE_RAW` | Write raw artifacts under `data/` | `FALSE` |
 | `TEST_TRADER` | Test trader label for local runs | optional |
 | `TEST_PUBKEY` | Test wallet pubkey for local runs | optional |
 
 AI clients:
-- OpenAI powers dossier + autopsy summaries.
+- OpenAI powers dossier, autopsy, and targetscan summaries; it also uploads final payloads to vector stores.
 - Grok (xAI) powers `devscan` summaries; set `xAI_API_KEY` and optionally `DEVSCAN_RESPONSES_MODEL`.
 
 ## Testing

@@ -6,7 +6,7 @@ This repository uses a shared factory to standardize CLI analysis flows that:
 3) invoke an AI job
 4) persist the analysis via flow-specific hooks
 
-The factory lives at `lib/cli/analysisFlow.js` and is used by dossier, autopsy, and devscan.
+The factory lives at `lib/cli/analysisFlow.js` and is used by dossier, autopsy, devscan, and targetscan.
 
 ## Usage
 
@@ -34,3 +34,5 @@ const runExampleFlow = createAnalysisFlow({
   returns `promptPath: null`) and skips the AI call.
 - Returning `runAnalysis: false` or `skipAnalysis: true` from `build` skips analysis entirely.
 - The CLI wrappers keep their existing run signatures and persistence hooks.
+- Final payload assembly (prompt + response) and vector store uploads should happen inside `persist`
+  so only merged payloads are uploaded.

@@ -8,13 +8,14 @@ const { SolanaTrackerDataClient } = require('../lib/solanaTrackerDataClient');
 const st = new SolanaTrackerDataClient({ apiKey: process.env.SOLANATRACKER_API_KEY });
 const walletTrades = await st.getWalletTrades({ wallet: 'xxxxx', limit: 250 });
 const chart = await st.getWalletChart('xxxxx');
+const priceRange = await st.getPriceRange('mint...', 1710000000, 1710003600);
 const risk = await st.getTokenRiskScores('mint...');
 ```
 
 ## Covered endpoints
 
 - **Tokens**: `getTokenInformation`, `getTokenByPoolAddress`, `getTokenHoldersTop100`, `getLatestTokens`, `getMultipleTokens`, `getTrendingTokens`, `getTokensByVolumeWithTimeframe`, `getTokenOverview`, `getTokenOhlcvData`, `getTokenPoolOhlcvData`, `getTokenSnapshotAt`, `getTokenSnapshotNow`.
-- **Prices**: `getTokenPrice`, `getMultipleTokenPrices`.
+- **Prices**: `getTokenPrice`, `getMultipleTokenPrices`, `getAthPrice`, `getPriceRange`.
 - **Wallets**: `getWalletTokens`, `getBasicWalletInformation`, `getWalletTrades` (cursor pagination + optional start/end filtering), `getWalletChart`, `getWalletPnl`.
 - **Leaders / events**: `getTopTradersForToken`, `getTokenEvents`.
 - **Utility**: `searchTokens`, `getTokenRiskScores`, `healthCheck`.
