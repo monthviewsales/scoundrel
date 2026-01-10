@@ -34,4 +34,77 @@ describe('tx CLI artifacts', () => {
     }));
     expect(result).toEqual(expect.objectContaining({ runId: 'run-1' }));
   });
+
+  test('writeTxSessionArtifacts persists session payload', () => {
+    const { createCommandRun } = require('../../lib/cli/aiRun');
+    const { writeTxSessionArtifacts } = require('../../lib/cli/tx');
+    const write = jest.fn(() => '/tmp/tx-session.json');
+    createCommandRun.mockReturnValue({
+      runId: 'run-2',
+      isDev: false,
+      artifacts: { write, loadLatest: jest.fn() },
+    });
+
+    const savedPath = writeTxSessionArtifacts({
+      txid: 'sig123',
+      sessionPayload: { ok: true },
+      swapMode: false,
+      focusWallet: null,
+      mint: null,
+    });
+
+    expect(write).toHaveBeenCalledWith('response', 'txSession', { ok: true });
+    expect(savedPath).toBe('/tmp/tx-session.json');
+  });
+
+  test('writeTxSessionArtifacts throws when writer fails', () => {
+    const { createCommandRun } = require('../../lib/cli/aiRun');
+    const { writeTxSessionArtifacts } = require('../../lib/cli/tx');
+    createCommandRun.mockReturnValue({
+      runId: 'run-3',
+      isDev: false,
+      artifacts: { write: jest.fn(() => null), loadLatest: jest.fn() },
+    });
+
+    expect(() => writeTxSessionArtifacts({
+      txid: 'sig124',
+      sessionPayload: { ok: false },
+      swapMode: false,
+      focusWallet: null,
+      mint: null,
+    })).toThrow('jsonArtifacts writer did not return a saved path.');
+  });
+});
+
+describe('tx CLI guardrails', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('runTx exits when signature is missing', async () => {
+    const runTx = require('../../lib/cli/tx');
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('exit');
+    });
+
+    await expect(runTx({ signature: '' })).rejects.toThrow('exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+
+    exitSpy.mockRestore();
+  });
+
+  test('runTx exits when swap mode lacks wallet or mint', async () => {
+    const runTx = require('../../lib/cli/tx');
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('exit');
+    });
+
+    await expect(runTx({
+      signature: 'sig',
+      cmd: { opts: () => ({ swap: true }) },
+    })).rejects.toThrow('exit');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    exitSpy.mockRestore();
+  });
 });
