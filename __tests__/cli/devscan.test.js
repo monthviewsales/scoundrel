@@ -81,7 +81,7 @@ test('runDevscan skips analysis when runAnalysis=false', async () => {
 
   expect(mockWriteArtifact).toHaveBeenCalledWith('raw', 'token', expect.any(Object));
   expect(mockWriteArtifact).toHaveBeenCalledWith('raw', 'developer', expect.any(Object));
-  expect(mockWriteArtifact).toHaveBeenCalledWith('prompt', 'prompt', expect.any(Object));
+  expect(mockWriteArtifact).toHaveBeenCalledWith('prompt', 'Mint1_prompt', expect.any(Object));
 
   expect(mockAnalyzeDevscan).not.toHaveBeenCalled();
   expect(mockPersistProfileSnapshot).not.toHaveBeenCalled();
@@ -135,11 +135,21 @@ test('runDevscan runs analysis and persists profile snapshot', async () => {
     payload: expect.any(Object),
   }));
 
-  expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'response', expect.any(Object));
+  expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'Mint2_response', expect.any(Object));
   expect(mockPersistProfileSnapshot).toHaveBeenCalledWith(expect.objectContaining({
     source: 'devscan',
     name: 'mint:Mint2',
   }));
 
   expect(result.openAiResult).toBeDefined();
+});
+
+test('runDevscan surfaces developer not found cleanly', async () => {
+  const { runDevscan } = require('../../lib/cli/devscan');
+
+  mockFetchJson({ success: false, error: { code: 'DEVELOPER_NOT_FOUND', message: 'Developer not found' } }, false);
+
+  await expect(runDevscan({
+    developerWallet: 'DevMissing1',
+  })).rejects.toThrow('[devscan] developer not found for wallet DevMissing1');
 });
