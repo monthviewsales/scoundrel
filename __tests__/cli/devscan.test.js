@@ -58,6 +58,7 @@ beforeEach(() => {
     artifacts: { write: mockWriteArtifact },
   });
   mockRequestId.mockResolvedValue('devscan-1234567890');
+  mockQueueVectorStoreUpload.mockResolvedValue({ queued: true });
 });
 
 function mockFetchJson(payload, ok = true) {
