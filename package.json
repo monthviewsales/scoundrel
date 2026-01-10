@@ -7,6 +7,7 @@
     "lib": "lib"
   },
   "scripts": {
+    "pretest": "npm run lint",
     "lint": "node scripts/lint.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles",
     "test:ci": "NODE_OPTIONS=--experimental-vm-modules COVERAGE=true jest --runInBand --coverage --detectOpenHandles"
