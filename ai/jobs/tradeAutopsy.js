@@ -7,6 +7,7 @@ const { randomUUID } = require('crypto');
 const OpenAI = require('openai');
 const defaultClient = require('../gptClient');
 const { createWarlordAI } = require('../warlordAI');
+const { buildFinalPayload } = require('../../lib/analysis/payloadBuilders');
 
 const AUTOPSY_VECTOR_STORE_ID = process.env.AUTOPSY_VECTOR_STORE_ID || 'vs_695c25edadd481918b3be75989e5b8eb';
 
@@ -35,22 +36,8 @@ function createTradeAutopsy(client) {
       return;
     }
 
-    const campaign = payload?.campaign || {};
-    const token = payload?.token || {};
-    const wallet = payload?.wallet || {};
-    const metadata = {
-      kind: 'autopsy.analysis',
-      generatedAt: new Date().toISOString(),
-      walletAddress: wallet.address || null,
-      walletLabel: wallet.label || null,
-      mint: token.mint || null,
-      tokenSymbol: token.symbol || null,
-      campaignStart: campaign.startTimestamp || null,
-      campaignEnd: campaign.endTimestamp || null,
-      analysis,
-    };
-
-    const content = JSON.stringify(metadata);
+    const finalPayload = buildFinalPayload({ prompt: payload, response: analysis });
+    const content = JSON.stringify(finalPayload);
     const tmpPath = path.join(os.tmpdir(), `autopsy-${randomUUID()}.json`);
     try {
       logger.warn('[tradeAutopsy] Ingesting autopsy into vector store', { vectorStore: AUTOPSY_VECTOR_STORE_ID });

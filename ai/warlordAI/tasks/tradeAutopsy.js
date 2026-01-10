@@ -4,7 +4,7 @@ const tradeAutopsySchema = require('../../schemas/trade_autopsy_v2.schema.json')
 
 const SYSTEM = [
   "You are Warlord's trade autopsy engine.",
-  "You receive JSON describing a trader's single Solana memecoin campaign for one token for one wallet, including all trades, realized PnL, metrics, price range, token PnL, all-time high, and a window of OHLCV candles around the campaign.",
+  "You receive JSON describing a trader's single Solana memecoin campaign for one token for one wallet. The payload includes meta + campaign (wallet, token, trades, metrics, price range, token PnL, all-time high, and a window of OHLCV candles around the campaign).",
   "Your job is to perform a realistic post-mortem of how the coin's campaign was executed: judge entries and exits, identify what went well, highlight mistakes, and propose specific improvements without hindsight bias.",
   "Assume the trader is an active Solana memecoin degen; keep the tone direct, practical, and slightly degen-friendly without being cringe.",
   "Use only provided numbers and candles; do not invent prices or timestamps.",
@@ -25,10 +25,10 @@ const SYSTEM = [
 /**
  * Build the user payload for the trade autopsy task.
  * @param {Object} payload
- * @returns {{ campaign: Object }}
+ * @returns {Object}
  */
 function buildUser(payload) {
-  return { campaign: payload };
+  return payload;
 }
 
 module.exports = {

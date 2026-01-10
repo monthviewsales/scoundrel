@@ -55,12 +55,12 @@ describe('buildAutopsyPayload', () => {
       runId: 'run-123',
     });
 
-    expect(payload.wallet).toEqual({ label: 'Trader', address: 'Wallet1' });
-    expect(payload.token.symbol).toBe('TST');
+    expect(payload.campaign.wallet).toEqual({ label: 'Trader', address: 'Wallet1' });
+    expect(payload.campaign.token.symbol).toBe('TST');
     expect(payload.campaign.metrics.realizedPnLUsd).toBe(20);
     expect(payload.campaign.metrics.avgEntryPrice).toBe(1);
     expect(payload.campaign.metrics.avgExitPrice).toBe(3);
-    expect(payload.campaign.metrics.feeToPnLRatio).toBeNull();
+    expect(payload.campaign.metrics.feeToPnLRatio).toBeUndefined();
 
     expect(write).toHaveBeenCalledWith('raw', 'tokenInfo', expect.any(Object));
     expect(write).toHaveBeenCalledWith('raw', 'userTokenTrades', expect.any(Object));

@@ -8,6 +8,7 @@ const { randomUUID } = require('crypto');
 const OpenAI = require('openai');
 const defaultClient = require('../gptClient');
 const { createWarlordAI } = require('../warlordAI');
+const { buildFinalPayload } = require('../../lib/analysis/payloadBuilders');
 
 // Vector store that will hold dossier responses. Override via env when needed.
 const DOSSIER_VECTOR_STORE_ID = process.env.DOSSIER_VECTOR_STORE_ID || 'vs_695c1a78e9f48191a718f1ba937e5c88';
@@ -54,15 +55,8 @@ function createWalletAnalysis(client) {
       logger.warn('[walletDossier] OPENAI_API_KEY missing; skipping vector store ingest');
       return;
     }
-    // Build payload with minimal metadata to aid retrieval.
-    const payload = {
-      kind: 'dossier.analysis',
-      generatedAt: new Date().toISOString(),
-      walletAlias: merged?.walletAlias || merged?.walletName || null,
-      walletPubkey: merged?.wallet || merged?.walletId || null,
-      analysis
-    };
-    const content = JSON.stringify(payload);
+    const finalPayload = buildFinalPayload({ prompt: merged, response: analysis });
+    const content = JSON.stringify(finalPayload);
     const tmpPath = path.join(os.tmpdir(), `dossier-${randomUUID()}.json`);
     try {
       logger.warn('[walletDossier] Ingesting dossier into vector store', { vectorStore: DOSSIER_VECTOR_STORE_ID });
