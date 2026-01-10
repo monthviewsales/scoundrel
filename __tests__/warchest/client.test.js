@@ -70,7 +70,21 @@ describe('warchest client setup', () => {
       client.trackInterval(timer);
       client.trackSubscription(sub);
 
+      const writeSpy = jest.spyOn(fs, 'writeFileSync');
+      const renameSpy = jest.spyOn(fs, 'renameSync');
+
       client.writeStatusSnapshot({ ok: true });
+
+      const tempWriteCall = writeSpy.mock.calls.find(([target]) =>
+        typeof target === 'string'
+        && target.includes(`${path.sep}.status.json.`)
+        && String(target).endsWith('.tmp'));
+      expect(tempWriteCall).toBeTruthy();
+
+      const tmpPath = tempWriteCall[0];
+      const renameCall = renameSpy.mock.calls.find(([from]) => from === tmpPath);
+      expect(renameCall).toBeTruthy();
+      expect(renameCall[1]).toBe(path.join(statusDir, 'status.json'));
 
       await client.close();
 
@@ -84,6 +98,8 @@ describe('warchest client setup', () => {
 
       clearInterval(timer);
       fs.rmSync(statusDir, { recursive: true, force: true });
+      writeSpy.mockRestore();
+      renameSpy.mockRestore();
     });
   });
 
