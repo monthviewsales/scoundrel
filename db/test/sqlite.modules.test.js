@@ -217,6 +217,45 @@ describe('coins submodule', () => {
   });
 });
 
+describe('coin metadata submodule', () => {
+  test('upserts and retrieves coin metadata by mint', () => {
+    const first = adapter.upsertCoinMetadata({
+      metadataId: 'meta-1',
+      mint: 'mint-meta',
+      source: 'devscan',
+      response: { source: 'devscan', score: 7 },
+    });
+
+    expect(first.mint).toBe('mint-meta');
+    expect(first.source).toBe('devscan');
+    expect(first.response_json).toBe(JSON.stringify({ source: 'devscan', score: 7 }));
+
+    const second = adapter.upsertCoinMetadata({
+      metadataId: 'meta-2',
+      mint: 'mint-meta',
+      source: 'partner',
+      response: { source: 'partner', score: 4 },
+    });
+
+    expect(second.source).toBe('partner');
+
+    const updated = adapter.upsertCoinMetadata({
+      metadataId: 'meta-3',
+      mint: 'mint-meta',
+      source: 'devscan',
+      response: { source: 'devscan', score: 9 },
+    });
+
+    const count = context.db
+      .prepare('SELECT COUNT(*) as count FROM sc_coin_metadata WHERE mint = ?')
+      .get('mint-meta').count;
+
+    expect(count).toBe(2);
+    expect(updated.metadata_id).toBe('meta-1');
+    expect(updated.response_json).toBe(JSON.stringify({ source: 'devscan', score: 9 }));
+  });
+});
+
 describe('trading submodule', () => {
   test('manages trade UUID cache and pending swaps', () => {
     adapter.setTradeUuid('mint-trade', 'uuid-123');

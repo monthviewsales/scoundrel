@@ -5,6 +5,59 @@ function ensureColumn(db, table, column, definition) {
   }
 }
 
+function listUniqueIndexColumns(db, table) {
+  const indexes = db.prepare(`PRAGMA index_list(${table})`).all();
+  return indexes
+    .filter((idx) => idx.unique)
+    .map((idx) => db.prepare(`PRAGMA index_info(${idx.name})`).all().map((row) => row.name));
+}
+
+function ensureCoinMetadataSchema(db) {
+  const table = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sc_coin_metadata'").get();
+  if (!table) return;
+
+  const cols = db.prepare('PRAGMA table_info(sc_coin_metadata)').all();
+  const hasSource = cols.some((c) => c.name === 'source');
+  const uniqueIndexes = listUniqueIndexColumns(db, 'sc_coin_metadata');
+  const hasCompositeUnique = uniqueIndexes.some((colsList) =>
+    colsList.length === 2 && colsList.includes('mint') && colsList.includes('source')
+  );
+  const hasMintUnique = uniqueIndexes.some((colsList) => colsList.length === 1 && colsList[0] === 'mint');
+
+  if (hasSource && hasCompositeUnique && !hasMintUnique) {
+    return;
+  }
+
+  db.exec('BEGIN');
+  try {
+    db.exec(`
+      ALTER TABLE sc_coin_metadata RENAME TO sc_coin_metadata_old;
+      CREATE TABLE sc_coin_metadata (
+        metadata_id  TEXT PRIMARY KEY,
+        mint         TEXT NOT NULL,
+        source       TEXT NOT NULL,
+        response_json TEXT,
+        created_at   INTEGER NOT NULL,
+        updated_at   INTEGER NOT NULL,
+        UNIQUE(mint, source)
+      );
+    `);
+
+    const selectSource = hasSource ? "COALESCE(source, 'devscan')" : "'devscan'";
+    db.exec(`
+      INSERT INTO sc_coin_metadata (metadata_id, mint, source, response_json, created_at, updated_at)
+      SELECT metadata_id, mint, ${selectSource}, response_json, created_at, updated_at
+      FROM sc_coin_metadata_old;
+    `);
+
+    db.exec('DROP TABLE sc_coin_metadata_old;');
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
 function ensureSqliteSchema(db, tradeUuidMap) {
 db.exec(`
   CREATE TABLE IF NOT EXISTS coins (
@@ -239,6 +292,16 @@ db.exec(`
     source      TEXT,
     created_at  INTEGER,
     updated_at  INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS sc_coin_metadata (
+    metadata_id  TEXT PRIMARY KEY,
+    mint         TEXT NOT NULL,
+    source       TEXT NOT NULL,
+    response_json TEXT,
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL,
+    UNIQUE(mint, source)
   );
 
   CREATE TABLE IF NOT EXISTS sc_wallet_analyses (
@@ -772,8 +835,9 @@ CREATE INDEX IF NOT EXISTS idx_sc_trades_wallet_executed
 
   // Ensure txid is unique for UPSERTs. Older DB files may have been created before UNIQUE(txid) existed.
   // This is safe to run repeatedly; it will no-op if already present.
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_trades_txid ON sc_trades(txid)');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_trades_txid ON sc_trades(txid)');
 
+ensureCoinMetadataSchema(db);
 
 ensureColumn(db, "pools", "txns_buys", "INTEGER");
 ensureColumn(db, "pools", "txns_sells", "INTEGER");

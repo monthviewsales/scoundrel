@@ -3,6 +3,7 @@
 const mockAnalyzeDevscan = jest.fn();
 const mockCreateCommandRun = jest.fn();
 const mockPersistProfileSnapshot = jest.fn();
+const mockPersistCoinMetadata = jest.fn();
 const mockRequestId = jest.fn();
 const mockWriteArtifact = jest.fn();
 
@@ -16,6 +17,7 @@ jest.mock('../../lib/cli/aiRun', () => ({
 
 jest.mock('../../lib/persist/aiPersistence', () => ({
   persistProfileSnapshot: (...args) => mockPersistProfileSnapshot(...args),
+  persistCoinMetadata: (...args) => mockPersistCoinMetadata(...args),
 }));
 
 jest.mock('../../lib/id/issuer', () => ({
@@ -62,28 +64,28 @@ function mockFetchJson(payload, ok = true) {
   });
 }
 
-test('runDevscan skips analysis when runAnalysis=false', async () => {
+test('runDevscan skips analysis for mint-only and persists metadata', async () => {
   const { runDevscan } = require('../../lib/cli/devscan');
 
   mockFetchJson({ success: true, data: { mintAddress: 'Mint1' } });
-  mockFetchJson({ success: true, data: { developer: { wallet: 'Dev1' } } });
 
   const result = await runDevscan({
     mint: 'Mint1',
-    developerWallet: 'Dev1',
-    runAnalysis: false,
   });
 
   expect(mockCreateCommandRun).toHaveBeenCalledWith(expect.objectContaining({
     command: 'devscan',
-    segments: ['mint-Mint1', 'dev-Dev1'],
+    segments: ['mint-Mint1'],
   }));
 
   expect(mockWriteArtifact).toHaveBeenCalledWith('raw', 'token', expect.any(Object));
-  expect(mockWriteArtifact).toHaveBeenCalledWith('raw', 'developer', expect.any(Object));
   expect(mockWriteArtifact).toHaveBeenCalledWith('prompt', 'Mint1_prompt', expect.any(Object));
 
   expect(mockAnalyzeDevscan).not.toHaveBeenCalled();
+  expect(mockPersistCoinMetadata).toHaveBeenCalledWith(expect.objectContaining({
+    mint: 'Mint1',
+    source: 'devscan',
+  }));
   expect(mockPersistProfileSnapshot).not.toHaveBeenCalled();
 
   expect(result.payload).toBeDefined();
@@ -93,7 +95,7 @@ test('runDevscan skips analysis when runAnalysis=false', async () => {
 test('runDevscan runs analysis and persists profile snapshot', async () => {
   const { runDevscan } = require('../../lib/cli/devscan');
 
-  mockFetchJson({ success: true, data: { mintAddress: 'Mint2' } });
+  mockFetchJson({ success: true, data: { developer: { wallet: 'Dev2' } } });
 
   mockAnalyzeDevscan.mockResolvedValue({
     version: 'devscan.mint.v1',
@@ -127,18 +129,17 @@ test('runDevscan runs analysis and persists profile snapshot', async () => {
     confidence: 0.5,
   });
 
-  const result = await runDevscan({
-    mint: 'Mint2',
-  });
+  const result = await runDevscan({ developerWallet: 'Dev2' });
 
   expect(mockAnalyzeDevscan).toHaveBeenCalledWith(expect.objectContaining({
     payload: expect.any(Object),
   }));
 
-  expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'Mint2_response', expect.any(Object));
+  expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'Dev2_response', expect.any(Object));
+  expect(mockPersistCoinMetadata).not.toHaveBeenCalled();
   expect(mockPersistProfileSnapshot).toHaveBeenCalledWith(expect.objectContaining({
     source: 'devscan',
-    name: 'mint:Mint2',
+    name: 'dev:Dev2',
   }));
 
   expect(result.openAiResult).toBeDefined();

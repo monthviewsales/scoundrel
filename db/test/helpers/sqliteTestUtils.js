@@ -13,6 +13,7 @@ function clearSqliteModulesFromCache() {
     '../../src/adapters/sqlite/wallets.js',
     '../../src/adapters/sqlite/profiles.js',
     '../../src/adapters/sqlite/coins.js',
+    '../../src/adapters/sqlite/coinMetadata.js',
     '../../src/adapters/sqlite/trading.js',
     '../../src/adapters/sqlite/sessions.js',
     '../../src/adapters/sqlite/trading/recordScTradeEvent.js',

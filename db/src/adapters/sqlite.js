@@ -4,6 +4,7 @@ const context = require('./sqlite/context');
 const wallets = require('./sqlite/wallets');
 const profiles = require('./sqlite/profiles');
 const coins = require('./sqlite/coins');
+const coinMetadata = require('./sqlite/coinMetadata');
 const trading = require('./sqlite/trading');
 const sessions = require('./sqlite/sessions');
 const legacy = require('./sqlite/legacyAdapter');
@@ -16,6 +17,7 @@ const BootyBox = {
   ...wallets,
   ...profiles,
   ...coins,
+  ...coinMetadata,
   ...trading,
   ...sessions,
   ...sellops,
@@ -41,6 +43,7 @@ module.exports.modules = {
   wallets,
   profiles,
   coins,
+  coinMetadata,
   trading,
   sessions,
   legacy,

@@ -458,7 +458,10 @@ program
         const mint = opts && opts.mint ? String(opts.mint).trim() : '';
         const developerWallet = opts && opts.dev ? String(opts.dev).trim() : '';
         const developerTokensWallet = opts && opts.devtokens ? String(opts.devtokens).trim() : '';
-        const runAnalysis = !(opts && opts.rawOnly);
+        let runAnalysis = !(opts && opts.rawOnly);
+        if (mint && !developerWallet && !developerTokensWallet) {
+            runAnalysis = false;
+        }
 
         if (!mint && !developerWallet && !developerTokensWallet) {
             logger.error('[scoundrel] devscan requires --mint, --dev, or --devtokens');
