@@ -60,8 +60,7 @@ Common env vars (full list in `.env.sample`):
 | `LOG_ROOT_DIR` | Root directory for log files | `./data/logs` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
-| `DOSSIER_VECTOR_STORE_ID` | Vector store for dossier analysis uploads | optional |
-| `AUTOPSY_VECTOR_STORE_ID` | Vector store for autopsy analysis uploads | optional |
+| `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads (autopsy, dossier, targetscan) | optional |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
