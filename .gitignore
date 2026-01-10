@@ -103,6 +103,8 @@ data/
 autopsy/
 !lib/autopsy/
 !lib/autopsy/**
+!__tests__/fixtures/payload-builders/autopsy/
+!__tests__/fixtures/payload-builders/autopsy/**
 
 db/db_backup.zip
 

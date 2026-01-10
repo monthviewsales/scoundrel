@@ -1,0 +1,8 @@
+{
+  "runId": "2026-01-10T00-48-38-229Z",
+  "tokenInfoFile": "raw/tokeninfo.json",
+  "ohlcvFile": "raw/ohlcv.json",
+  "snapshotStartFile": "raw/snapshot-start.json",
+  "snapshotEndFile": "raw/snapshot-end.json",
+  "userTokenTradesFile": "raw/usertokentrades.json"
+}

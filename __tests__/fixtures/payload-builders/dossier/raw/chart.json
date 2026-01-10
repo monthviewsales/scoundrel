@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2025-12-06",
+    "value": 11878.65,
+    "timestamp": 1765004651000,
+    "pnlPercentage": 0
+  },
+  {
+    "date": "2025-12-08",
+    "value": 17419.46,
+    "timestamp": 1765185737000,
+    "pnlPercentage": 46.65
+  },
+  {
+    "date": "2025-12-11",
+    "value": 16594.65,
+    "timestamp": 1765423419000,
+    "pnlPercentage": -4.73
+  },
+  {
+    "date": "2026-01-10",
+    "value": 43178.81,
+    "timestamp": 1768011514000,
+    "pnlPercentage": 160.2
+  }
+]

@@ -1,0 +1,399 @@
+{
+  "trades": [
+    {
+      "tx": "2BNwtBEhCLkF5QmvVEAxhd5yqns7GmjR43vdDv56jpRSDeAkYhxupT6wP7DDECnoincz45eRexiXRE2rda9BK6ad",
+      "amount": 18640581.543769572,
+      "priceUsd": 0.00003308108417476941,
+      "volume": 616.6506471160943,
+      "volumeSol": 4.451846248,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767957630224,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "5bxHbNvX2S5DHuU8k2mXdwqod21qfhzeRrTvGGSFTMYTgYExXr5tkFd227FJ8X6gWRDxNKoVmYbuqcSrgApyQg2K",
+      "amount": 733432.681252642,
+      "priceUsd": 0.000038251109196576765,
+      "volume": 28.054613578932887,
+      "volumeSol": 0.2,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767932207256,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "54g817YrcyoozWrnVzyKuK6EL9AhDRjTyzr1NX3Mji4uxgeSCSCeR8LoGxmxWupJXaUdtSaVVZk8v2NqjuwkKpd5",
+      "amount": 738388.801163821,
+      "priceUsd": 0.000038077766844969375,
+      "volume": 28.116196611652427,
+      "volumeSol": 0.2,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767931671610,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "3WnuvMfExFki6mU2civ8gDbb6843pN5VdmTC2upUrsmzfDa4qnnCBDHDApQytMT6bKgj5NiPELh3sh74C9ktTvc9",
+      "amount": 1977542.71090765,
+      "priceUsd": 0.00003558355628157209,
+      "volume": 70.368002352795,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767930989118,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "rCebHt4B3tmbSJS96H2jfVoBeTpLuATFD7s9LnmHbCHmuz298wBxdmhKzqE1GgKAU33Cw4Jq8ukcrKzVmFQmPSz",
+      "amount": 1754975.644568653,
+      "priceUsd": 0.00003968531470985729,
+      "volume": 69.64676076284165,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767929474780,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "3N553V9zvNjjCg61x8WNNkRbfh5q1LVDdH9B3UgkVgqo8fwLYwDpGWa5CeTqwkL3Z4zLiA2dMNmikQupwMFBZm7T",
+      "amount": 1356185.806416322,
+      "priceUsd": 0.00005141428413026261,
+      "volume": 69.7273223845181,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767929080675,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "5GNiHDGbHgrPKB3ci3wr71oF1gDfqde8XAeihxSnDizPzHQejJh7NLbAPyxfarG2zYcmHMhGqS24ceyY4xGwrhyG",
+      "amount": 1365299.828911455,
+      "priceUsd": 0.00005107106945154403,
+      "volume": 69.7273223845181,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767929080069,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "5QquiVmTkxCm3RoGWVYXxL1cgMFzj8wV7p4sUXFN6v1ZZXsvauJbiAwFPo9SDtpPHjg1uTjt7GD72XBhsBHHE7tR",
+      "amount": 1384092.773134497,
+      "priceUsd": 0.00005037763633907975,
+      "volume": 69.7273223845181,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767929077694,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "5RewYaxDYTWW2vpty918aFs2A2DS4Jcx7773Ma9dCMZ93hrUoocGcFnmCraBcQVF8AeEdYYBbhgDmCMiFD4nrKYg",
+      "amount": 1312958.03692711,
+      "priceUsd": 0.000053199310093802175,
+      "volume": 69.8484617466351,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767928989652,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "4NzhJRQPuKtjTr6QGH5Z34HJM6hkcVHjpfra69c2sUiNKu2opYdThqjnXnUFPWUPF9EDYfNXzpd4HN4aoyV6gNmp",
+      "amount": 1317499.854709552,
+      "priceUsd": 0.00005301748639145266,
+      "volume": 69.85053061780452,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767928958032,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "2wY6dRg7K8bxHw66esyud3z2o44VfDyJmHDQd1ZMAwCin63FCwQTdpW7W1wnE9hNd9LoCVBw7X22rnvWnYFSvpW4",
+      "amount": 1709238.121745544,
+      "priceUsd": 0.000040894206471485056,
+      "volume": 69.89793665959559,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767928809195,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "4r3Rhmkxw8npw7hubs9Bur5t5jjCsYioY5v9MBCCBidrNU1CJScBYvaHRxTrovvzcyS5broAb6ypVtKzf7gWu7nt",
+      "amount": 4990967.284032327,
+      "priceUsd": 0.00004198342114899755,
+      "volume": 209.53788142639766,
+      "volumeSol": 1.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767928752902,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "5TEQUer4QVZdqwjN9fnmPgYLdbs1ozQAaPsBkUQVGbosCKzxEzuGgjccgZwWwy4By5JasRX59a3KmvXkDBfB4fiK",
+      "amount": 19469966.026407972,
+      "priceUsd": 0.00003283215262053255,
+      "volume": 639.2408960956102,
+      "volumeSol": 4.596276166,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767926227071,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "3Smbx6F4ZvFLcbDTER9HdHRcYMKhHpCxMtUfQ3TmZMFVFRumb4oyokiT7tq1KWC17fKyd7HMRZJMcLrjNJ7vddaH",
+      "amount": 971168.056047728,
+      "priceUsd": 0.00007163392573633852,
+      "volume": 69.5685804044272,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767924830831,
+      "program": "meteora-dyn-v2",
+      "pools": [
+        "3aue63Ja4f8RoPWWDcgbZAL9E2TPR1LASt5LXYu3sisf"
+      ]
+    },
+    {
+      "tx": "3UQ2F7AWnCrGRmQw6PRh3rX5WXPLetvzCHb6HreFwAauf2SddcAhXytK88yzAo4i67yXgMA8VY356PwHcAFdxJi9",
+      "amount": 2963119.761379049,
+      "priceUsd": 0.000023314068798796227,
+      "volume": 69.0823779758638,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767923824626,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "4nuF368C69NhPRigsAb3uqohAyjpqrdt5MzWcnNZ39QmV4WoqKwRsLeSow13cxRq9PFbm9qyBwbzjoDhTMzabY42",
+      "amount": 1883621.332398491,
+      "priceUsd": 0.000036636813575616794,
+      "volume": 69.00988360213843,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767923696494,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "2FJkVYXHoV3h2SeEvLdMS2s1xD9rNotwRVX7uGwFcb979pHv8Ukv4Tc15rTgVZv2kTBtEGRMQzuvGnJRDRXiTx9T",
+      "amount": 2279784.152637838,
+      "priceUsd": 0.000030246865377223817,
+      "volume": 68.95632435396496,
+      "volumeSol": 0.5,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767923599301,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "5X27feFhuVsM2HxkVR9Ge1M3w4jxRxzSALrD3h8e6oXkiPETwxD4xkCLsSy3Xfpjne6XVfE91YD9bF1XxhUe7wya",
+      "amount": 5321587.925081139,
+      "priceUsd": 0.00002856349737197892,
+      "volume": 152.00316271280988,
+      "volumeSol": 1.1,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767923429245,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "3epb3FuzTVaGmhi92uxajYLuu594DsHuweXvcu7n8TM9MXjBWoDcZz2ZpFhixsNVX1JWMXupFbL7tDrSBPvJJ4w",
+      "amount": 6050684.798863728,
+      "priceUsd": 0.000025142240378372986,
+      "volume": 152.12777166679925,
+      "volumeSol": 1.1,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767923415117,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "3TVHruASihfqBWScJBjvVSD1mrwzuKv8sXvP8taagd1vmVePUxtMggYbNC32x4se8KvvtLtyufhmNzN5BSBXDFyW",
+      "amount": 31210259.335273296,
+      "priceUsd": 0.000005759059301247897,
+      "volume": 179.7417343191647,
+      "volumeSol": 1.304129747,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767923238407,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "3QUAiEKrzdLCMhdQubANpE5JYQgSD5PCKVmVL86Dj27RFyjRkgJ9XSaXhEfYPqkCYWQrVphmr1CApcQTtMX8UQNU",
+      "amount": 2018631.242765628,
+      "priceUsd": 0.000006832948378568729,
+      "volume": 13.793203077183575,
+      "volumeSol": 0.1,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922976381,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "3SD6QQc6hwx96bZDVAZJkanG7Vy7L8uVCFWHbfPhaamqVU8KKiAtoj3FyWZNDCwupeeM1wJT8fxzkpPDv75Sh9ae",
+      "amount": 3243514.232500852,
+      "priceUsd": 0.000005400393786269614,
+      "volume": 17.51625410687466,
+      "volumeSol": 0.126991925,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922969326,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "43V7679QDQB5pMQUzQ2tdfBcMThjUMvQYmUrbjKcPJRF8qfdydF7xCuQ7gGr3F8STPXNaWhtcCUbJZKhzpwzp8Er",
+      "amount": 4128109.023182902,
+      "priceUsd": 0.000005437951727630528,
+      "volume": 22.448457594464635,
+      "volumeSol": 0.162750142,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922968327,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "wPQTjZ4aStmMJQJv9DCbzJTxLdU7FnVFQ5L1onKzfXbCq9jxWQG4t2VyMMvn45C79VjEZBkiYGSa1SE9Yaop4P1",
+      "amount": 4717838.883637603,
+      "priceUsd": 0.0000054835375902916905,
+      "volume": 25.870446863366585,
+      "volumeSol": 0.187559385,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922968229,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "4btr8F1xHuWoNVy4Fvok5veMC3HK3CXkQthM6i6ZJivPcW6Qc8S4aKRF1VEpLsKRpkK3abgTf11gm5vPMVF9MZhV",
+      "amount": 5897298.604547003,
+      "priceUsd": 0.000005539009204529806,
+      "volume": 32.66519125244663,
+      "volumeSol": 0.236820926,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922968205,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "5vQHK1wgScs8TSGy1AEoX4VJsJAQkSiZ9NZu7p4jJqX7B9EoYpLDtS1FZ4c2i1f62dbrQUvHHjFZ2weZCZn1fmZB",
+      "amount": 5897298.604547003,
+      "priceUsd": 0.000005601619714636421,
+      "volume": 33.03442412632835,
+      "volumeSol": 0.239497845,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922967869,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "2NFSYpGCJ4mfsDH1pkZewVLHU9Kuso6WVCgghinr8MAbqDLvqj7D4yghxx4ABujDky9H1dQJ3RK2yFEYKwRu6Foc",
+      "amount": 5897298.604547003,
+      "priceUsd": 0.000005665976035666033,
+      "volume": 33.41395256853006,
+      "volumeSol": 0.24222041,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922967735,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    },
+    {
+      "tx": "2JXhZ22PBFucLkHsCk6F6HdkzBqJdsNY34cUGf9WZWwfKAqvQBiwjndmE6LoMxuznZ98HKhnp7vfcmeufS37Jf62",
+      "amount": 58972986.04547003,
+      "priceUsd": 0.000005614036606410863,
+      "volume": 331.0765024486257,
+      "volumeSol": 2.4,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767922966621,
+      "program": "meteora-dynamic-bonding",
+      "pools": [
+        "8NfvGzRgdMDBz7pxX99JWhRGrweRumSsjj3xVtyNc2WS"
+      ]
+    }
+  ],
+  "nextCursor": null,
+  "hasNextPage": false,
+  "sortDirection": "DESC"
+}
