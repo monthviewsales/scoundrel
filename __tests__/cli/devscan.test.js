@@ -6,6 +6,7 @@ const mockPersistProfileSnapshot = jest.fn();
 const mockPersistCoinMetadata = jest.fn();
 const mockRequestId = jest.fn();
 const mockWriteArtifact = jest.fn();
+const mockQueueVectorStoreUpload = jest.fn();
 
 jest.mock('../../ai/jobs/devscanAnalysis', () => ({
   analyzeDevscan: (...args) => mockAnalyzeDevscan(...args),
@@ -22,6 +23,10 @@ jest.mock('../../lib/persist/aiPersistence', () => ({
 
 jest.mock('../../lib/id/issuer', () => ({
   requestId: (...args) => mockRequestId(...args),
+}));
+
+jest.mock('../../lib/ai/vectorStoreUpload', () => ({
+  queueVectorStoreUpload: (...args) => mockQueueVectorStoreUpload(...args),
 }));
 
 jest.mock('../../db', () => ({
@@ -87,6 +92,7 @@ test('runDevscan skips analysis for mint-only and persists metadata', async () =
     source: 'devscan',
   }));
   expect(mockPersistProfileSnapshot).not.toHaveBeenCalled();
+  expect(mockQueueVectorStoreUpload).not.toHaveBeenCalled();
 
   expect(result.payload).toBeDefined();
   expect(result.openAiResult).toBeNull();
@@ -136,8 +142,13 @@ test('runDevscan runs analysis and persists profile snapshot', async () => {
   }));
 
   expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'Dev2_response', expect.any(Object));
+  expect(mockWriteArtifact).toHaveBeenCalledWith('final', 'Dev2_final', expect.any(Object));
   expect(mockPersistCoinMetadata).not.toHaveBeenCalled();
   expect(mockPersistProfileSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+    source: 'devscan',
+    name: 'dev:Dev2',
+  }));
+  expect(mockQueueVectorStoreUpload).toHaveBeenCalledWith(expect.objectContaining({
     source: 'devscan',
     name: 'dev:Dev2',
   }));
