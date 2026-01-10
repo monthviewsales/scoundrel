@@ -1,0 +1,24 @@
+{
+  "request": {
+    "mint": "BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+    "timeFrom": 1768064383,
+    "timeTo": 1768065583
+  },
+  "fetchedAt": "2026-01-10T17:19:43.239Z",
+  "response": {
+    "token": "BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+    "price": {
+      "lowest": {
+        "price": 0.000256560596,
+        "marketcap": 256558.41713455765,
+        "time": 1768064511
+      },
+      "highest": {
+        "price": 0.0003318862216288274,
+        "marketcap": 331883.40305329254,
+        "time": 1768064722
+      }
+    }
+  },
+  "summary": null
+}

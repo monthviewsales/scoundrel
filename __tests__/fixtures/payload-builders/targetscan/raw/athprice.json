@@ -1,0 +1,13 @@
+{
+  "mint": "BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+  "fetchedAt": "2026-01-10T17:19:43.239Z",
+  "response": {
+    "highest_price": 0.0008619513698935067,
+    "highest_market_cap": 861944.05,
+    "timestamp": 1768049611093,
+    "pool_id": "EiXnqzeC7xcD9i22X3q7pJ99BMkn4AG9ir6JLPq2Co7A"
+  },
+  "summary": {
+    "athPrice": null
+  }
+}
