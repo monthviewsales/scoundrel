@@ -564,6 +564,77 @@ program
     });
 
 program
+    .command('targetscan')
+    .description('Scan target mints, build analysis payloads, and score buy opportunity')
+    .option('--mint <address>', 'Single mint address to scan')
+    .option('--mints <list>', 'Comma-delimited list of mints to scan')
+    .option('--concurrency <n>', 'Parallel scans to run (default 4)')
+    .option('--raw-only', 'Skip AI scoring and only write artifacts')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel targetscan --mint <MINT>\n  $ scoundrel targetscan --mints <MINT1,MINT2>\n\nNotes:\n  • Uses WarlordAI (gpt-5-mini) for scoring unless --raw-only is set.\n  • Writes JSON artifacts under ./data/targetscan/.\n`)
+    .action(async (opts) => {
+        const { normalizeMintList } = require('./lib/targetScan');
+        const mints = normalizeMintList([opts?.mint, opts?.mints]);
+        const runAnalysis = !(opts && opts.rawOnly);
+        const concurrency = opts?.concurrency != null ? Number(opts.concurrency) : undefined;
+
+        if (!mints.length) {
+            logger.error('[scoundrel] targetscan requires --mint or --mints');
+            process.exitCode = 1;
+            return;
+        }
+
+        const invalid = mints.filter((mint) => !isBase58Mint(mint));
+        if (invalid.length) {
+            logger.error(`[scoundrel] targetscan invalid mint(s): ${invalid.join(', ')}`);
+            process.exitCode = 1;
+            return;
+        }
+
+        if (runAnalysis && !process.env.OPENAI_API_KEY) {
+            logger.error('[scoundrel] OPENAI_API_KEY is required for targetscan AI scoring');
+            process.exitCode = 1;
+            return;
+        }
+
+        try {
+            const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'targetScanWorker.js');
+            const timeoutMs = Math.max(120000, mints.length * 15000);
+            const { result } = await forkWorkerWithPayload(workerPath, {
+                timeoutMs,
+                payload: {
+                    mints,
+                    runAnalysis,
+                    concurrency,
+                },
+            });
+
+            const results = Array.isArray(result?.results) ? result.results : [];
+            const failures = results.filter((row) => row && row.error);
+            logger.info(`[scoundrel] targetscan complete: ${results.length - failures.length}/${results.length} succeeded`);
+
+            results.forEach((row) => {
+                if (!row || !row.mint) return;
+                if (row.error) {
+                    logger.error(`[scoundrel] targetscan ${row.mint} failed: ${row.error}`);
+                    return;
+                }
+                if (row.analysis && row.analysis.buyScore != null && row.analysis.rating) {
+                    logger.info(`[scoundrel] targetscan ${row.mint} score=${row.analysis.buyScore} rating=${row.analysis.rating}`);
+                }
+                if (row.promptPath) {
+                    logger.info(`[scoundrel] targetscan prompt artifact: ${row.promptPath}`);
+                }
+                if (row.responsePath) {
+                    logger.info(`[scoundrel] targetscan response artifact: ${row.responsePath}`);
+                }
+            });
+        } catch (err) {
+            logger.error('[scoundrel] targetscan failed:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+program
     .command('target-list')
     .description('Fetch target list candidates from SolanaTracker (volume + trending) and write raw artifacts')
     .option('--daemon', 'Run in background on interval (uses WARCHEST_TARGET_LIST_INTERVAL_MS)')

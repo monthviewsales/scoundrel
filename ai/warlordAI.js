@@ -11,6 +11,7 @@ const askTask = require('./warlordAI/tasks/ask');
 const tradeAutopsyTask = require('./warlordAI/tasks/tradeAutopsy');
 const tuneStrategyTask = require('./warlordAI/tasks/tuneStrategy');
 const walletDossierTask = require('./warlordAI/tasks/walletDossier');
+const targetScanTask = require('./warlordAI/tasks/targetScan');
 
 const TASKS = {
   ask: askTask,
@@ -20,6 +21,7 @@ const TASKS = {
   tradeAutopsy: tradeAutopsyTask,
   tuneStrategy: tuneStrategyTask,
   walletDossier: walletDossierTask,
+  targetScan: targetScanTask,
 };
 
 const MAX_TOOL_ROUNDS = 4;

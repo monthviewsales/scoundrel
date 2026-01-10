@@ -18,6 +18,7 @@ const sharedHelpers = {
   recordScTradeEvent: jest.fn(),
   upsertProfileSnapshot: jest.fn(),
   upsertCoinMetadata: jest.fn(),
+  getCoinMetadataByMint: jest.fn(),
   persistWalletProfileArtifacts: jest.fn(),
   recordTune: jest.fn(),
   recordAsk: jest.fn(),
