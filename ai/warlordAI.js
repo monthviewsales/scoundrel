@@ -54,14 +54,18 @@ function buildLocalToolSchemas() {
   return { tools, nameMap };
 }
 
-function buildFileSearchTool({ vectorStoreId, maxResults }) {
+function buildFileSearchTool({ vectorStoreId, maxResults, filters }) {
   if (!vectorStoreId) return null;
   const resolvedMax = Number.isFinite(maxResults) ? Math.max(1, Math.trunc(maxResults)) : DEFAULT_RAG_MAX_RESULTS;
-  return {
+  const tool = {
     type: 'file_search',
     vector_store_ids: [vectorStoreId],
     max_num_results: resolvedMax,
   };
+  if (filters && typeof filters === 'object') {
+    tool.filters = filters;
+  }
+  return tool;
 }
 
 function buildInput(system, user) {
@@ -84,7 +88,7 @@ function extractFunctionCalls(output) {
 /**
  * Create a Warlord AI runner backed by one or more clients.
  * @param {{ callResponses: Function, parseResponsesJSON: Function, log?: { debug?: Function } }|{ clients: Object, defaultProvider?: string }} clientOrOptions
- * @returns {{ runTask: (params: { task: string, payload: Object, model?: string, temperature?: number, metadata?: Object, rag?: boolean }) => Promise<Object> }}
+ * @returns {{ runTask: (params: { task: string, payload: Object, model?: string, temperature?: number, metadata?: Object, rag?: boolean, ragFilters?: Object }) => Promise<Object> }}
  */
 function createWarlordAI(clientOrOptions) {
   const defaultProvider = (clientOrOptions && clientOrOptions.defaultProvider) || 'openai';
@@ -111,7 +115,7 @@ function createWarlordAI(clientOrOptions) {
    * @param {boolean} [params.rag]
    * @returns {Promise<Object>}
    */
-  async function runTask({ task, payload, model, temperature, metadata, rag }) {
+  async function runTask({ task, payload, model, temperature, metadata, rag, ragFilters }) {
     const config = TASKS[task];
     if (!config) {
       throw new Error(`[warlordAI] unknown task: ${task}`);
@@ -143,9 +147,13 @@ function createWarlordAI(clientOrOptions) {
       seen.add(key);
       combinedTools.push(tool);
     };
+    const resolvedRagFilters = (ragFilters && typeof ragFilters === 'object')
+      ? ragFilters
+      : resolvedConfig.ragFilters;
     const ragTool = enableRag ? buildFileSearchTool({
       vectorStoreId,
       maxResults: resolvedConfig.ragMaxResults,
+      filters: resolvedRagFilters,
     }) : null;
     (resolvedConfig.tools || []).forEach(addTool);
     addTool(ragTool);
@@ -254,6 +262,7 @@ const { runTask: runTaskInternal } = createWarlordAI({
  * @param {string} [params.model]
  * @param {number} [params.temperature]
  * @param {Object} [params.metadata]
+ * @param {Object} [params.ragFilters]
  * @returns {Promise<Object>}
  */
 function runTask(params) {
