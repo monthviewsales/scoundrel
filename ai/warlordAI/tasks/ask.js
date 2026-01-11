@@ -33,7 +33,7 @@ const SYSTEM = [
 /**
  * Build the user payload for the ask task.
  * @param {{ profile?: Object, question?: string, rows?: Array, history?: Array }} payload
- * @returns {{ question: string, profile: Object|null, rows: Array|null, history: Array|null }}
+ * @returns {{ question: string, profile: Object|null, rows: Array|null, history: Array|null, tooling: Object }}
  */
 function buildUser(payload) {
   const safePayload = payload || {};
@@ -42,6 +42,15 @@ function buildUser(payload) {
     profile: safePayload.profile || null,
     rows: Array.isArray(safePayload.rows) ? safePayload.rows.slice(0, 200) : null,
     history: Array.isArray(safePayload.history) ? safePayload.history.slice(0, 20) : null,
+    tooling: {
+      file_search: 'Search the WarlordAI vector store for dossiers, autopsies, and target scans.',
+      local_tools: [
+        'solanaTrackerData.getWalletTrades: wallet trades for a time window.',
+        'solanaTrackerData.getTokenSnapshotNow: token overview + pricing now.',
+        'solanaTrackerData.getTokenRiskScores: token risk flags and factors.',
+        'solanaTrackerData.getPriceRange: token price range for a time window.',
+      ],
+    },
   };
 }
 
