@@ -2,42 +2,75 @@
 
 const React = require('react');
 
-jest.mock('ink', () => {
-  return {
-    __esModule: true,
-    Box: () => null,
-    Text: () => null,
-    useApp: () => ({ exit: jest.fn() }),
-    useInput: () => {},
-  };
-});
-
-jest.mock('ink-text-input', () => ({
-  __esModule: true,
-  default: () => null,
+jest.mock('../../lib/wallets/walletRegistry', () => ({
+  getAllWallets: jest.fn(),
+  addWallet: jest.fn(),
+  updateWalletColor: jest.fn(),
+  deleteWallet: jest.fn(),
 }));
 
-const { loadWalletManagerApp } = require('../../lib/wallets/inkWalletManager');
+jest.mock('../../lib/wallets/optionsManager', () => ({
+  USAGE_TYPES: ['other', 'kol'],
+  updateWalletOptions: jest.fn(),
+}));
 
-function createRegistry(wallets = []) {
-  return {
-    getAllWallets: jest.fn().mockResolvedValue(wallets),
-    addWallet: jest.fn().mockResolvedValue({}),
-    updateWalletColor: jest.fn().mockResolvedValue(true),
-    deleteWallet: jest.fn().mockResolvedValue(true),
-  };
-}
+const { EventEmitter } = require('events');
+const h = React.createElement;
+let render;
 
-describe('WalletManagerApp', () => {
-  test('loader resolves a component function', async () => {
-    const { WalletManagerApp } = await loadWalletManagerApp();
-    expect(typeof WalletManagerApp).toBe('function');
+describe('inkWalletManager', () => {
+  let refSnapshot;
+
+  beforeAll(async () => {
+    const inkTestingLibrary = await import('ink-testing-library');
+    render = inkTestingLibrary.render;
+    refSnapshot = {
+      ref: EventEmitter.prototype.ref,
+      unref: EventEmitter.prototype.unref,
+    };
+    EventEmitter.prototype.ref = function ref() {};
+    EventEmitter.prototype.unref = function unref() {};
   });
 
-  test('creates element with injected registry without throwing', async () => {
+  afterAll(() => {
+    EventEmitter.prototype.ref = refSnapshot.ref;
+    EventEmitter.prototype.unref = refSnapshot.unref;
+  });
+
+  test('renders list view with wallets', async () => {
+    const registry = {
+      getAllWallets: jest.fn().mockResolvedValue([
+        { alias: 'alpha', pubkey: 'ABCDEFGH1234567890', color: 'blue', hasPrivateKey: false },
+      ]),
+    };
+
+    const { loadWalletManagerApp } = require('../../lib/wallets/inkWalletManager');
     const { WalletManagerApp } = await loadWalletManagerApp();
-    const registry = createRegistry([{ alias: 'a', pubkey: 'p' }]);
-    const element = React.createElement(WalletManagerApp, { registry, initialRoute: 'menu' });
-    expect(element).toBeTruthy();
+    const { lastFrame, unmount } = render(h(WalletManagerApp, { initialRoute: 'list', registry }));
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const frame = lastFrame();
+    expect(frame).toContain('Your wallets');
+    expect(frame).toContain('alpha');
+
+    unmount();
+  });
+
+  test('renders empty list message', async () => {
+    const registry = {
+      getAllWallets: jest.fn().mockResolvedValue([]),
+    };
+
+    const { loadWalletManagerApp } = require('../../lib/wallets/inkWalletManager');
+    const { WalletManagerApp } = await loadWalletManagerApp();
+    const { lastFrame, unmount } = render(h(WalletManagerApp, { initialRoute: 'list', registry }));
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const frame = lastFrame();
+    expect(frame).toContain('No wallets found');
+
+    unmount();
   });
 });
