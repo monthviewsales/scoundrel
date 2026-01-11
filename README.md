@@ -61,6 +61,7 @@ Common env vars (full list in `.env.sample`):
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
 | `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads + RAG retrieval (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
+| `ASK_EXPLICIT_RAG` | Enable explicit vector store search for ask strategy questions (alias: `WARLORDAI_EXPLICIT_RAG`) | empty |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
@@ -385,8 +386,8 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ### autopsy
 - Prompts for HUD wallet (or custom address) + mint, then builds a campaign payload:
   - user token trades, token metadata, price range, PnL, ATH, OHLCV window, derived metrics
-- Runs `tradeAutopsy` AI job, prints graded analysis, and saves `profiles/autopsy-<wallet>-<mint>-<ts>.json`.
-- Raw/parsed/enriched artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
+- Runs `tradeAutopsy` AI job, prints graded analysis, and writes final artifacts under `data/autopsy/<wallet>/<mint>/final/` when `SAVE_ENRICHED` is enabled.
+- Raw/prompt/response/final artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
 - Options: `--trade-uuid <uuid>` (DB-driven autopsy), `--wallet <alias|address>`, `--mint <mint>`, `--no-tui` for non-interactive runs.
 
 ### tx `<signature>` [--sig ...] [--swap --wallet <alias|address> --mint <mint>] [--session]
@@ -408,6 +409,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Q&A over `profiles/<name>.json`; includes latest `data/dossier/<alias>/enriched/techniqueFeatures-*` when present.
 - Flags: `--name <alias>` (defaults to `default`), `--question <text>` (required).
 - Persists ask/answer to DB (BootyBox recordAsk).
+- Optional: set `ASK_EXPLICIT_RAG=true` (or `WARLORDAI_EXPLICIT_RAG`) to pull dossier/autopsy sources from the vector store for strategy questions (requires `WARLORDAI_VECTOR_STORE`).
 
 ### addcoin `<mint>`
 - Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
@@ -437,9 +439,9 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ## Data artifacts
 
 - `./profiles/<alias>.json` — final dossier with markdown + operator_summary
-- `./profiles/autopsy-<wallet>-<mint>-<ts>.json` — trade autopsy payload + AI output
+- `./data/autopsy/<wallet>/<mint>/final/autopsy_<label>_final-<ts>.json` — trade autopsy payload + AI output (when `SAVE_ENRICHED` is enabled)
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
-- `./data/autopsy/<wallet>/<mint>/{raw,parsed,enriched}/` — campaign artifacts gated by `SAVE_*`
+- `./data/autopsy/<wallet>/<mint>/{raw,prompt,response,final}/` — campaign artifacts gated by `SAVE_*`
 - `./data/devscan/<segments>/{raw,prompt,response}/` — DevScan artifacts and Grok summaries
 - `./data/warchest/{tx-events.json,status.json}` — Hub/HUD event feed + health snapshot
 

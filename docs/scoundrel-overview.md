@@ -32,7 +32,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 - `index.js` – CLI wiring + help text; keep new commands here consistent with Commander patterns.
 - `lib/` – processors (`cli/dossier.js`, `cli/autopsy.js`, `cli/devscan.js`, `targetScan/index.js`, `ask.js`, `tuneStrategy.js`), SolanaTracker data/RPC helpers, persistence, logging, ID issuance.
 - `ai/` – OpenAI client, structured-output jobs, and JSON schemas.
-- `profiles/` (generated) – saved dossiers/autopsies; used by `ask`.
+- `profiles/` (generated) – saved dossier profiles; used by `ask`.
 - `data/` (generated) – raw/prompt/response/final artifacts for debugging or resend mode.
 - `docs/` – this overview, SolanaTracker helper docs, and codex task prompts.
 
@@ -55,7 +55,7 @@ Scoundrel is a Node.js CLI (CommonJS) that pairs SolanaTracker data with OpenAI 
 - **Purpose**: Analyze top wallets to derive trading styles and validate strategies before bots act.
 - **Data source**: SolanaTracker Data API for wallet trades/metadata + optional RPC helpers for balances/accounts.
 - **AI usage**: Responses API with strict schemas; outputs are deterministic JSON + optional markdown summary.
-- **Persistence**: Artifacts in `./profiles` + SQLite via BootyBox tables (`sc_*`), ensuring shared pool reuse.
+- **Persistence**: Dossier profiles in `./profiles` plus artifacts under `./data`, with SQLite via BootyBox tables (`sc_*`) for shared reuse.
 - **Safety**: Errors are contextualized and surfaced (no silent failures).
 
 Use this overview to orient the model before deeper questions about implementation details, tests, or endpoint behaviors.
