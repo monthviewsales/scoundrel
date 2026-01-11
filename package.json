@@ -47,7 +47,8 @@
     "winston-daily-rotate-file": "^5.0.0"
   },
   "bin": {
-    "scoundrel": "./index.js"
+    "scoundrel": "./index.js",
+    "warlordai": "./warlordai.js"
   },
   "devDependencies": {
     "ink-testing-library": "^3.0.0",

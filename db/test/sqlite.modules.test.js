@@ -110,6 +110,48 @@ describe('profiles submodule', () => {
     expect(autopsies).toHaveLength(1);
     expect(autopsies[0].symbol).toBe('XYZ');
   });
+
+  test('lists asks by correlation id in chronological order', () => {
+    const nowSpy = jest.spyOn(Date, 'now');
+    nowSpy
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(2_000)
+      .mockReturnValueOnce(3_000);
+
+    adapter.recordAsk({
+      askId: 'ask-1',
+      correlationId: 'session-1',
+      question: 'Q1',
+      answer: 'A1',
+      bullets: ['b1'],
+      actions: [],
+    });
+
+    adapter.recordAsk({
+      askId: 'ask-2',
+      correlationId: 'session-1',
+      question: 'Q2',
+      answer: 'A2',
+      bullets: [],
+      actions: ['a2'],
+    });
+
+    adapter.recordAsk({
+      askId: 'ask-3',
+      correlationId: 'session-2',
+      question: 'Q3',
+      answer: 'A3',
+    });
+
+    const rows = adapter.listAsksByCorrelationId({ correlationId: 'session-1', limit: 10 });
+    expect(rows).toHaveLength(2);
+    expect(rows[0].question).toBe('Q1');
+    expect(rows[1].question).toBe('Q2');
+    expect(rows[0].bullets).toEqual(['b1']);
+    expect(rows[1].actions).toEqual(['a2']);
+
+    nowSpy.mockRestore();
+  });
 });
 
 describe('targets submodule', () => {

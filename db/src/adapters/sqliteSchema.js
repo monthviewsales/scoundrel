@@ -344,6 +344,9 @@ db.exec(`
     created_at     INTEGER
   );
 
+  CREATE INDEX IF NOT EXISTS idx_sc_asks_correlation_id
+    ON sc_asks (correlation_id);
+
   CREATE TABLE IF NOT EXISTS sc_tunes (
     tune_id         TEXT PRIMARY KEY,
     correlation_id  TEXT,

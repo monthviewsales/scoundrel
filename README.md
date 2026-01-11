@@ -60,7 +60,7 @@ Common env vars (full list in `.env.sample`):
 | `LOG_ROOT_DIR` | Root directory for log files | `./data/logs` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
-| `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
+| `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads + RAG retrieval (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
@@ -324,6 +324,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 - **Quick reference**
   
+- `warlordai` — Separate bin: unified WarlordAI CLI for RAG-backed Q&A and manual dossier/autopsy/targetscan runs.
 - `research <walletId>` — (deprecated) Alias for `dossier --harvest-only`; harvests wallet trades + chart + per-mint user trades without calling AI.
 - `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
 - `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
@@ -348,9 +349,15 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
 - `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
+- `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
 - `wallet` — Manage the local wallet registry.
 - `warchestd` — Run HUD follower or show status.
 - `test` — Environment + DB self-check.
+
+### warlordai
+- Separate bin: `warlordai "question"` for one-shot queries or `warlordai --interactive` for follow-ups.
+- Uses `WARLORDAI_VECTOR_STORE` for file_search RAG when enabled (`--no-rag` disables).
+- Session memory is stored in BootyBox `sc_asks` via `correlation_id` (pass `--session` to resume).
 
 ## Warchest architecture
 

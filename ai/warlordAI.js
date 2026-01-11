@@ -25,6 +25,7 @@ const TASKS = {
 };
 
 const MAX_TOOL_ROUNDS = 4;
+const DEFAULT_RAG_MAX_RESULTS = 8;
 const NETWORK_BLIP_RE = /(ENOTFOUND|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ECONNABORTED|ETIMEDOUT|socket hang up|fetch failed)/i;
 
 function isNetworkBlip(err) {
@@ -53,6 +54,16 @@ function buildLocalToolSchemas() {
   return { tools, nameMap };
 }
 
+function buildFileSearchTool({ vectorStoreId, maxResults }) {
+  if (!vectorStoreId) return null;
+  const resolvedMax = Number.isFinite(maxResults) ? Math.max(1, Math.trunc(maxResults)) : DEFAULT_RAG_MAX_RESULTS;
+  return {
+    type: 'file_search',
+    vector_store_ids: [vectorStoreId],
+    max_num_results: resolvedMax,
+  };
+}
+
 function buildInput(system, user) {
   const input = [];
   if (typeof system === 'string' && system.trim().length) {
@@ -73,7 +84,7 @@ function extractFunctionCalls(output) {
 /**
  * Create a Warlord AI runner backed by one or more clients.
  * @param {{ callResponses: Function, parseResponsesJSON: Function, log?: { debug?: Function } }|{ clients: Object, defaultProvider?: string }} clientOrOptions
- * @returns {{ runTask: (params: { task: string, payload: Object, model?: string, temperature?: number, metadata?: Object }) => Promise<Object> }}
+ * @returns {{ runTask: (params: { task: string, payload: Object, model?: string, temperature?: number, metadata?: Object, rag?: boolean }) => Promise<Object> }}
  */
 function createWarlordAI(clientOrOptions) {
   const defaultProvider = (clientOrOptions && clientOrOptions.defaultProvider) || 'openai';
@@ -97,9 +108,10 @@ function createWarlordAI(clientOrOptions) {
    * @param {string} [params.model]
    * @param {number} [params.temperature]
    * @param {Object} [params.metadata]
+   * @param {boolean} [params.rag]
    * @returns {Promise<Object>}
    */
-  async function runTask({ task, payload, model, temperature, metadata }) {
+  async function runTask({ task, payload, model, temperature, metadata, rag }) {
     const config = TASKS[task];
     if (!config) {
       throw new Error(`[warlordAI] unknown task: ${task}`);
@@ -116,6 +128,9 @@ function createWarlordAI(clientOrOptions) {
     const provider = resolvedConfig.provider || config.provider || defaultProvider;
     const { callResponses, parseResponsesJSON, log } = resolveClient(provider);
     const enableLocalTools = provider === 'openai' && resolvedConfig.enableLocalTools !== false;
+    const enableRag = provider === 'openai'
+      && (typeof rag === 'boolean' ? rag : resolvedConfig.enableRag === true);
+    const vectorStoreId = resolvedConfig.vectorStoreId || process.env.WARLORDAI_VECTOR_STORE;
     const { tools: localTools, nameMap: localToolNameMap } = enableLocalTools
       ? buildLocalToolSchemas()
       : { tools: [], nameMap: new Map() };
@@ -128,7 +143,12 @@ function createWarlordAI(clientOrOptions) {
       seen.add(key);
       combinedTools.push(tool);
     };
+    const ragTool = enableRag ? buildFileSearchTool({
+      vectorStoreId,
+      maxResults: resolvedConfig.ragMaxResults,
+    }) : null;
     (resolvedConfig.tools || []).forEach(addTool);
+    addTool(ragTool);
     localTools.forEach(addTool);
     const persona = getGlobalPersona();
     const system = resolvedConfig.system

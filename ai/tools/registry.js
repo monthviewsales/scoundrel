@@ -136,12 +136,13 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
+        tokenAddress: { type: "string" },
         includePriceChanges: { type: "boolean" },
       },
       required: [],
       additionalProperties: false,
     },
-    handler: async ({ mint, includePriceChanges }) => {
+    handler: async ({ mint, tokenAddress, includePriceChanges }) => {
       const client = await createSolanaTrackerDataClient();
       try {
         return await client.getTokenPrice({
