@@ -90,17 +90,17 @@ const toolDefinitions = [
     parameters: {
       type: "object",
       properties: {
-        tokenAddress: { type: "string" },
+        mint: { type: "string" },
         timeFrom: { type: "number" },
         timeTo: { type: "number" },
       },
-      required: ["tokenAddress", "timeFrom", "timeTo"],
+      required: ["mint", "timeFrom", "timeTo"],
       additionalProperties: false,
     },
-    handler: async ({ tokenAddress, timeFrom, timeTo }) => {
+    handler: async ({ mint, timeFrom, timeTo }) => {
       const client = await createSolanaTrackerDataClient();
       try {
-        return await client.getPriceRange(tokenAddress, timeFrom, timeTo);
+        return await client.getPriceRange(mint, timeFrom, timeTo);
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();
@@ -114,14 +114,14 @@ const toolDefinitions = [
     parameters: {
       type: "object",
       properties: {
-        limit: { type: "integer", minimum: 1 },
+        mint: { type: "string" },
       },
       additionalProperties: false,
     },
-    handler: async ({ limit }) => {
+    handler: async ({ mint }) => {
       const client = await createSolanaTrackerDataClient();
       try {
-        return await client.getTokenOverview({ limit });
+        return await client.getTokenOverview({ mint });
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();
@@ -136,13 +136,12 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
-        tokenAddress: { type: "string" },
         includePriceChanges: { type: "boolean" },
       },
       required: [],
       additionalProperties: false,
     },
-    handler: async ({ mint, tokenAddress, includePriceChanges }) => {
+    handler: async ({ mint, includePriceChanges }) => {
       const client = await createSolanaTrackerDataClient();
       try {
         return await client.getTokenPrice({
@@ -169,7 +168,7 @@ const toolDefinitions = [
       required: ["mint"],
       additionalProperties: false,
     },
-    handler: async ({ mint, apiKey, baseUrl, maxAttempts, retryBaseMs }) => {
+    handler: async ({ mint }) => {
       const client = await createSolanaTrackerDataClient();
       try {
         return await client.getTokenSnapshotNow(mint);
