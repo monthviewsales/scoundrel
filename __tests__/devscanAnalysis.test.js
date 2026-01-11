@@ -11,11 +11,17 @@ jest.mock('../ai/warlordAI', () => {
 describe('devscanAnalysis job', () => {
   let analyzeDevscan;
   let runTaskMock;
+  const originalXaiKey = process.env.xAI_API_KEY;
 
   beforeEach(() => {
     jest.resetModules();
+    process.env.xAI_API_KEY = originalXaiKey || 'test-xai-key';
     runTaskMock = require('../ai/warlordAI').__mock.runTask;
     ({ analyzeDevscan } = require('../ai/jobs/devscanAnalysis'));
+  });
+
+  afterAll(() => {
+    process.env.xAI_API_KEY = originalXaiKey;
   });
 
   test('delegates to warlordAI and returns output', async () => {

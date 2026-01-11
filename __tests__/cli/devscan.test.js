@@ -143,7 +143,7 @@ test('runDevscan runs analysis and persists profile snapshot', async () => {
   }));
 
   expect(mockWriteArtifact).toHaveBeenCalledWith('response', 'Dev2_response', expect.any(Object));
-  expect(mockWriteArtifact).toHaveBeenCalledWith('final', 'Dev2_final', expect.any(Object));
+  expect(mockWriteArtifact).toHaveBeenCalledWith('final', 'devscan_Dev2_final', expect.any(Object));
   expect(mockPersistCoinMetadata).not.toHaveBeenCalled();
   expect(mockPersistProfileSnapshot).toHaveBeenCalledWith(expect.objectContaining({
     source: 'devscan',
