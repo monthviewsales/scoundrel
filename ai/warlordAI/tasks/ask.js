@@ -59,6 +59,7 @@ module.exports = {
   schema: ASK_V1_SCHEMA.schema,
   system: SYSTEM,
   enableRag: true,
+  includeFileSearchResults: true,
   ragMaxResults: 8,
   buildUser,
 };

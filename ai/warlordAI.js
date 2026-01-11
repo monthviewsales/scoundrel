@@ -85,10 +85,15 @@ function extractFunctionCalls(output) {
   return output.filter((item) => item && item.type === 'function_call' && item.name && item.call_id);
 }
 
+function extractFileSearchCalls(output) {
+  if (!Array.isArray(output)) return [];
+  return output.filter((item) => item && item.type === 'file_search_call');
+}
+
 /**
  * Create a Warlord AI runner backed by one or more clients.
  * @param {{ callResponses: Function, parseResponsesJSON: Function, log?: { debug?: Function } }|{ clients: Object, defaultProvider?: string }} clientOrOptions
- * @returns {{ runTask: (params: { task: string, payload: Object, model?: string, temperature?: number, metadata?: Object, rag?: boolean, ragFilters?: Object }) => Promise<Object> }}
+ * @returns {{ runTask: (params: { task: string, payload: Object, model?: string, temperature?: number, metadata?: Object, rag?: boolean, ragFilters?: Object, artifacts?: { write: Function }, onFileSearchResults?: Function }) => Promise<Object> }}
  */
 function createWarlordAI(clientOrOptions) {
   const defaultProvider = (clientOrOptions && clientOrOptions.defaultProvider) || 'openai';
@@ -113,9 +118,12 @@ function createWarlordAI(clientOrOptions) {
    * @param {number} [params.temperature]
    * @param {Object} [params.metadata]
    * @param {boolean} [params.rag]
+   * @param {Object} [params.ragFilters]
+   * @param {{ write: Function }} [params.artifacts]
+   * @param {Function} [params.onFileSearchResults]
    * @returns {Promise<Object>}
    */
-  async function runTask({ task, payload, model, temperature, metadata, rag, ragFilters }) {
+  async function runTask({ task, payload, model, temperature, metadata, rag, ragFilters, artifacts, onFileSearchResults }) {
     const config = TASKS[task];
     if (!config) {
       throw new Error(`[warlordAI] unknown task: ${task}`);
@@ -172,6 +180,13 @@ function createWarlordAI(clientOrOptions) {
       model,
       metadata,
     };
+    const include = Array.isArray(resolvedConfig.include) ? [...resolvedConfig.include] : [];
+    if (resolvedConfig.includeFileSearchResults) {
+      include.push('file_search_call.results');
+    }
+    if (include.length) {
+      options.include = Array.from(new Set(include));
+    }
 
     if (typeof resolvedTemperature === 'number') {
       options.temperature = resolvedTemperature;
@@ -189,7 +204,23 @@ function createWarlordAI(clientOrOptions) {
     let functionCalls = enableLocalTools ? extractFunctionCalls(res.output) : [];
     let rounds = 0;
     let blipNoticeAdded = false;
+    let fileSearchLogged = false;
     const blipNotice = 'Note: A tool call failed due to a transient network blip. Mention this briefly and suggest retrying the tool, staying within the required output format.';
+
+    const logFileSearchResults = (response) => {
+      if (!response || fileSearchLogged) return;
+      const calls = extractFileSearchCalls(response.output);
+      if (!calls.length) return;
+      if (typeof onFileSearchResults === 'function') {
+        onFileSearchResults({ task, calls, response });
+      }
+      if (artifacts && typeof artifacts.write === 'function') {
+        artifacts.write('raw', 'file-search', { task, calls });
+      }
+      fileSearchLogged = true;
+    };
+
+    logFileSearchResults(res);
 
     while (functionCalls.length && rounds < MAX_TOOL_ROUNDS) {
       input.push(...res.output);
@@ -225,6 +256,7 @@ function createWarlordAI(clientOrOptions) {
       }
       input.push(...toolOutputs);
       res = await callResponses(options);
+      logFileSearchResults(res);
       functionCalls = extractFunctionCalls(res.output);
       rounds += 1;
     }
