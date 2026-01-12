@@ -80,6 +80,14 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_HUD_MAX_LOGS` | HUD per-wallet log limit | `5` |
 | `SELL_OPS_OBSERVE_ONLY` | Force SellOps to run in observe-only mode (`true` disables execution) | empty |
 | `WARCHEST_TARGET_LIST_INTERVAL_MS` | Target list fetch interval (ms); set `OFF` to disable | `300000` |
+| `WARCHEST_TARGET_LIST_TIMEOUT_MS` | Target list timeout (ms) | `120000` |
+| `WARCHEST_TARGET_SCAN_INTERVAL_MS` | Target scan interval (ms); set `OFF` to disable | `60000` |
+| `WARCHEST_TARGET_SCAN_TIMEOUT_MS` | Target scan timeout (ms) | `120000` |
+| `WARCHEST_TARGET_SCAN_CONCURRENCY` | Target scan concurrency | `5` |
+| `WARCHEST_BUYOPS_EVAL_INTERVAL_MS` | BuyOps evaluation interval (ms); set `OFF` to disable | `60000` |
+| `WARCHEST_BUYOPS_EVAL_TIMEOUT_MS` | BuyOps per-mint evaluation timeout (ms) | `20000` |
+| `WARCHEST_BUYOPS_EVAL_CONCURRENCY` | BuyOps per-mint evaluation concurrency | `6` |
+| `WARCHEST_BUYOPS_MIN_SCORE` | BuyOps min score threshold | `65` |
 | `WARCHEST_WS_STALE_MS` | WS heartbeat stale threshold | `20000` |
 | `WARCHEST_WS_RESTART_GAP_MS` | Minimum WS restart gap | `30000` |
 | `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |

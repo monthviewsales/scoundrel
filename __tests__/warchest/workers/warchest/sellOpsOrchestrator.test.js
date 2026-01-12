@@ -67,4 +67,45 @@ describe('sellOpsOrchestrator', () => {
     expect(pushRecentEvent).toHaveBeenCalled();
     expect(emitHudChange).toHaveBeenCalled();
   });
+
+  test('restartWallet stops existing worker and spawns a new one', async () => {
+    const wallets = [{ alias: 'alpha', pubkey: 'Wallet1', color: 'blue' }];
+    const state = { alpha: { tokens: [], events: [] } };
+    const serviceAlerts = [];
+    const hudStore = { emitChange: jest.fn() };
+    const pushServiceAlert = jest.fn();
+    const pushRecentEvent = jest.fn();
+    const emitHudChange = jest.fn();
+    const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
+    const firstStop = jest.fn();
+    const secondStop = jest.fn();
+    const forkWorkerWithPayload = jest
+      .fn()
+      .mockReturnValueOnce({ stop: firstStop })
+      .mockReturnValueOnce({ stop: secondStop });
+
+    const orchestrator = createSellOpsOrchestrator({
+      wallets,
+      state,
+      serviceAlerts,
+      hudStore,
+      forkWorkerWithPayload,
+      pushServiceAlert,
+      pushRecentEvent,
+      emitHudChange,
+      logger,
+      hudMaxLogs: 5,
+      dataEndpoint: null,
+      pollIntervalMs: 1000,
+      workerPath: '/tmp/sellops-worker.js',
+    });
+
+    await orchestrator.start();
+    const restarted = orchestrator.restartWallet('alpha', 'watchdog');
+
+    expect(restarted).toBe(true);
+    expect(firstStop).toHaveBeenCalled();
+    expect(forkWorkerWithPayload).toHaveBeenCalledTimes(2);
+  });
 });
