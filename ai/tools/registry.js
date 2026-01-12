@@ -136,13 +136,12 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
-        tokenAddress: { type: "string" },
         includePriceChanges: { type: "boolean" },
       },
       required: [],
       additionalProperties: false,
     },
-    handler: async ({ mint, tokenAddress, includePriceChanges }) => {
+    handler: async ({ mint, includePriceChanges }) => {
       const client = await createSolanaTrackerDataClient();
       try {
         return await client.getTokenPrice({
@@ -173,28 +172,6 @@ const toolDefinitions = [
       const client = await createSolanaTrackerDataClient();
       try {
         return await client.getTokenSnapshotNow(mint);
-      } finally {
-        if (client && typeof client.close === "function") {
-          await client.close();
-        }
-      }
-    },
-  },
-  {
-    name: "solanaTrackerData.getTokenRiskScores",
-    description: "Fetch SolanaTracker token risk scores.",
-    parameters: {
-      type: "object",
-      properties: {
-        mint: { type: "string" },
-      },
-      required: ["mint"],
-      additionalProperties: false,
-    },
-    handler: async ({ mint }) => {
-      const client = await createSolanaTrackerDataClient();
-      try {
-        return await client.getTokenRiskScores(mint);
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();
