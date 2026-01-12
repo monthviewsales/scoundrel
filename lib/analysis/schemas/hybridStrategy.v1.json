@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0.0",
-  "strategyId": "hybrid-v1",
+  "schemaVersion": "1.0.1",
+  "strategyId": "hybrid-v1.1",
   "name": "HYBRID",
   "description": "Momentum-based trade management with partial entries, trailing exits, and a medium holding horizon. Allows brief weakness while enforcing structural risk controls. Sits between FLASH and CAMPAIGN.",
   "defaults": {
@@ -20,10 +20,10 @@
     "requires": ["coin", "pool", "risk"],
     "recommended": ["ohlcv", "indicators", "pnl", "events"],
     "freshnessMs": {
-      "coin": 120000,
-      "pool": 120000,
-      "events": 120000,
-      "risk": 600000
+      "coin": 12000000,
+      "pool": 1200000,
+      "events": 1200000,
+      "risk": 6000000
     },
     "warnings": {
       "forbidden": [
@@ -45,9 +45,9 @@
     }
   },
   "discovery": {
-    "enabled": false,
+    "enabled": true,
     "universe": {
-      "sources": ["manual", "watchlist"],
+      "sources": ["manual", "targetlist"],
       "notes": "HYBRID currently assumes manual entry. Automation can reuse FLASH scanners with relaxed confirmation."
     },
     "candidateFilters": [],
@@ -63,7 +63,7 @@
         "id": "gate.data.freshness",
         "type": "warnings_forbidden_absent",
         "params": {
-          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "coin_stale", "pool_stale", "risk_stale"]
+          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "pool_stale", "risk_stale"]
         },
         "severityOnFail": "exit"
       },
@@ -82,7 +82,7 @@
       {
         "id": "gate.holders.top10",
         "type": "number_lte",
-        "params": { "path": "risk.top10Percent", "max": 25 },
+        "params": { "path": "risk.top10Percent", "max": 22 },
         "severityOnFail": "degrade"
       },
       {
@@ -106,7 +106,7 @@
       {
         "id": "gate.liquidity.exitability",
         "type": "number_gte",
-        "params": { "path": "derived.liquidityToPositionRatio", "min": 15 },
+        "params": { "path": "derived.liquidityToPositionRatio", "min": 10 },
         "severityOnFail": "trim"
       }
     ]

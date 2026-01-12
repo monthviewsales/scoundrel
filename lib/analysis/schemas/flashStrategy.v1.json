@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0.0",
-  "strategyId": "flash-v1",
+  "schemaVersion": "1.0.1",
+  "strategyId": "flash-v1.1",
   "name": "FLASH",
   "description": "Ultra-short horizon momentum scalp. Designed for early, high-volatility tokens where momentum is binary. Requires strict structural risk gates, fast confirmation, and enforced residual caps. Intended to be explainable and autopsy-friendly.",
   "defaults": {
@@ -28,10 +28,10 @@
       "pnl"
     ],
     "freshnessMs": {
-      "coin": 120000,
-      "pool": 120000,
-      "events": 120000,
-      "risk": 600000
+      "coin": 1200000,
+      "pool": 1200000,
+      "events": 1200000,
+      "risk": 1200000
     },
     "warnings": {
       "forbidden": [
@@ -133,7 +133,7 @@
         "type": "number_gte",
         "params": {
           "path": "derived.liquidityToPositionRatio",
-          "min": 25
+          "min": 15
         },
         "severityOnFail": "trim"
       }
