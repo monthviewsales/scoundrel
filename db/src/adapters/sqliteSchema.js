@@ -379,13 +379,15 @@ db.exec(`
     mint             TEXT NOT NULL UNIQUE,
     symbol           TEXT,
     name             TEXT,
-    status           TEXT NOT NULL CHECK(status IN ('new','watching','approved','rejected','archived')) DEFAULT 'new',
+    status           TEXT NOT NULL CHECK(status IN ('new','watching','approved','rejected','archived','strong_buy','buy','watch','avoid')) DEFAULT 'new',
     strategy         TEXT,
     strategy_id      TEXT,
     source           TEXT,
     tags             TEXT,
     notes            TEXT,
-    rating           TEXT,
+    vector_store_id  TEXT,
+    vector_store_file_id TEXT,
+    vector_store_updated_at INTEGER,
     confidence       REAL,
     score            REAL,
     mint_verified    INTEGER NOT NULL DEFAULT 0,
@@ -902,8 +904,9 @@ ensureColumn(db, "risk", "feesTotalSol", "REAL");
 ensureColumn(db, "risk", "feesTotalSolDelta", "REAL");
 ensureColumn(db, "risk", "riskScoreDelta", "REAL");
 ensureColumn(db, "risk", "risksJson", "TEXT");
-ensureColumn(db, "sc_targets", "rating", "TEXT");
-
+ensureColumn(db, "sc_targets", "vector_store_id", "TEXT");
+ensureColumn(db, "sc_targets", "vector_store_file_id", "TEXT");
+ensureColumn(db, "sc_targets", "vector_store_updated_at", "INTEGER");
 ensureColumn(db, "sc_wallets", "usage_type", "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn(db, "sc_wallets", "is_default_funding", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "auto_attach_warchest", "INTEGER NOT NULL DEFAULT 0");

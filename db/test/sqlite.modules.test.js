@@ -160,13 +160,15 @@ describe('targets submodule', () => {
       mint: 'mint-abc',
       symbol: 'ABC',
       name: 'Alpha Beta Coin',
-      status: 'watching',
+      status: 'watch',
       strategy: 'flash',
       strategyId: 'flash-1',
       source: 'target-list',
       tags: 'pumpfun,volume',
       notes: 'initial pass',
-      rating: 'watch',
+      vectorStoreId: 'vs-1',
+      vectorStoreFileId: 'file-1',
+      vectorStoreUpdatedAt: 1234,
       confidence: 0.72,
       score: 0.31,
       mintVerified: true,
@@ -174,17 +176,36 @@ describe('targets submodule', () => {
     });
 
     expect(inserted.mint).toBe('mint-abc');
-    expect(inserted.status).toBe('watching');
+    expect(inserted.status).toBe('watch');
     expect(inserted.strategy).toBe('flash');
 
     const fetched = adapter.getTarget('mint-abc');
     expect(fetched).toBeTruthy();
     expect(fetched.symbol).toBe('ABC');
-    expect(fetched.rating).toBe('watch');
+    expect(fetched.status).toBe('watch');
+    expect(fetched.vector_store_id).toBe('vs-1');
+    expect(fetched.vector_store_file_id).toBe('file-1');
 
     const removed = adapter.removeTarget('mint-abc');
     expect(removed).toBe(1);
     expect(adapter.getTarget('mint-abc')).toBeNull();
+  });
+
+  test('updates vector store fields for targets', () => {
+    adapter.addUpdateTarget({
+      mint: 'mint-vs',
+      status: 'new',
+    });
+
+    const updated = adapter.updateTargetVectorStore('mint-vs', {
+      vectorStoreId: 'vs-2',
+      vectorStoreFileId: 'file-2',
+      vectorStoreUpdatedAt: 4242,
+    });
+
+    expect(updated.vector_store_id).toBe('vs-2');
+    expect(updated.vector_store_file_id).toBe('file-2');
+    expect(updated.vector_store_updated_at).toBe(4242);
   });
 
   test('prunes targets by status and last_checked_at', () => {
@@ -223,12 +244,19 @@ describe('targets submodule', () => {
       lastCheckedAt: now,
     });
 
+    const prunable = adapter.listPrunableTargets({
+      now,
+      staleMs: 2 * 60 * 60 * 1000,
+      archivedTtlMs: 7 * 24 * 60 * 60 * 1000,
+    });
+
     const pruned = adapter.pruneTargets({
       now,
       staleMs: 2 * 60 * 60 * 1000,
       archivedTtlMs: 7 * 24 * 60 * 60 * 1000,
     });
 
+    expect(prunable).toHaveLength(3);
     expect(pruned).toBe(3);
     expect(adapter.getTarget('mint-approved')).toBeTruthy();
     expect(adapter.getTarget('mint-archived-fresh')).toBeTruthy();

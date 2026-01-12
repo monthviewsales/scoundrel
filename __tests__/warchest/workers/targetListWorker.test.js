@@ -20,6 +20,10 @@ jest.mock('../../../lib/services/tokenInfoService', () => ({
   })),
 }));
 
+jest.mock('../../../lib/services/targetPruning', () => ({
+  pruneTargetsWithVectorStoreCleanup: jest.fn(async () => 0),
+}));
+
 jest.mock('../../../lib/warchest/events', () => ({
   appendHubEvent: jest.fn(),
 }));
@@ -91,7 +95,6 @@ describe('targetListWorker', () => {
         payload: expect.objectContaining({
           mints: ['a', 'b', 'x'],
           concurrency: 5,
-          skipVectorStore: true,
         }),
       }),
     );
