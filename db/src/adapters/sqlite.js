@@ -9,6 +9,7 @@ const trading = require('./sqlite/trading');
 const sessions = require('./sqlite/sessions');
 const legacy = require('./sqlite/legacyAdapter');
 const sellops = require('./sqlite/sellops');
+const buyops = require('./sqlite/buyops');
 const targets = require('./sqlite/targets');
 
 // Prefer specialized submodules where available; fall back to legacy implementations for the rest.
@@ -21,6 +22,7 @@ const BootyBox = {
   ...trading,
   ...sessions,
   ...sellops,
+  ...buyops,
   ...targets,
   engine: 'sqlite',
 };
@@ -48,5 +50,6 @@ module.exports.modules = {
   sessions,
   legacy,
   sellops,
+  buyops,
   targets,
 };

@@ -157,6 +157,96 @@ function updateTargetVectorStore(mint, updates = {}) {
   return getTarget(mint);
 }
 
+function buildStatusPriorityCase() {
+  return `CASE status
+    WHEN 'strong_buy' THEN 1
+    WHEN 'buy' THEN 2
+    WHEN 'watch' THEN 3
+    WHEN 'watching' THEN 4
+    WHEN 'approved' THEN 5
+    WHEN 'new' THEN 6
+    WHEN 'archived' THEN 7
+    WHEN 'rejected' THEN 8
+    WHEN 'avoid' THEN 9
+    ELSE 99
+  END`;
+}
+
+/**
+ * List targets ordered by rating/status priority, score, and confidence.
+ *
+ * @param {{ statuses?: string[], minScore?: number, limit?: number }} [options]
+ * @returns {object[]}
+ */
+function listTargetsByPriority(options = {}) {
+  const statuses = Array.isArray(options.statuses) && options.statuses.length
+    ? options.statuses
+    : ['strong_buy', 'buy', 'watch', 'watching', 'approved', 'new'];
+  const minScore = Number.isFinite(options.minScore) ? Number(options.minScore) : null;
+  const limit = Number.isFinite(options.limit) ? Number(options.limit) : null;
+
+  const conditions = [];
+  const params = [];
+
+  if (statuses.length) {
+    const placeholders = statuses.map(() => '?').join(', ');
+    conditions.push(`status IN (${placeholders})`);
+    params.push(...statuses);
+  }
+  if (minScore != null) {
+    conditions.push('COALESCE(score, -1) >= ?');
+    params.push(minScore);
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderBy = `
+    ORDER BY ${buildStatusPriorityCase()} ASC,
+             COALESCE(score, -1) DESC,
+             COALESCE(confidence, -1) DESC,
+             COALESCE(updated_at, 0) DESC`;
+  const limitClause = limit != null ? 'LIMIT ?' : '';
+
+  if (limit != null) params.push(limit);
+
+  const rows = db.prepare(
+    `SELECT *
+     FROM sc_targets
+     ${whereClause}
+     ${orderBy}
+     ${limitClause}`
+  ).all(params);
+
+  return rows || [];
+}
+
+/**
+ * List targets that should be rescanned (oldest first).
+ *
+ * @param {{ statuses?: string[], limit?: number }} [options]
+ * @returns {object[]}
+ */
+function listTargetsForScan(options = {}) {
+  const statuses = Array.isArray(options.statuses) && options.statuses.length
+    ? options.statuses
+    : ['strong_buy', 'buy', 'watch', 'watching', 'approved', 'new'];
+  const limit = Number.isFinite(options.limit) ? Number(options.limit) : null;
+  const placeholders = statuses.map(() => '?').join(', ');
+  const limitClause = limit != null ? 'LIMIT ?' : '';
+  const params = [...statuses];
+  if (limit != null) params.push(limit);
+
+  const rows = db.prepare(
+    `SELECT *
+     FROM sc_targets
+     WHERE status IN (${placeholders})
+     ORDER BY COALESCE(last_checked_at, 0) ASC,
+              COALESCE(updated_at, 0) DESC
+     ${limitClause}`
+  ).all(params);
+
+  return rows || [];
+}
+
 function resolvePruneCutoffs(options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now();
   const staleMs = Number.isFinite(options.staleMs) ? options.staleMs : 2 * 60 * 60 * 1000;
@@ -222,6 +312,8 @@ module.exports = {
   getTarget,
   removeTarget,
   updateTargetVectorStore,
+  listTargetsByPriority,
+  listTargetsForScan,
   listPrunableTargets,
   pruneTargets,
 };

@@ -265,6 +265,15 @@ describe('targets submodule', () => {
     expect(adapter.getTarget('mint-rejected')).toBeNull();
     expect(adapter.getTarget('mint-stale')).toBeNull();
   });
+
+  test('lists targets by priority with watch lowest', () => {
+    adapter.addUpdateTarget({ mint: 'mint-strong', status: 'strong_buy', score: 80, confidence: 0.9 });
+    adapter.addUpdateTarget({ mint: 'mint-buy', status: 'buy', score: 80, confidence: 0.9 });
+    adapter.addUpdateTarget({ mint: 'mint-watch', status: 'watch', score: 80, confidence: 0.9 });
+
+    const list = adapter.listTargetsByPriority({ statuses: ['strong_buy', 'buy', 'watch'] });
+    expect(list.map((row) => row.mint)).toEqual(['mint-strong', 'mint-buy', 'mint-watch']);
+  });
 });
 
 describe('coins submodule', () => {
