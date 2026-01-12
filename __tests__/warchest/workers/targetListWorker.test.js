@@ -24,6 +24,14 @@ jest.mock('../../../lib/warchest/events', () => ({
   appendHubEvent: jest.fn(),
 }));
 
+jest.mock('../../../lib/warchest/workers/harness', () => {
+  const actual = jest.requireActual('../../../lib/warchest/workers/harness');
+  return {
+    ...actual,
+    spawnWorkerDetached: jest.fn(),
+  };
+});
+
 jest.mock('../../../db', () => ({
   init: jest.fn(async () => {}),
   addUpdateTarget: jest.fn(),
@@ -34,6 +42,7 @@ const {
   validateTargetListPayload,
   runTargetListOnce,
 } = require('../../../lib/warchest/workers/targetListWorker');
+const { spawnWorkerDetached } = require('../../../lib/warchest/workers/harness');
 
 describe('targetListWorker', () => {
   const originalEnv = { ...process.env };
@@ -76,5 +85,15 @@ describe('targetListWorker', () => {
     expect(result.artifacts.volumePath).toBe('/tmp/artifact.json');
     expect(result.artifacts.trendingPath).toBe('/tmp/artifact.json');
     expect(result.summary.uniqueMints).toBe(3);
+    expect(spawnWorkerDetached).toHaveBeenCalledWith(
+      expect.stringContaining('targetScanWorker.js'),
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          mints: ['a', 'b', 'x'],
+          concurrency: 5,
+          skipVectorStore: true,
+        }),
+      }),
+    );
   });
 });
