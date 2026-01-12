@@ -78,7 +78,7 @@ async function runInteractiveAsk({ session, rag, model, timeoutMs }, initialQues
       }
       logger.info(result.text || '(no response)');
     } catch (err) {
-      logger.error('[warlordai] ask failed:', err?.message || err);
+      logger.error(`[warlordai] ask failed: ${err?.message || err}`);
     }
   }
 
@@ -135,8 +135,13 @@ async function handleDossier(opts) {
 
 async function handleAutopsy(opts) {
   const isDbMode = Boolean(opts.tradeUuid);
-  if (!isDbMode && (!opts.wallet || !opts.mint)) {
-    throw new Error('[warlordai] autopsy requires --trade-uuid or --wallet + --mint');
+  if (!isDbMode) {
+    const missing = [];
+    if (!opts.wallet) missing.push('--wallet');
+    if (!opts.mint) missing.push('--mint');
+    if (missing.length) {
+      throw new Error(`[warlordai] autopsy missing required flag(s): ${missing.join(', ')} (use --trade-uuid or --wallet + --mint)`);
+    }
   }
   await runAutopsy({
     tradeUuid: opts.tradeUuid || null,
@@ -191,7 +196,7 @@ program
     try {
       await handleAsk(question, opts);
     } catch (err) {
-      logger.error('[warlordai] ask failed:', err?.message || err);
+      logger.error(`[warlordai] ask failed: ${err?.message || err}`);
       process.exitCode = 1;
     }
   });
@@ -209,7 +214,7 @@ program
     try {
       await handleAsk(opts.question, opts);
     } catch (err) {
-      logger.error('[warlordai] ask failed:', err?.message || err);
+      logger.error(`[warlordai] ask failed: ${err?.message || err}`);
       process.exitCode = 1;
     }
   });
@@ -230,7 +235,7 @@ program
     try {
       await handleDossier(opts);
     } catch (err) {
-      logger.error('[warlordai] dossier failed:', err?.message || err);
+      logger.error(`[warlordai] dossier failed: ${err?.message || err}`);
       process.exitCode = 1;
     }
   });
@@ -246,7 +251,7 @@ program
     try {
       await handleAutopsy(opts);
     } catch (err) {
-      logger.error('[warlordai] autopsy failed:', err?.message || err);
+      logger.error(`[warlordai] autopsy failed: ${err?.message || err}`);
       process.exitCode = 1;
     }
   });
@@ -262,12 +267,12 @@ program
     try {
       await handleTargetScan(opts);
     } catch (err) {
-      logger.error('[warlordai] targetscan failed:', err?.message || err);
+      logger.error(`[warlordai] targetscan failed: ${err?.message || err}`);
       process.exitCode = 1;
     }
   });
 
 program.parseAsync(process.argv).catch((err) => {
-  logger.error('[warlordai] fatal error:', err?.message || err);
+  logger.error(`[warlordai] fatal error: ${err?.message || err}`);
   process.exit(1);
 });
