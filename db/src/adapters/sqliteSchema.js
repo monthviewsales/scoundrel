@@ -385,6 +385,7 @@ db.exec(`
     source           TEXT,
     tags             TEXT,
     notes            TEXT,
+    rating           TEXT,
     confidence       REAL,
     score            REAL,
     mint_verified    INTEGER NOT NULL DEFAULT 0,
@@ -901,6 +902,7 @@ ensureColumn(db, "risk", "feesTotalSol", "REAL");
 ensureColumn(db, "risk", "feesTotalSolDelta", "REAL");
 ensureColumn(db, "risk", "riskScoreDelta", "REAL");
 ensureColumn(db, "risk", "risksJson", "TEXT");
+ensureColumn(db, "sc_targets", "rating", "TEXT");
 
 ensureColumn(db, "sc_wallets", "usage_type", "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn(db, "sc_wallets", "is_default_funding", "INTEGER NOT NULL DEFAULT 0");
