@@ -70,4 +70,33 @@ describe('tokenInfoService.ensureTokenInfo', () => {
       expect.objectContaining({ mint: 'MintC', symbol: 'CCC' }),
     );
   });
+
+  test('forceRefresh fills cached metadata when API omits symbol/name', async () => {
+    BootyBox.init.mockResolvedValue();
+    BootyBox.getCoinByMint.mockResolvedValue({
+      mint: 'MintD',
+      symbol: 'DDD',
+      name: 'D Coin',
+      decimals: 6,
+    });
+    const client = {
+      getTokenInformation: jest.fn().mockResolvedValue({
+        token: { mint: 'MintD' },
+        events: { m5: { buys: 1 } },
+      }),
+    };
+
+    const { ensureTokenInfo } = loadService();
+    await ensureTokenInfo({ mint: 'MintD', client, forceRefresh: true });
+
+    expect(client.getTokenInformation).toHaveBeenCalledWith('MintD');
+    expect(BootyBox.addOrUpdateCoin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mint: 'MintD',
+        symbol: 'DDD',
+        name: 'D Coin',
+        decimals: 6,
+      }),
+    );
+  });
 });
