@@ -15,6 +15,7 @@ const { db } = require('./context');
  * @param {string} [target.source]
  * @param {string} [target.tags]
  * @param {string} [target.notes]
+ * @param {string} [target.rating]
  * @param {number} [target.confidence]
  * @param {number} [target.score]
  * @param {boolean} [target.mintVerified]
@@ -39,6 +40,7 @@ function addUpdateTarget(target) {
     source: target.source || null,
     tags: target.tags || null,
     notes: target.notes || null,
+    rating: target.rating || null,
     confidence: Number.isFinite(target.confidence) ? target.confidence : null,
     score: Number.isFinite(target.score) ? target.score : null,
     mint_verified: target.mintVerified ? 1 : 0,
@@ -49,10 +51,10 @@ function addUpdateTarget(target) {
 
   db.prepare(
     `INSERT INTO sc_targets (
-       mint, symbol, name, status, strategy, strategy_id, source, tags, notes, confidence, score,
+       mint, symbol, name, status, strategy, strategy_id, source, tags, notes, rating, confidence, score,
        mint_verified, created_at, updated_at, last_checked_at
      ) VALUES (
-       @mint, @symbol, @name, @status, @strategy, @strategy_id, @source, @tags, @notes, @confidence, @score,
+       @mint, @symbol, @name, @status, @strategy, @strategy_id, @source, @tags, @notes, @rating, @confidence, @score,
        @mint_verified, @created_at, @updated_at, @last_checked_at
      )
      ON CONFLICT(mint) DO UPDATE SET
@@ -64,6 +66,7 @@ function addUpdateTarget(target) {
        source = excluded.source,
        tags = excluded.tags,
        notes = excluded.notes,
+       rating = excluded.rating,
        confidence = excluded.confidence,
        score = excluded.score,
        mint_verified = excluded.mint_verified,

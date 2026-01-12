@@ -166,6 +166,7 @@ describe('targets submodule', () => {
       source: 'target-list',
       tags: 'pumpfun,volume',
       notes: 'initial pass',
+      rating: 'watch',
       confidence: 0.72,
       score: 0.31,
       mintVerified: true,
@@ -179,6 +180,7 @@ describe('targets submodule', () => {
     const fetched = adapter.getTarget('mint-abc');
     expect(fetched).toBeTruthy();
     expect(fetched.symbol).toBe('ABC');
+    expect(fetched.rating).toBe('watch');
 
     const removed = adapter.removeTarget('mint-abc');
     expect(removed).toBe(1);
