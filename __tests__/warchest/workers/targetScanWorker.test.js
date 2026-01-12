@@ -31,6 +31,7 @@ describe('targetScan worker', () => {
       mint: 'MintA',
       concurrency: 3,
       runAnalysis: false,
+      forceTokenRefresh: true,
     }));
   });
 
@@ -42,7 +43,11 @@ describe('targetScan worker', () => {
       runAnalysis: true,
     });
 
-    expect(runTargetScan).toHaveBeenCalledWith({ mints: ['MintA', 'MintB'], runAnalysis: true });
+    expect(runTargetScan).toHaveBeenCalledWith({
+      mints: ['MintA', 'MintB'],
+      runAnalysis: true,
+      forceTokenRefresh: true,
+    });
     expect(result).toEqual({ ok: true });
   });
 });
