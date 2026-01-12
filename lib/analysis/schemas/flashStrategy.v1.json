@@ -149,8 +149,8 @@
       "method": "risk_budget",
       "notes": "For automated buy, compute recommended SOL size from risk budget and stop distance. For manual buy, this is advisory and can be used for post-entry de-risk trims.",
       "inputs": {
-        "baseUnitSol": 0.25,
-        "maxNotionalSol": 2.0,
+        "baseUnitSol": 0.03,
+        "maxNotionalSol": 0.25,
         "riskPerTradePct": 0.5,
         "stopDistanceModel": {
           "type": "atr_pct_multiplier",
