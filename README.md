@@ -61,6 +61,7 @@ Common env vars (full list in `.env.sample`):
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
 | `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
 | `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads + RAG retrieval (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
+| `TARGETSCAN_SKIP_VECTOR_STORE` | Skip targetscan vector store uploads when set to `true` | empty |
 | `ASK_EXPLICIT_RAG` | Enable explicit vector store search for ask strategy questions (alias: `WARLORDAI_EXPLICIT_RAG`) | empty |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |

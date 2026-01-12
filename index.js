@@ -570,12 +570,14 @@ program
     .option('--mints <list>', 'Comma-delimited list of mints to scan')
     .option('--concurrency <n>', 'Parallel scans to run (default 4)')
     .option('--raw-only', 'Skip AI scoring and only write artifacts')
+    .option('--skip-vector-store', 'Skip vector store upload of final artifacts')
     .addHelpText('after', `\nExamples:\n  $ scoundrel targetscan --mint <MINT>\n  $ scoundrel targetscan --mints <MINT1,MINT2>\n\nNotes:\n  • Uses WarlordAI (gpt-5-mini) for scoring unless --raw-only is set.\n  • Writes JSON artifacts under ./data/targetscan/.\n`)
     .action(async (opts) => {
         const { normalizeMintList } = require('./lib/targetScan');
         const mints = normalizeMintList([opts?.mint, opts?.mints]);
         const runAnalysis = !(opts && opts.rawOnly);
         const concurrency = opts?.concurrency != null ? Number(opts.concurrency) : undefined;
+        const skipVectorStore = Boolean(opts?.skipVectorStore);
 
         if (!mints.length) {
             logger.error('[scoundrel] targetscan requires --mint or --mints');
@@ -605,6 +607,7 @@ program
                     mints,
                     runAnalysis,
                     concurrency,
+                    ...(skipVectorStore ? { skipVectorStore: true } : {}),
                 },
             });
 
