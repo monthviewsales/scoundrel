@@ -1104,6 +1104,34 @@ Examples:
     });
 
 program
+    .command('migrate')
+    .description('Run BootyBox SQLite migrations')
+    .option('--db <path>', 'Override BOOTYBOX_SQLITE_PATH for this run')
+    .addHelpText('after', `\nExamples:\n  $ scoundrel migrate\n  $ BOOTYBOX_SQLITE_PATH=/tmp/bootybox.db scoundrel migrate\n  $ scoundrel migrate --db /tmp/bootybox.db\n`)
+    .action(async (opts) => {
+        const dbPath = opts.db || process.env.BOOTYBOX_SQLITE_PATH || join(__dirname, 'db', 'bootybox.db');
+        logger.info(`[scoundrel] running migrations on ${dbPath}`);
+
+        const Database = require('better-sqlite3');
+        const { runMigrations } = require('./db/migrations');
+        const sqlite = new Database(dbPath);
+
+        try {
+            await runMigrations({ sqlite, logger });
+            logger.info('[scoundrel] ✅ migrations complete');
+        } catch (err) {
+            logger.error('[scoundrel] ❌ migrations failed:', err?.message || err);
+            process.exitCode = 1;
+        } finally {
+            try {
+                sqlite.close();
+            } catch (closeErr) {
+                logger.warn('[scoundrel] failed to close sqlite handle:', closeErr?.message || closeErr);
+            }
+        }
+    });
+
+program
     .command('test')
     .description('Run a quick self-check (env + minimal OpenAI config presence)')
     .addHelpText('after', `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`)

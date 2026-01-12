@@ -53,7 +53,7 @@ describe('wallets submodule', () => {
       usageType: 'strategy',
       autoAttachWarchest: true,
       isDefaultFunding: true,
-      strategyId: 'strat-1',
+      strategy: 'strat-1',
       color: '#abcdef',
     });
 
@@ -62,7 +62,7 @@ describe('wallets submodule', () => {
       usageType: 'strategy',
       autoAttachWarchest: true,
       isDefaultFunding: true,
-      strategyId: 'strat-1',
+      strategy: 'strat-1',
       color: '#abcdef',
     });
 

@@ -17,7 +17,7 @@ function mapWalletRow(row) {
     usageType: row.usageType,
     isDefaultFunding: !!row.isDefaultFunding,
     autoAttachWarchest: !!row.autoAttachWarchest,
-    strategyId: row.strategyId,
+    strategy: row.strategy,
     color: row.color,
     hasPrivateKey: !!row.hasPrivateKey,
     keySource: row.keySource,
@@ -68,7 +68,7 @@ function ensureKolWalletForProfile(wallet, traderName) {
        usage_type,
        is_default_funding,
        auto_attach_warchest,
-       strategy_id,
+       strategy,
        color,
        has_private_key,
        key_source,
@@ -81,7 +81,7 @@ function ensureKolWalletForProfile(wallet, traderName) {
        @usage_type,
        @is_default_funding,
        @auto_attach_warchest,
-       @strategy_id,
+       @strategy,
        @color,
        @has_private_key,
        @key_source,
@@ -95,7 +95,7 @@ function ensureKolWalletForProfile(wallet, traderName) {
     usage_type: 'kol',
     is_default_funding: 0,
     auto_attach_warchest: 0,
-    strategy_id: null,
+    strategy: null,
     color: null,
     has_private_key: 0,
     key_source: 'none',
@@ -115,7 +115,7 @@ function listWarchestWallets() {
          usage_type           AS usageType,
          is_default_funding   AS isDefaultFunding,
          auto_attach_warchest AS autoAttachWarchest,
-         strategy_id          AS strategyId,
+         strategy             AS strategy,
          color,
          has_private_key      AS hasPrivateKey,
          key_source           AS keySource,
@@ -138,7 +138,7 @@ function listWalletsByUsage(usageType) {
       usage_type           AS usageType,
       is_default_funding   AS isDefaultFunding,
       auto_attach_warchest AS autoAttachWarchest,
-      strategy_id          AS strategyId,
+      strategy             AS strategy,
       color,
       has_private_key      AS hasPrivateKey,
       key_source           AS keySource,
@@ -170,7 +170,7 @@ function listAutoAttachedWarchestWallets() {
          usage_type           AS usageType,
          is_default_funding   AS isDefaultFunding,
          auto_attach_warchest AS autoAttachWarchest,
-         strategy_id          AS strategyId,
+         strategy             AS strategy,
          color,
          has_private_key      AS hasPrivateKey,
          key_source           AS keySource,
@@ -196,7 +196,7 @@ function getWarchestWalletByAlias(alias) {
          usage_type           AS usageType,
          is_default_funding   AS isDefaultFunding,
          auto_attach_warchest AS autoAttachWarchest,
-         strategy_id          AS strategyId,
+         strategy             AS strategy,
          color,
          has_private_key      AS hasPrivateKey,
          key_source           AS keySource,
@@ -223,7 +223,7 @@ function insertWarchestWallet(record) {
        usage_type,
        is_default_funding,
        auto_attach_warchest,
-       strategy_id,
+       strategy,
        color,
        has_private_key,
        key_source,
@@ -236,7 +236,7 @@ function insertWarchestWallet(record) {
        @usage_type,
        @is_default_funding,
        @auto_attach_warchest,
-       @strategy_id,
+       @strategy,
        @color,
        @has_private_key,
        @key_source,
@@ -251,7 +251,7 @@ function insertWarchestWallet(record) {
     usage_type: record.usageType || 'other',
     is_default_funding: record.isDefaultFunding ? 1 : 0,
     auto_attach_warchest: record.autoAttachWarchest ? 1 : 0,
-    strategy_id: record.strategyId ?? null,
+    strategy: record.strategy ?? record.strategyId ?? null,
     color: record.color ?? null,
     has_private_key: record.hasPrivateKey ? 1 : 0,
     key_source: record.keySource || 'none',
@@ -297,8 +297,11 @@ function updateWarchestWalletOptions(alias, updates = {}) {
     setAsDefault = !!updates.isDefaultFunding;
   }
 
-  if (Object.prototype.hasOwnProperty.call(updates, 'strategyId')) {
-    setters.push('strategy_id = ?');
+  if (Object.prototype.hasOwnProperty.call(updates, 'strategy')) {
+    setters.push('strategy = ?');
+    params.push(updates.strategy ?? null);
+  } else if (Object.prototype.hasOwnProperty.call(updates, 'strategyId')) {
+    setters.push('strategy = ?');
     params.push(updates.strategyId ?? null);
   }
 
@@ -366,7 +369,7 @@ function listFundingWallets() {
          usage_type           AS usageType,
          is_default_funding   AS isDefaultFunding,
          auto_attach_warchest AS autoAttachWarchest,
-         strategy_id          AS strategyId,
+         strategy             AS strategy,
          color,
          has_private_key      AS hasPrivateKey,
          key_source           AS keySource,
@@ -391,7 +394,7 @@ function getDefaultFundingWallet() {
          usage_type           AS usageType,
          is_default_funding   AS isDefaultFunding,
          auto_attach_warchest AS autoAttachWarchest,
-         strategy_id          AS strategyId,
+         strategy             AS strategy,
          color,
          has_private_key      AS hasPrivateKey,
          key_source           AS keySource,
@@ -445,7 +448,7 @@ function listTrackedKolWallets() {
          usage_type           AS usageType,
          is_default_funding   AS isDefaultFunding,
          auto_attach_warchest AS autoAttachWarchest,
-         strategy_id          AS strategyId,
+         strategy             AS strategy,
          color,
          has_private_key      AS hasPrivateKey,
          key_source           AS keySource,

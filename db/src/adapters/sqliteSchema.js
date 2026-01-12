@@ -5,6 +5,27 @@ function ensureColumn(db, table, column, definition) {
   }
 }
 
+function ensureWalletStrategyColumn(db) {
+  const cols = db.prepare('PRAGMA table_info(sc_wallets)').all();
+  const hasStrategy = cols.some((c) => c.name === 'strategy');
+  const hasStrategyId = cols.some((c) => c.name === 'strategy_id');
+
+  if (hasStrategy) return;
+  if (hasStrategyId) {
+    try {
+      db.exec('ALTER TABLE sc_wallets RENAME COLUMN strategy_id TO strategy');
+      return;
+    } catch (_) {
+      // Fall through to add + copy when rename isn't supported.
+    }
+  }
+
+  db.exec('ALTER TABLE sc_wallets ADD COLUMN strategy TEXT');
+  if (hasStrategyId) {
+    db.exec("UPDATE sc_wallets SET strategy = strategy_id WHERE strategy IS NULL OR TRIM(strategy) = ''");
+  }
+}
+
 function listUniqueIndexColumns(db, table) {
   const indexes = db.prepare(`PRAGMA index_list(${table})`).all();
   return indexes
@@ -275,7 +296,7 @@ db.exec(`
     usage_type           TEXT NOT NULL DEFAULT 'other',              -- 'funding','strategy','kol','deployer','other'
     is_default_funding   INTEGER NOT NULL DEFAULT 0,
     auto_attach_warchest INTEGER NOT NULL DEFAULT 0,
-    strategy_id          TEXT NULL,
+    strategy             TEXT NULL,
     color                TEXT NULL,
     has_private_key      INTEGER NOT NULL DEFAULT 0,
     key_source           TEXT NOT NULL DEFAULT 'none',               -- 'none','keychain','db_encrypted'
@@ -983,7 +1004,7 @@ ensureColumn(db, "sc_targets", "vector_store_updated_at", "INTEGER");
 ensureColumn(db, "sc_wallets", "usage_type", "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn(db, "sc_wallets", "is_default_funding", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "auto_attach_warchest", "INTEGER NOT NULL DEFAULT 0");
-ensureColumn(db, "sc_wallets", "strategy_id", "TEXT");
+ensureWalletStrategyColumn(db);
 
 ensureColumn(db, 'sc_sessions', 'service_instance_id', 'TEXT');
 ensureColumn(db, 'sc_sessions', 'start_slot', 'INTEGER');

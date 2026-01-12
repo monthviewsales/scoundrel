@@ -59,7 +59,7 @@ describe('getWalletForSwap', () => {
       signer: null,
       hasPrivateKey: false,
       usageType: 'observe',
-      strategyId: undefined,
+      strategy: undefined,
       raw: walletRow,
     });
   });
