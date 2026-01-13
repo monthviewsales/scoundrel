@@ -1,28 +1,30 @@
 // ai/gptClient.js
-'use strict';
+"use strict";
 
-  require("dotenv").config({ quiet: true });
-  const OpenAI = require('openai');
-  const log = require('../lib/log');
+require("dotenv").config({ quiet: true });
+const OpenAI = require("openai");
+const log = require("../lib/log");
 
-  // Default to GPT-5.2; can be overridden via OPENAI_RESPONSES_MODEL.
-  const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || 'gpt-5.2';
-  let client = null;
+// Default to GPT-5.2; can be overridden via OPENAI_RESPONSES_MODEL.
+const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || "gpt-5-mini";
+let client = null;
 
-  /**
-   * Lazily create the OpenAI client to avoid requiring credentials at import time.
-   *
-   * @returns {import('openai')}
-   */
-  function getClient() {
-    if (client) return client;
-    const openAIKey = process.env.OPENAI_API_KEY;
-    if (!openAIKey) {
-      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.');
-    }
-    client = new OpenAI({ apiKey: openAIKey });
-    return client;
+/**
+ * Lazily create the OpenAI client to avoid requiring credentials at import time.
+ *
+ * @returns {import('openai')}
+ */
+function getClient() {
+  if (client) return client;
+  const openAIKey = process.env.OPENAI_API_KEY;
+  if (!openAIKey) {
+    throw new Error(
+      "Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable."
+    );
   }
+  client = new OpenAI({ apiKey: openAIKey });
+  return client;
+}
 
 /**
  * Call OpenAI Responses API with Structured Outputs (GPT-5.1-friendly).
@@ -41,7 +43,7 @@
  */
 async function callResponses({
   schema,
-  name = 'scoundrel_job',
+  name = "scoundrel_job",
   system,
   user,
   input,
@@ -55,13 +57,12 @@ async function callResponses({
   let resolvedInput = input;
   if (!resolvedInput) {
     resolvedInput = [];
-    if (typeof system === 'string' && system.trim().length) {
-      resolvedInput.push({ role: 'system', content: system });
+    if (typeof system === "string" && system.trim().length) {
+      resolvedInput.push({ role: "system", content: system });
     }
-    const userContent = (typeof user === 'string')
-      ? user
-      : JSON.stringify(user ?? {});
-    resolvedInput.push({ role: 'user', content: userContent });
+    const userContent =
+      typeof user === "string" ? user : JSON.stringify(user ?? {});
+    resolvedInput.push({ role: "user", content: userContent });
   }
 
   // Responses API structured outputs live under text.format, not response_format
@@ -70,7 +71,7 @@ async function callResponses({
     input: resolvedInput,
     text: {
       format: {
-        type: 'json_schema',
+        type: "json_schema",
         name,
         schema,
         strict: true,
@@ -80,34 +81,39 @@ async function callResponses({
 
   // Some latest / reasoning models don't support temperature.
   // Only include it if the caller explicitly set a number.
-  if (typeof temperature === 'number') {
-    const isGpt52 = typeof model === 'string' && model.startsWith('gpt-5.2');
-    const effort = reasoning && typeof reasoning === 'object' ? reasoning.effort : null;
-    if (isGpt52 && effort && effort !== 'none') {
-      log.warn('[ai:client] Ignoring temperature for GPT-5.2 unless reasoning.effort is "none".');
+  if (typeof temperature === "number") {
+    const isGpt52 = typeof model === "string" && model.startsWith("gpt-5.2");
+    const effort =
+      reasoning && typeof reasoning === "object" ? reasoning.effort : null;
+    if (isGpt52 && effort && effort !== "none") {
+      log.warn(
+        '[ai:client] Ignoring temperature for GPT-5.2 unless reasoning.effort is "none".'
+      );
     } else {
       payload.temperature = temperature;
     }
   }
 
-  if (reasoning && typeof reasoning === 'object') {
+  if (reasoning && typeof reasoning === "object") {
     payload.reasoning = reasoning;
   }
 
-  if (metadata && typeof metadata === 'object') {
+  if (metadata && typeof metadata === "object") {
     payload.metadata = metadata;
   }
 
   // If a Dashboard Prompt id or object is provided, include it.
   if (prompt) {
-    payload.prompt = typeof prompt === 'string' ? { id: prompt } : prompt;
+    payload.prompt = typeof prompt === "string" ? { id: prompt } : prompt;
   }
 
   // Filter out unsupported extras like `seed` to avoid 400s.
   if (extra && Object.keys(extra).length) {
     const { seed, ...rest } = extra;
-    if (typeof seed !== 'undefined') {
-      log.warn('[ai:client] Ignoring unsupported `seed` parameter for Responses API (GPT-5.2); remove it at call sites if possible.');
+    if (typeof seed !== "undefined") {
+      log.warn(
+        "[ai:client] Ignoring unsupported `seed` parameter for Responses API (GPT-5.2); remove it at call sites if possible."
+      );
     }
     Object.assign(payload, rest);
   }
@@ -122,18 +128,25 @@ async function callResponses({
  * @returns {Object}
  */
 function parseResponsesJSON(res) {
-  if (!res) throw new Error('[ai:client] Empty response');
+  if (!res) throw new Error("[ai:client] Empty response");
   if (res.output_text) return JSON.parse(res.output_text);
-  if (!res.output_text) log.warn('[ai:client] output_text empty; falling back to manual parse of content blocks');
+  if (!res.output_text)
+    log.warn(
+      "[ai:client] output_text empty; falling back to manual parse of content blocks"
+    );
   const outputs = Array.isArray(res.output) ? res.output : [];
   for (const item of outputs) {
     const content = Array.isArray(item?.content) ? item.content : [];
     for (const c of content) {
-      if (typeof c?.text === 'string') { try { return JSON.parse(c.text); } catch (_) {} }
-      if (typeof c?.data === 'object') return c.data;
+      if (typeof c?.text === "string") {
+        try {
+          return JSON.parse(c.text);
+        } catch (_) {}
+      }
+      if (typeof c?.data === "object") return c.data;
     }
   }
-  throw new Error('[ai:client] Could not parse JSON from Responses output');
+  throw new Error("[ai:client] Could not parse JSON from Responses output");
 }
 
 module.exports = { callResponses, parseResponsesJSON, log };
