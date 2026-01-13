@@ -54,4 +54,18 @@ describe('sellOps decisionEngine', () => {
     expect(qualify.failed).toHaveLength(0);
     expect(recommendAction(qualify.worstSeverity)).toBe('hold');
   });
+
+  test('fails numeric gates when value is missing', () => {
+    const strategy = {
+      qualify: {
+        gates: [
+          { id: 'gate.liq.min', type: 'number_gte', params: { path: 'derived.liquidityToPositionRatio', min: 10 }, severityOnFail: 'trim' },
+        ],
+      },
+    };
+    const evaluation = { derived: { liquidityToPositionRatio: null } };
+    const qualify = evalQualify(strategy, evaluation);
+    expect(qualify.failed).toHaveLength(1);
+    expect(qualify.failed[0].reasons[0]).toContain('got:n/a');
+  });
 });

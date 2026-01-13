@@ -198,12 +198,16 @@ async function loadPnlPositionLive(db, { walletId, coinMint, tradeUuid }) {
 // --------------------------
 
 function computeDerived({ position, coin, pool, pnl }) {
-  const priceUsd = Number(coin?.priceUsd || coin?.price_usd || 0);
+  const coinPriceUsd = Number(coin?.priceUsd ?? coin?.price_usd);
+  const poolPriceUsd = Number(pool?.price_usd ?? pool?.priceUsd);
+  const priceUsd = Number.isFinite(coinPriceUsd) && coinPriceUsd > 0
+    ? coinPriceUsd
+    : (Number.isFinite(poolPriceUsd) && poolPriceUsd > 0 ? poolPriceUsd : null);
 
   const currentTokenAmount = position?.currentTokenAmount ?? position?.current_token_amount ?? null;
   const currentTokenAmountNum = currentTokenAmount == null ? null : Number(currentTokenAmount);
 
-  const positionValueUsd = priceUsd && currentTokenAmountNum != null
+  const positionValueUsd = priceUsd != null && currentTokenAmountNum != null
     ? currentTokenAmountNum * priceUsd
     : null;
 
@@ -231,9 +235,13 @@ function computeDerived({ position, coin, pool, pnl }) {
     (coin?.liquidity_usd != null ? Number(coin.liquidity_usd) : null) ??
     null;
 
-  const liquidityToPositionRatio = liquidityUsd && positionValueUsd
-    ? liquidityUsd / positionValueUsd
-    : null;
+  const liquidityToPositionRatio =
+    Number.isFinite(liquidityUsd) &&
+    liquidityUsd > 0 &&
+    Number.isFinite(positionValueUsd) &&
+    positionValueUsd > 0
+      ? liquidityUsd / positionValueUsd
+      : null;
 
   return {
     positionValueUsd,
