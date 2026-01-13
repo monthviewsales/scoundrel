@@ -121,7 +121,7 @@
       "method": "risk_budget",
       "notes": "Sizing is advisory for manual entries and enforceable post-entry for de-risking.",
       "inputs": {
-        "baseUnitSol": 0.5,
+        "baseUnitSol": 0.05,
         "maxNotionalSol": 4.0,
         "riskPerTradePct": 1.0,
         "stopDistanceModel": {
