@@ -570,14 +570,14 @@ program
     .option('--mints <list>', 'Comma-delimited list of mints to scan')
     .option('--concurrency <n>', 'Parallel scans to run (default 4)')
     .option('--raw-only', 'Skip AI scoring and only write artifacts')
-    .option('--skip-vector-store', 'Skip vector store upload of final artifacts')
+    .option('--send-vector-store', 'Upload final artifacts to vector store')
     .addHelpText('after', `\nExamples:\n  $ scoundrel targetscan --mint <MINT>\n  $ scoundrel targetscan --mints <MINT1,MINT2>\n\nNotes:\n  • Uses WarlordAI (gpt-5-mini) for scoring unless --raw-only is set.\n  • Writes JSON artifacts under ./data/targetscan/.\n`)
     .action(async (opts) => {
         const { normalizeMintList } = require('./lib/targetScan');
         const mints = normalizeMintList([opts?.mint, opts?.mints]);
         const runAnalysis = !(opts && opts.rawOnly);
         const concurrency = opts?.concurrency != null ? Number(opts.concurrency) : undefined;
-        const skipVectorStore = Boolean(opts?.skipVectorStore);
+        const sendVectorStore = Boolean(opts?.sendVectorStore);
 
         if (!mints.length) {
             logger.error('[scoundrel] targetscan requires --mint or --mints');
@@ -607,7 +607,7 @@ program
                     mints,
                     runAnalysis,
                     concurrency,
-                    ...(skipVectorStore ? { skipVectorStore: true } : {}),
+                    ...(sendVectorStore ? { sendVectorStore: true } : {}),
                 },
             });
 
@@ -633,6 +633,70 @@ program
             });
         } catch (err) {
             logger.error('[scoundrel] targetscan failed:', err?.message || err);
+            process.exitCode = 1;
+        }
+    });
+
+program
+    .command('vectorstore-prune')
+    .description('Prune vector store files by filename prefix and age')
+    .option('--vector-store-id <id>', 'Vector store id (defaults to WARLORDAI_VECTOR_STORE)')
+    .option('--prefix <prefix>', 'Filename prefix(es) to match (comma-separated)', 'targetscan')
+    .option('--older-than-hours <n>', 'Delete files older than N hours (default 24)')
+    .option('--older-than-seconds <n>', 'Delete files older than N seconds (overrides hours)')
+    .option('--dry-run', 'List matches without deleting')
+    .option('--delete-file', 'Also delete underlying file objects')
+    .option('--max-deletes <n>', 'Stop after deleting N files')
+    .action(async (opts) => {
+        const vectorStoreId = opts?.vectorStoreId ? String(opts.vectorStoreId).trim() : null;
+        const prefix = opts?.prefix ? String(opts.prefix).trim() : null;
+        const olderThanSeconds = Number(opts?.olderThanSeconds);
+        const olderThanHours = Number(opts?.olderThanHours);
+        const maxDeletes = Number(opts?.maxDeletes);
+        const resolvedStoreId = vectorStoreId || process.env.WARLORDAI_VECTOR_STORE;
+
+        if (!resolvedStoreId) {
+            logger.error('[scoundrel] vectorstore-prune requires WARLORDAI_VECTOR_STORE or --vector-store-id');
+            process.exitCode = 1;
+            return;
+        }
+        if (!process.env.OPENAI_API_KEY) {
+            logger.error('[scoundrel] OPENAI_API_KEY is required for vectorstore-prune');
+            process.exitCode = 1;
+            return;
+        }
+
+        const payload = {
+            action: 'prune',
+            ...(vectorStoreId ? { vectorStoreId } : {}),
+            ...(prefix ? { prefix } : {}),
+            ...(Number.isFinite(olderThanSeconds) && olderThanSeconds > 0
+                ? { olderThanSeconds }
+                : (Number.isFinite(olderThanHours) && olderThanHours > 0 ? { olderThanHours } : {})),
+            ...(opts?.dryRun ? { dryRun: true } : {}),
+            ...(opts?.deleteFile ? { deleteFile: true } : {}),
+            ...(Number.isFinite(maxDeletes) && maxDeletes > 0 ? { maxDeletes } : {}),
+        };
+
+        try {
+            const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'vectorStoreWorker.js');
+            const { result } = await forkWorkerWithPayload(workerPath, {
+                timeoutMs: 300000,
+                payload,
+            });
+
+            if (!result || result.skipped) {
+                logger.info('[scoundrel] vector store prune skipped');
+                return;
+            }
+
+            logger.info(
+                `[scoundrel] vector store prune complete: scanned=${result.scanned || 0} ` +
+                `matched=${result.matched || 0} deleted=${result.deleted || 0} ` +
+                `dryRun=${result.dryRun ? 'true' : 'false'} errors=${result.errors || 0}`,
+            );
+        } catch (err) {
+            logger.error('[scoundrel] vectorstore-prune failed:', err?.message || err);
             process.exitCode = 1;
         }
     });
