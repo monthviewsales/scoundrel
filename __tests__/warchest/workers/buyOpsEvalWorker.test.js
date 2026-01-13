@@ -71,7 +71,7 @@ describe('buyOps evalWorker', () => {
     expect(callArgs.eventIntervals).toEqual(docs.flash.defaults.eventIntervals);
     expect(callArgs.position).toEqual(
       expect.objectContaining({
-        expectedNotionalSol: docs.flash.entry.sizing.inputs.maxNotionalSol,
+        expectedNotionalSol: docs.flash.entry.sizing.inputs.baseUnitSol,
       }),
     );
   });
