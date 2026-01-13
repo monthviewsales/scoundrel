@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0.2",
-  "strategyId": "hybrid-v1.02",
+  "schemaVersion": "1.0.4",
+  "strategyId": "hybrid-v1.04",
   "name": "HYBRID",
   "description": "Momentum-based trade management with partial entries, trailing exits, and a medium holding horizon. Allows brief weakness while enforcing structural risk controls. Sits between FLASH and CAMPAIGN.",
   "defaults": {
@@ -223,9 +223,15 @@
       "mustBePaidFor": true
     },
     "trailingStop": {
-      "enabledAfterFirstProfitTake": true,
-      "trailPct": 10,
-      "minProfitToEnablePct": 12
+      "notes": "Early live testing: arm trailing at +10% and exit on 4% drawdown from high-water. Decoupled from profit-takes.",
+      "enabledAfterFirstProfitTake": false,
+      "minProfitToEnablePct": 10,
+      "activationPct": 10,
+      "trailPct": 4,
+      "pollMs": 5000,
+      "breachConfirmations": 2,
+      "actionDebounceMs": 30000,
+      "hardStopLossPct": 30
     },
     "timeStops": [
       {
@@ -271,7 +277,7 @@
   "portfolio": {
     "notes": "Account-level governors.",
     "limits": {
-      "maxOpenPositions": 10,
+      "maxOpenPositions": 5,
       "maxNotionalSolPerPosition": 4.0
     },
     "governors": [
