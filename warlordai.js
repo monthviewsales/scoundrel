@@ -157,12 +157,12 @@ async function handleTargetScan(opts) {
     throw new Error('[warlordai] targetscan requires --mint or --mints');
   }
 
-  const skipVectorStore = Boolean(opts?.skipVectorStore);
+  const sendVectorStore = Boolean(opts?.sendVectorStore);
   const result = await runTargetScan({
     mints,
     runAnalysis: !opts.rawOnly,
     concurrency: parseNumber(opts.concurrency) || undefined,
-    ...(skipVectorStore ? { skipVectorStore: true } : {}),
+    ...(sendVectorStore ? { sendVectorStore: true } : {}),
   });
 
   const results = Array.isArray(result?.results) ? result.results : [];
@@ -265,7 +265,7 @@ program
   .option('--mints <list>', 'Comma-delimited list of mints to scan')
   .option('--concurrency <n>', 'Parallel scans to run')
   .option('--raw-only', 'Skip AI scoring and only write artifacts')
-  .option('--skip-vector-store', 'Skip vector store upload of final artifacts')
+  .option('--send-vector-store', 'Upload final artifacts to vector store')
   .action(async (opts) => {
     try {
       await handleTargetScan(opts);
