@@ -69,5 +69,10 @@ describe('buyOps evalWorker', () => {
     const callArgs = buildEvaluation.mock.calls[0][0];
     expect(callArgs.freshness).toEqual(docs.flash.dataRequirements.freshnessMs);
     expect(callArgs.eventIntervals).toEqual(docs.flash.defaults.eventIntervals);
+    expect(callArgs.position).toEqual(
+      expect.objectContaining({
+        expectedNotionalSol: docs.flash.entry.sizing.inputs.maxNotionalSol,
+      }),
+    );
   });
 });

@@ -206,10 +206,37 @@ function computeDerived({ position, coin, pool, pnl }) {
 
   const currentTokenAmount = position?.currentTokenAmount ?? position?.current_token_amount ?? null;
   const currentTokenAmountNum = currentTokenAmount == null ? null : Number(currentTokenAmount);
+  const expectedNotionalUsd = position?.expectedNotionalUsd ?? position?.plannedNotionalUsd ?? null;
+  const expectedNotionalSol = position?.expectedNotionalSol ?? position?.plannedNotionalSol ?? null;
 
-  const positionValueUsd = priceUsd != null && currentTokenAmountNum != null
-    ? currentTokenAmountNum * priceUsd
-    : null;
+  const positionValueUsd = (() => {
+    if (priceUsd != null && currentTokenAmountNum != null) {
+      return currentTokenAmountNum * priceUsd;
+    }
+
+    const expectedUsd = Number(expectedNotionalUsd);
+    if (Number.isFinite(expectedUsd) && expectedUsd > 0) return expectedUsd;
+
+    const expectedSol = Number(expectedNotionalSol);
+    if (Number.isFinite(expectedSol) && expectedSol > 0) {
+      const coinPriceSol = Number(coin?.priceSol ?? coin?.price_sol);
+      const poolPriceSol = Number(pool?.price_quote ?? pool?.priceSol);
+      const solPriceFromCoin = Number.isFinite(coinPriceSol) && coinPriceSol > 0 && priceUsd != null
+        ? priceUsd / coinPriceSol
+        : null;
+      const quoteToken = String(pool?.quoteToken || '').toUpperCase();
+      const isSolQuote = quoteToken === 'SOL' || quoteToken === 'WSOL';
+      const solPriceFromPool = isSolQuote && Number.isFinite(poolPriceSol) && poolPriceSol > 0 && poolPriceUsd != null
+        ? poolPriceUsd / poolPriceSol
+        : null;
+      const solUsdPrice = solPriceFromCoin != null ? solPriceFromCoin : solPriceFromPool;
+      if (Number.isFinite(solUsdPrice) && solUsdPrice > 0) {
+        return expectedSol * solUsdPrice;
+      }
+    }
+
+    return null;
+  })();
 
   // Cost basis from pnl view (preferred)
   const avgCostUsd = pnl?.avg_cost_usd != null ? Number(pnl.avg_cost_usd) : null;
