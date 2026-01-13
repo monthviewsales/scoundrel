@@ -80,12 +80,20 @@ const {
   createBuyOpsController,
 } = require("../../../../lib/warchest/workers/buyOps/controller");
 
-const flushPromises = () => new Promise((resolve) => process.nextTick(resolve));
+const flushPromises = async () => {
+  await Promise.resolve();
+};
 
 describe("buyOps strategy handoff", () => {
+  let updateStrategyPromise;
+  let resolveUpdateStrategy;
+
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+    updateStrategyPromise = new Promise((resolve) => {
+      resolveUpdateStrategy = resolve;
+    });
 
     // Wallet strategy set to HYBRID.
     BootyBox.getDefaultFundingWallet.mockReturnValue({
@@ -110,7 +118,7 @@ describe("buyOps strategy handoff", () => {
     // loadOpenPositions is called in multiple places:
     // - initial open positions lookup during evaluation tick
     // - post-buy best-effort strategy updater retries
-    // We'll return no positions initially, then return the opened position later.
+    // We'll return no positions initially, then return the opened position on follow-up checks.
     const openedRow = {
       position_id: 99,
       wallet_id: 1,
@@ -120,11 +128,16 @@ describe("buyOps strategy handoff", () => {
       current_token_amount: 123,
     };
 
-    BootyBox.loadOpenPositions
-      .mockReturnValueOnce({ rows: [] }) // initial open positions check
-      .mockReturnValueOnce({ rows: [] }) // updater attempt 1
-      .mockReturnValueOnce({ rows: [] }) // updater attempt 2
-      .mockReturnValueOnce({ rows: [openedRow] }); // updater attempt 3 succeeds
+    let loadCalls = 0;
+    BootyBox.loadOpenPositions.mockImplementation(() => {
+      loadCalls += 1;
+      if (loadCalls === 1) return { rows: [] };
+      return { rows: [openedRow] };
+    });
+
+    BootyBox.updatePositionStrategyName.mockImplementation((payload) => {
+      resolveUpdateStrategy(payload);
+    });
 
     // Eval worker returns BUY + trend_up + strategy HYBRID + expectedNotionalSol
     forkWorkerWithPayload.mockResolvedValue({
@@ -165,23 +178,17 @@ describe("buyOps strategy handoff", () => {
     await flushPromises();
 
     // The controller's worker loop yields with setImmediate; under fake timers we need to flush.
-    jest.runOnlyPendingTimers();
+    jest.advanceTimersByTime(0);
+    await flushPromises();
     await flushPromises();
 
-    // Advance timers enough for the post-buy retry loop (max 250+500+1000 = 1750ms to hit 3rd attempt).
-    jest.advanceTimersByTime(2000);
-    jest.runOnlyPendingTimers();
-    await flushPromises();
-
-    expect(BootyBox.updatePositionStrategyName).toHaveBeenCalled();
-    const calls = BootyBox.updatePositionStrategyName.mock.calls;
-    const anyHybrid = calls.some(
-      (c) => c[0] && c[0].positionId === 99 && c[0].strategyName === "HYBRID"
+    const updatePayload = await updateStrategyPromise;
+    expect(updatePayload).toEqual(
+      expect.objectContaining({ positionId: 99, strategyName: "HYBRID" })
     );
-    expect(anyHybrid).toBe(true);
 
     await controller.stop("unit-test");
-    jest.runOnlyPendingTimers();
+    jest.advanceTimersByTime(0);
     await flushPromises();
 
     await startPromise;

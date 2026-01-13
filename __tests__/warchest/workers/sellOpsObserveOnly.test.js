@@ -38,7 +38,9 @@ const {
   createSellOpsController,
 } = require("../../../lib/warchest/workers/sellOps/controller");
 
-const flushPromises = () => new Promise((resolve) => process.nextTick(resolve));
+const flushPromises = async () => {
+  await Promise.resolve();
+};
 
 describe("sellOps observeOnly defaults", () => {
   let originalSend;
@@ -91,7 +93,11 @@ describe("sellOps observeOnly defaults", () => {
     });
 
     const controller = createSellOpsController(
-      { wallet: { alias: "alpha", pubkey: "pub" }, pollIntervalMs: 1000 },
+      {
+        wallet: { alias: "alpha", pubkey: "pub" },
+        pollIntervalMs: 1000,
+        trailingPollMs: 1000,
+      },
       {
         client: { close: jest.fn() },
         dataClient: {
@@ -108,9 +114,9 @@ describe("sellOps observeOnly defaults", () => {
 
     const promise = controller.start();
     await flushPromises();
+    await flushPromises();
 
     jest.advanceTimersByTime(1100);
-    jest.runOnlyPendingTimers();
     await flushPromises();
 
     expect(evaluatePosition).toHaveBeenCalled();
@@ -122,7 +128,7 @@ describe("sellOps observeOnly defaults", () => {
 
     await controller.stop("unit-test");
     // Drain any pending timers scheduled by the fast loop/slow tick so the controller can resolve.
-    jest.runOnlyPendingTimers();
+    jest.advanceTimersByTime(0);
     await flushPromises();
 
     await promise;
