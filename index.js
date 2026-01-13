@@ -647,12 +647,17 @@ program
     .option('--dry-run', 'List matches without deleting')
     .option('--delete-file', 'Also delete underlying file objects')
     .option('--max-deletes <n>', 'Stop after deleting N files')
+    .option('--timeout-ms <n>', 'Worker timeout in ms (0 disables)', '900000')
     .action(async (opts) => {
         const vectorStoreId = opts?.vectorStoreId ? String(opts.vectorStoreId).trim() : null;
         const prefix = opts?.prefix ? String(opts.prefix).trim() : null;
         const olderThanSeconds = Number(opts?.olderThanSeconds);
         const olderThanHours = Number(opts?.olderThanHours);
         const maxDeletes = Number(opts?.maxDeletes);
+        const timeoutMsInput = Number(opts?.timeoutMs);
+        const timeoutMs = Number.isFinite(timeoutMsInput) && timeoutMsInput >= 0
+            ? timeoutMsInput
+            : 900000;
         const resolvedStoreId = vectorStoreId || process.env.WARLORDAI_VECTOR_STORE;
 
         if (!resolvedStoreId) {
@@ -681,7 +686,7 @@ program
         try {
             const workerPath = join(__dirname, 'lib', 'warchest', 'workers', 'vectorStoreWorker.js');
             const { result } = await forkWorkerWithPayload(workerPath, {
-                timeoutMs: 300000,
+                timeoutMs,
                 payload,
             });
 
@@ -696,7 +701,7 @@ program
                 `dryRun=${result.dryRun ? 'true' : 'false'} errors=${result.errors || 0}`,
             );
         } catch (err) {
-            logger.error('[scoundrel] vectorstore-prune failed:', err?.message || err);
+            logger.error(`[scoundrel] vectorstore-prune failed: ${err?.message || err}`);
             process.exitCode = 1;
         }
     });
