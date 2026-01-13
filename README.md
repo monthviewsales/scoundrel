@@ -88,6 +88,7 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_BUYOPS_EVAL_TIMEOUT_MS` | BuyOps per-mint evaluation timeout (ms) | `20000` |
 | `WARCHEST_BUYOPS_EVAL_CONCURRENCY` | BuyOps per-mint evaluation concurrency | `6` |
 | `WARCHEST_BUYOPS_MIN_SCORE` | BuyOps min score threshold | `65` |
+| `WARCHEST_BUYOPS_BALANCE_PCT` | Cap BuyOps SOL spend to this % of available wallet SOL (0-1 or percent; reserves 0.03 SOL per open position) | `1` |
 | `WARCHEST_WS_STALE_MS` | WS heartbeat stale threshold | `20000` |
 | `WARCHEST_WS_RESTART_GAP_MS` | Minimum WS restart gap | `30000` |
 | `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |

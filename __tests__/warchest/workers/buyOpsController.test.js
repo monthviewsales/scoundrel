@@ -2,6 +2,7 @@
 
 const mockRunSwap = jest.fn();
 const mockRunTxMonitor = jest.fn();
+const mockGetSolBalance = jest.fn();
 
 jest.mock('../../../db', () => ({
   init: jest.fn(),
@@ -16,6 +17,20 @@ jest.mock('../../../lib/bootyBoxInit', () => ({
 
 jest.mock('../../../lib/warchest/workers/harness', () => ({
   forkWorkerWithPayload: jest.fn(),
+}));
+
+jest.mock('../../../lib/solanaTrackerRPCClient', () => ({
+  createSolanaTrackerRPCClient: jest.fn(() => ({
+    rpc: {},
+    rpcSubs: {},
+    close: jest.fn(),
+  })),
+}));
+
+jest.mock('../../../lib/solana/rpcMethods', () => ({
+  createRpcMethods: jest.fn(() => ({
+    getSolBalance: mockGetSolBalance,
+  })),
 }));
 
 jest.mock('../../../lib/warchest/hub', () => ({
@@ -45,12 +60,14 @@ const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 describe('buyOps controller', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetSolBalance.mockResolvedValue(10);
   });
 
   test('dispatches a buy swap when decision is buy and regime is trend_up', async () => {
     BootyBox.getDefaultFundingWallet.mockReturnValue({
       walletId: 1,
       alias: 'warlord',
+      pubkey: 'SomeWalletPubkey11111111111111111111111',
       strategy: 'hybrid',
     });
     BootyBox.listTargetsByPriority.mockReturnValue([
@@ -125,6 +142,49 @@ describe('buyOps controller', () => {
     await flushPromises();
 
     expect(mockRunSwap).not.toHaveBeenCalled();
+
+    controller.stop('test');
+    await startPromise;
+  });
+
+  test('caps buy amount by balance pct and reserves SOL per open position', async () => {
+    BootyBox.getDefaultFundingWallet.mockReturnValue({
+      walletId: 1,
+      alias: 'warlord',
+      pubkey: 'SomeWalletPubkey11111111111111111111111',
+      strategy: 'hybrid',
+    });
+    BootyBox.listTargetsByPriority.mockReturnValue([
+      { mint: 'Mint333333333333333333333333333333333', status: 'buy', score: 70 },
+    ]);
+    BootyBox.loadOpenPositions.mockReturnValue({ rows: [{}, {}] });
+
+    mockGetSolBalance.mockResolvedValue(1);
+    forkWorkerWithPayload.mockResolvedValue({
+      result: {
+        decision: 'buy',
+        reasons: ['qualify:pass'],
+        regime: { status: 'trend_up' },
+        evaluation: {
+          position: { expectedNotionalSol: 1 },
+          strategy: { name: 'HYBRID' },
+        },
+      },
+    });
+
+    const logger = { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() };
+    const controller = createBuyOpsController(
+      { evaluationIntervalMs: 50, balancePct: 0.5 },
+      { env: {} },
+      logger
+    );
+    const startPromise = controller.start();
+
+    await flushPromises();
+    await flushPromises();
+
+    const swapPayload = mockRunSwap.mock.calls[0][0];
+    expect(swapPayload.amount).toBeCloseTo(0.47, 6);
 
     controller.stop('test');
     await startPromise;
