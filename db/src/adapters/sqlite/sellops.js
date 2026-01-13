@@ -1,8 +1,6 @@
+"use strict";
 
-
-'use strict';
-
-const { db, logger } = require('./context');
+const { db, logger } = require("./context");
 
 /**
  * Best-effort conversion to number.
@@ -13,7 +11,7 @@ const { db, logger } = require('./context');
  */
 function toNum(v) {
   if (v === null || v === undefined) return null;
-  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
   const s = String(v).trim();
   if (!s) return null;
   const n = Number(s);
@@ -43,11 +41,14 @@ function toStr(v, max) {
  */
 function toJson(v) {
   try {
-    if (v === undefined) return 'null';
+    if (v === undefined) return "null";
     return JSON.stringify(v);
   } catch (err) {
     // Never let stringify kill SellOps. Store a minimal fallback.
-    return JSON.stringify({ error: 'json_stringify_failed', message: String(err && err.message ? err.message : err) });
+    return JSON.stringify({
+      error: "json_stringify_failed",
+      message: String(err && err.message ? err.message : err),
+    });
   }
 }
 
@@ -59,7 +60,7 @@ function toJson(v) {
  */
 function fromJson(v) {
   if (v === null || v === undefined) return null;
-  if (typeof v !== 'string') return v;
+  if (typeof v !== "string") return v;
   const s = v.trim();
   if (!s) return null;
   try {
@@ -161,11 +162,21 @@ function mapSellOpsEvaluationRow(row) {
  * @returns {number} inserted row id
  */
 function insertSellOpsEvaluation(record) {
-  if (!record || !record.walletId || !record.walletAlias || !record.tradeUuid || !record.coinMint) {
-    throw new Error('insertSellOpsEvaluation: walletId, walletAlias, tradeUuid, and coinMint are required.');
+  if (
+    !record ||
+    !record.walletId ||
+    !record.walletAlias ||
+    !record.tradeUuid ||
+    !record.coinMint
+  ) {
+    throw new Error(
+      "insertSellOpsEvaluation: walletId, walletAlias, tradeUuid, and coinMint are required."
+    );
   }
   if (!record.recommendation || !record.decision) {
-    throw new Error('insertSellOpsEvaluation: recommendation and decision are required.');
+    throw new Error(
+      "insertSellOpsEvaluation: recommendation and decision are required."
+    );
   }
 
   const now = Date.now();
@@ -285,11 +296,16 @@ function insertSellOpsEvaluation(record) {
     inserted_at: now,
   });
 
-  const id = res && (res.lastInsertRowid || res.lastInsertRowid === 0) ? Number(res.lastInsertRowid) : null;
+  const id =
+    res && (res.lastInsertRowid || res.lastInsertRowid === 0)
+      ? Number(res.lastInsertRowid)
+      : null;
 
   // Helpful debug breadcrumb (quiet by default).
-  if (logger && typeof logger.debug === 'function') {
-    logger.debug(`[BootyBox][sellops] inserted evaluation tick id=${id} trade_uuid=${record.tradeUuid} mint=${record.coinMint}`);
+  if (logger && typeof logger.debug === "function") {
+    logger.debug(
+      `[BootyBox][sellops] inserted evaluation tick id=${id} trade_uuid=${record.tradeUuid} mint=${record.coinMint}`
+    );
   }
 
   return id;
@@ -354,6 +370,153 @@ function getLatestSellOpsEvaluationByTrade(walletId, tradeUuid) {
 }
 
 /**
+ * Fetch the most recent trailing stop state for a trade.
+ *
+ * @param {number} walletId
+ * @param {string} tradeUuid
+ * @returns {Object|null}
+ */
+function getLatestSellOpsTrailingStateByTrade(walletId, tradeUuid) {
+  if (!walletId || !tradeUuid) return null;
+  let row;
+  try {
+    row = db
+      .prepare(
+        `SELECT
+           id,
+           ts_ms AS tsMs,
+           payload_json AS payloadJson
+         FROM sc_sellops_evaluations
+         WHERE wallet_id = ?
+           AND trade_uuid = ?
+         ORDER BY ts_ms DESC
+         LIMIT 1`
+      )
+      .get(walletId, tradeUuid);
+  } catch (err) {
+    if (logger && typeof logger.warn === "function") {
+      logger.warn(
+        `[BootyBox][sellops] getLatestSellOpsTrailingStateByTrade DB query error walletId=${walletId} tradeUuid=${tradeUuid} error=${
+          err.message || err
+        }`
+      );
+    }
+    return null;
+  }
+
+  if (!row) return null;
+
+  let trailing = null;
+  let payload = null;
+  const rawJson = row.payloadJson;
+
+  try {
+    payload = fromJson(rawJson);
+
+    if (
+      payload === null &&
+      typeof rawJson === "string" &&
+      rawJson.trim() !== ""
+    ) {
+      if (logger && typeof logger.warn === "function") {
+        const truncatedJson =
+          rawJson.length > 200 ? rawJson.slice(0, 200) + "..." : rawJson;
+        logger.warn(
+          `[BootyBox][sellops] getLatestSellOpsTrailingStateByTrade JSON parse failed walletId=${walletId} tradeUuid=${tradeUuid} id=${row.id} json=${truncatedJson}`
+        );
+      }
+    } else {
+      trailing =
+        (payload && payload.riskControls && payload.riskControls.trailing) ||
+        (payload &&
+          payload.evaluation &&
+          payload.evaluation.riskControls &&
+          payload.evaluation.riskControls.trailing) ||
+        (payload &&
+          payload.snapshot &&
+          payload.snapshot.riskControls &&
+          payload.snapshot.riskControls.trailing) ||
+        null;
+
+      if (!trailing) {
+        if (logger && typeof logger.debug === "function") {
+          logger.debug(
+            `[BootyBox][sellops] getLatestSellOpsTrailingStateByTrade no trailing state walletId=${walletId} tradeUuid=${tradeUuid} id=${row.id}`
+          );
+        }
+      }
+    }
+  } catch (err) {
+    if (logger && typeof logger.warn === "function") {
+      logger.warn(
+        `[BootyBox][sellops] getLatestSellOpsTrailingStateByTrade error walletId=${walletId} tradeUuid=${tradeUuid} id=${
+          row.id
+        } error=${err.message || err}`
+      );
+    }
+    trailing = null;
+  }
+
+  return {
+    id: row.id,
+    tsMs: row.tsMs,
+    walletId,
+    tradeUuid,
+    trailing,
+  };
+}
+
+/**
+ * Fetch the latest evaluation and trailing state for decision context for a trade.
+ *
+ * @param {number} walletId
+ * @param {string} tradeUuid
+ * @returns {Object|null} { evaluation, trailing }
+ */
+function getLatestSellOpsDecisionContextByTrade(walletId, tradeUuid) {
+  try {
+    const evaluation = getLatestSellOpsEvaluationByTrade(walletId, tradeUuid);
+    if (!evaluation) return null;
+    const payload = evaluation.payload;
+    let trailing =
+      (payload && payload.riskControls && payload.riskControls.trailing) ||
+      (payload &&
+        payload.evaluation &&
+        payload.evaluation.riskControls &&
+        payload.evaluation.riskControls.trailing) ||
+      (payload &&
+        payload.snapshot &&
+        payload.snapshot.riskControls &&
+        payload.snapshot.riskControls.trailing) ||
+      null;
+    if (payload !== null && !trailing) {
+      if (logger && typeof logger.debug === "function") {
+        logger.debug(
+          `[BootyBox][sellops] getLatestSellOpsDecisionContextByTrade no trailing state walletId=${walletId} tradeUuid=${tradeUuid} id=${evaluation.id}`
+        );
+      }
+    }
+    if (payload === null) {
+      if (logger && typeof logger.warn === "function") {
+        logger.warn(
+          `[BootyBox][sellops] getLatestSellOpsDecisionContextByTrade could not read trailing state because payload was null walletId=${walletId} tradeUuid=${tradeUuid} id=${evaluation.id}`
+        );
+      }
+    }
+    return { evaluation, trailing };
+  } catch (err) {
+    if (logger && typeof logger.warn === "function") {
+      logger.warn(
+        `[BootyBox][sellops] getLatestSellOpsDecisionContextByTrade error walletId=${walletId} tradeUuid=${tradeUuid} error=${
+          err && err.message ? err.message : err
+        }`
+      );
+    }
+    return null;
+  }
+}
+
+/**
  * List evaluation ticks for a trade within a time window.
  *
  * @param {number} walletId
@@ -412,16 +575,16 @@ function listSellOpsEvaluationsByTrade(walletId, tradeUuid, opts = {}) {
   const params = [walletId, tradeUuid];
 
   if (opts.startTsMs != null) {
-    sql += ' AND ts_ms >= ?';
+    sql += " AND ts_ms >= ?";
     params.push(Number(opts.startTsMs));
   }
 
   if (opts.endTsMs != null) {
-    sql += ' AND ts_ms <= ?';
+    sql += " AND ts_ms <= ?";
     params.push(Number(opts.endTsMs));
   }
 
-  sql += ' ORDER BY ts_ms ASC LIMIT ?';
+  sql += " ORDER BY ts_ms ASC LIMIT ?";
   params.push(limit);
 
   const rows = db.prepare(sql).all(...params);
@@ -497,7 +660,11 @@ function listRecentSellOpsEvaluations(walletId, opts = {}) {
  */
 function deleteSellOpsEvaluationsByTrade(walletId, tradeUuid) {
   if (!walletId || !tradeUuid) return 0;
-  const res = db.prepare('DELETE FROM sc_sellops_evaluations WHERE wallet_id = ? AND trade_uuid = ?').run(walletId, tradeUuid);
+  const res = db
+    .prepare(
+      "DELETE FROM sc_sellops_evaluations WHERE wallet_id = ? AND trade_uuid = ?"
+    )
+    .run(walletId, tradeUuid);
   return res && res.changes ? res.changes : 0;
 }
 
@@ -511,7 +678,9 @@ function deleteSellOpsEvaluationsByTrade(walletId, tradeUuid) {
 function pruneSellOpsEvaluations(opts = {}) {
   const olderThanTsMs = toNum(opts.olderThanTsMs);
   if (!olderThanTsMs) return 0;
-  const res = db.prepare('DELETE FROM sc_sellops_evaluations WHERE ts_ms < ?').run(olderThanTsMs);
+  const res = db
+    .prepare("DELETE FROM sc_sellops_evaluations WHERE ts_ms < ?")
+    .run(olderThanTsMs);
   return res && res.changes ? res.changes : 0;
 }
 
@@ -524,6 +693,8 @@ module.exports = {
 
   // reads
   getLatestSellOpsEvaluationByTrade,
+  getLatestSellOpsTrailingStateByTrade,
+  getLatestSellOpsDecisionContextByTrade,
   listSellOpsEvaluationsByTrade,
   listRecentSellOpsEvaluations,
 
