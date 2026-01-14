@@ -20,7 +20,7 @@ If Warchest remains the long-lived hub that owns BootyBox plus the SolanaTracker
 - Each worker initializes fresh RPC/Data clients; always call `await close()` on the RPC client and unsubscribe from every subscription before sending a `process.exit(0)` or letting the worker finish.
 - Put shared helpers (wallet resolution, BootyBox open/close, status snapshot writing) into small modules the worker harness can import; avoid storing global state in the hub.
 - If two monitors might target the same mint/wallet, add a minimal guard: use `createPidTag()` to write a lock in `data/warchest/locks/` and refuse to start if it already exists.
-- The HUD worker now tracks every WebSocket handle created by the SolanaTracker Kit client and exposes the count in health snapshots (`service.sockets`). Client restarts terminate all tracked sockets; a normal count is 1–3. Watch for growth to catch cleanup regressions early.
+- The warchest service now tracks every WebSocket handle created by the SolanaTracker Kit client and exposes the count in health snapshots (`service.sockets`). Client restarts terminate all tracked sockets; a normal count is 1–3. Watch for growth to catch cleanup regressions early.
 
 ## When a registry is optional vs. useful
 
@@ -33,11 +33,11 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 - A lightweight coordinator now lives in `lib/warchest/hubCoordinator.js`. It routes commands to workers through the harness, enforces per-wallet/tx namespaces (duplicate `swap` or `txMonitor` calls on the same wallet/txid throw), and passes shared env hints down to the forked workers.
 - HUD/monitor consumers subscribe to hub status and tx-event files via `lib/warchest/events.js`. When a hub is present, prefer the follower instead of opening another set of WebSocket subscriptions.
-- Event files default to `data/warchest/status.json` (health snapshots) and `data/warchest/tx-events.json` (confirmed/failed tx summaries). Workers should respect overrides from env/CLI so tests can inject temporary paths.
+- Event files default to `data/warchest/status.json` (health snapshots), `data/warchest/hud-state.json` (HUD snapshots), and `data/warchest/tx-events.json` (confirmed/failed tx summaries). Workers should respect overrides from env/CLI so tests can inject temporary paths.
 
 ### HUD transaction feed + env overrides
 
-- The HUD worker now follows `tx-events.json` through `createHubEventFollower` and renders a live transaction list above logs. Only the newest N events are kept (`WARCHEST_HUD_MAX_TX`, default `10`).
+- The HUD worker follows `hud-state.json` plus `tx-events.json` via `createHubEventFollower` and renders a live transaction list above logs. Only the newest N events are kept (`WARCHEST_HUD_MAX_TX`, default `10`).
 - Status emojis mirror txMonitor: 🟢 confirmed, 🔴 failed, 🟡 everything else.
 - Each item pulls mint metadata through `tokenInfoService.ensureTokenInfo` (with refresh) so names, price, and the 1m/5m/15m/30m price deltas appear once metadata exists. Missing metadata falls back to mint pubkeys.
 - Per-wallet log lines remain but are capped independently (`WARCHEST_HUD_MAX_LOGS`, default `5`).
@@ -45,7 +45,7 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 ### Shutdown expectations
 
-- Coordinators and HUD workers must close followers/watchers, timers, and RPC/Data clients on `SIGINT`/`SIGTERM`. The HUD worker now closes hub followers in addition to the RPC client.
+- Coordinators, the warchest service, and HUD workers must close followers/watchers, timers, and RPC/Data clients on `SIGINT`/`SIGTERM`. The HUD worker closes hub followers while the service closes RPC subscriptions.
 - Monitors that write HUD events should do so via `appendHubEvent` (`lib/warchest/events.js`) and avoid leaving behind fs watchers when they exit.
 
 ## Blind spots and requirement gaps
@@ -72,10 +72,10 @@ This approach keeps Warchest as the stable hub while letting you bolt on new per
 
 ## Where to store worker modules and docs
 
-- **Code placement:** Keep job entrypoints in `lib/warchest/workers/` (`swapWorker.js`, `txMonitorWorker.js`, `autopsyWorker.js`, `dossierWorker.js`, `sellOpsWorker.js`). The harness lives in `lib/warchest/workers/harness.js`, and the HUD worker lives in this folder as `warchestService.js`.
+- **Code placement:** Keep job entrypoints in `lib/warchest/workers/` (`swapWorker.js`, `txMonitorWorker.js`, `autopsyWorker.js`, `dossierWorker.js`, `sellOpsWorker.js`). The harness lives in `lib/warchest/workers/harness.js`. The headless service is `warchestService.js` and the Ink TUI worker is `warchestHudWorker.js`.
 - **Shared client bootstrap:** Use `lib/warchest/client.js` to open BootyBox, create SolanaTracker RPC/Data clients, build initial wallet HUD state, and register cleanup handlers. Call `const client = await setup({ walletSpecs, mode });` and make sure to invoke `await client.close()` on shutdown so timers/subscriptions are cleared and the RPC client closes.
 - **Health snapshot hook:** In daemon mode, reuse `client.writeStatusSnapshot(health)` when `updateHealth` reports fresh metrics so other CLIs can read `data/warchest/status.json`.
-- **HUD integration:** Keep HUD-specific render/TUI code in `lib/warchest/workers/warchestService.js`. It owns RPC subscriptions and also follows hub event/status files via `createHubEventFollower`.
+- **HUD integration:** Keep Ink render/TUI code in `lib/warchest/workers/warchestHudWorker.js`. The service (`warchestService.js`) owns RPC subscriptions, writes `data/warchest/hud-state.json`, and the HUD worker follows that snapshot plus `tx-events.json` via `createHubEventFollower`.
 - **Docs:** Extend this file with per-worker “contract” snippets (payload shape, IPC messages, teardown rules) and add short READMEs in `lib/warchest/workers/` to keep code+docs co-located.
 
 ## Applicability to AI processes (dossier, autopsy)

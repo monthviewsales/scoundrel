@@ -1487,27 +1487,27 @@ program
       return previous.concat(value);
     }
   )
-  .option("--hud", "Render HUD output (for start/restart actions)")
   .option("--no-follow-hub", "Disable following hub status/event files")
   .option(
     "--hub-events <path>",
     "Override hub event file path (default: data/warchest/tx-events.json)"
   )
   .option(
+    "--hud-state <path>",
+    "Override HUD state snapshot path (default: data/warchest/hud-state.json)"
+  )
+  .option(
     "--hub-status <path>",
-    "Override hub status file path (default: data/warchest/status.json)"
+    "Override health status file path (default: data/warchest/status.json)"
   )
   .addHelpText(
     "after",
     `
 Examples:
-  # Start HUD follower (foreground) with hub event/status files
+  # Start warchest service (foreground)
   $ scoundrel warchestd start --wallet sampleWallet:DDkFpJDsUbnPx43mgZZ8WRgrt9Hupjns5KAzYtf7E9ZR:orange
 
-  # Start HUD follower with HUD rendering enabled
-  $ scoundrel warchestd start --wallet sampleWallet:DDkF...:orange --hud
-
-  # One-off HUD session with selector fallback
+  # One-off HUD session (reads hub events + hud-state.json)
   $ scoundrel warchestd hud --wallet sampleWallet:DDkF...:orange
 
   # Clear legacy PID files
@@ -1546,17 +1546,13 @@ Examples:
 
       const followHub = opts.followHub !== false;
       const hubEventsPath = opts.hubEvents;
+      const hudStatePath = opts.hudState;
       const hubStatusPath = opts.hubStatus;
 
       if (action === "start") {
-        // Default to starting the daemon headless; enable HUD only when explicitly requested.
-        const hud = !!opts.hud;
         await warchestService.start({
           walletSpecs,
-          hud,
-          followHub,
-          hubEventsPath,
-          hubStatusPath,
+          hudStatePath,
         });
         // Immediately after starting the daemon, kick a one-off targetlist run (best-effort).
         try {
@@ -1577,14 +1573,9 @@ Examples:
       } else if (action === "stop") {
         await warchestService.stop();
       } else if (action === "restart") {
-        // Default to restarting the daemon headless; enable HUD only when explicitly requested.
-        const hud = !!opts.hud;
         await warchestService.restart({
           walletSpecs,
-          hud,
-          followHub,
-          hubEventsPath,
-          hubStatusPath,
+          hudStatePath,
         });
       } else if (action === "hud") {
         // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
@@ -1592,7 +1583,7 @@ Examples:
           walletSpecs,
           followHub,
           hubEventsPath,
-          hubStatusPath,
+          hudStatePath,
         });
       } else if (action === "status") {
         // Report daemon + health snapshot status without modifying state.

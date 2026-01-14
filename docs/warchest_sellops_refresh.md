@@ -4,7 +4,7 @@ This document explains where coin data is refreshed and how the HUD fields are d
 
 ## Warchest HUD refresh flow
 
-The HUD updates coin rows inside `lib/warchest/workers/warchestService.js`.
+HUD coin rows are refreshed in the warchest service (`lib/warchest/workers/warchestService.js`) and written to `data/warchest/hud-state.json`, which the HUD worker renders.
 
 ### HUD timers (defaults)
 
@@ -89,7 +89,7 @@ The HUD token row includes several value fields. These are derived as follows:
 
 ## Summary
 
-- HUD prices are refreshed in the HUD worker, not by SellOps.
+- HUD prices are refreshed in the warchest service, not by SellOps.
 - SellOps trailing-stop prices are not persisted to the DB.
 - PnL values come from `sc_pnl_positions_live`, which is updated by trade processing.
 - SellOps evaluation snapshots are stored in `sc_evaluations` for later analysis.

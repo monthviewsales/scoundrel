@@ -238,16 +238,17 @@ Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC
 For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
 
-The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
-- The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
-- Session lifecycle is persisted via `sc_sessions`: the worker closes any stale session it finds (using the last snapshot in `data/warchest/status.json`) before opening a new one, heartbeats the active session via its health loop, and records the session metadata inside `health.session` for CLI status commands.
+The warchest service (`lib/warchest/workers/warchestService.js`) refreshes wallet balances and pricing, then writes HUD snapshots to `data/warchest/hud-state.json` for the separate Ink TUI worker (`lib/warchest/workers/warchestHudWorker.js`).
+- The service leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+- The service calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
+- Session lifecycle is persisted via `sc_sessions`: the service closes any stale session it finds (using the last snapshot in `data/warchest/status.json`) before opening a new one, heartbeats the active session via its health loop, and records the session metadata inside `health.session` for CLI status commands.
 - Clean shutdowns (`SIGINT`, CLI stop) now finalize the open session with the most recent slot/block time; unexpected exits are recorded as `end_reason='crash'` on the next launch.
-- The worker runs a WS heartbeat watchdog: if `slotSubscribe` goes stale, it restarts the SolanaTracker Kit RPC client + resubscribes, and surfaces restarts/errors in the HUD + `data/warchest/status.json`.
-  - `WARCHEST_WS_STALE_MS` (default `20000`) – restart when no slot update for this long.
+- The service runs a WS heartbeat watchdog: if `slotSubscribe` goes stale, it restarts the SolanaTracker Kit RPC client + resubscribes, and surfaces restarts/errors in the HUD snapshot + `data/warchest/status.json`.
+- `WARCHEST_WS_STALE_MS` (default `20000`) – restart when no slot update for this long.
   - `WARCHEST_WS_RESTART_GAP_MS` (default `30000`) – minimum time between restarts.
   - `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` (default `300000`) – cap exponential backoff after failed restarts.
   - `WARCHEST_WS_UNSUB_TIMEOUT_MS` (default `2500`) – timeout for unsubscribe/close during restarts.
-- HUD shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
+- The HUD worker shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
   - `WARCHEST_HUD_MAX_TX` (default `10`) – max transactions displayed.
   - `WARCHEST_HUD_MAX_LOGS` (default `5`) – max recent logs per wallet.
 - See `.env.sample` for the full set of warchest and proxy defaults.
@@ -255,7 +256,7 @@ The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on
 
 ### Reading `data/warchest/status.json`
 
-- Location: `./data/warchest/status.json` is refreshed every ~5s (daemon or HUD).
+- Location: `./data/warchest/status.json` is refreshed every ~5s by the warchest service.
 - Key fields:
   - `process.rssBytes` / `loadAvg1m` – memory and host pressure; sustained climbs suggest leaks or stuck jobs.
   - `ws.lastSlotAgeMs` – WS freshness; values > `WARCHEST_WS_STALE_MS` should trigger a restart. Healthy is single-digit ms–seconds.
@@ -303,7 +304,7 @@ const risk  = await data.getTokenRiskScores('Mint...');
 | `healthCheck` | lightweight readiness probe used by dossier + CLI smoke tests. |
 | `getUserTokenTrades` | wallet + mint–specific trades, replaces legacy REST integration. |
 
-These price endpoints are now used by the HUD worker to display live USD estimates for SOL and each token in the warchest.
+These price endpoints are now used by the warchest service to populate live USD estimates for SOL and each token in the HUD snapshot.
 
 All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
 
@@ -348,7 +349,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
-- `warchestd <action>` — Launch the HUD follower in the foreground, clean legacy daemon artifacts, or show hub status.
+- `warchestd <action>` — Start the headless warchest service, launch the HUD TUI, or show hub status.
 - `test` — Environment + dependency smoke test.
 
 ## CLI Command Index
@@ -364,7 +365,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
 - `wallet` — Manage the local wallet registry.
-- `warchestd` — Run HUD follower or show status.
+- `warchestd` — Run the warchest service/HUD or show status.
 - `test` — Environment + DB self-check.
 
 ### warlordai
@@ -375,7 +376,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ## Warchest architecture
 
 - Worker harness + hub live under `lib/warchest/workers/` and `lib/warchest/hubCoordinator.js`, coordinating swap/monitor/HUD jobs via IPC.
-- Hub status + HUD events are written to `data/warchest/status.json` and `data/warchest/tx-events.json`; the HUD follows these files instead of daemon PID files.
+- Hub status is written to `data/warchest/status.json`; HUD snapshots go to `data/warchest/hud-state.json`, and tx events to `data/warchest/tx-events.json`. The HUD follows the snapshot + events instead of daemon PID files.
 - See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
 
 ### research `<walletId>`
@@ -438,9 +439,8 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
 ### warchestd `<start|stop|restart|hud|status>`
-- HUD follower controller around `lib/warchest/workers/warchestService.js` (foreground only).
-- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to render the HUD alongside hub status/events.
-- `hud` runs foreground HUD (with selector fallback); `status` reads hub status snapshot and reports health (slot, RPC timings, wallet count).
+- Service/HUD controller around `lib/warchest/workers/warchestService.js` (service) and `lib/warchest/workers/warchestHudWorker.js` (Ink TUI).
+- `start/restart` launch the headless service (accept `--wallet alias:pubkey:color` repeatable). `hud` runs the foreground HUD (selector fallback). `status` reads the health snapshot and reports slot/RPC timings/wallet count.
 
 ### test
 - Verifies `OPENAI_API_KEY` presence, prints core file existence, DB config, and attempts BootyBox ping.
@@ -455,7 +455,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
 - `./data/autopsy/<wallet>/<mint>/{raw,prompt,response,final}/` — campaign artifacts gated by `SAVE_*`
 - `./data/devscan/<segments>/{raw,prompt,response}/` — DevScan artifacts and Grok summaries
-- `./data/warchest/{tx-events.json,status.json}` — Hub/HUD event feed + health snapshot
+- `./data/warchest/{hud-state.json,tx-events.json,status.json}` — HUD snapshot, tx event feed, health snapshot
 
 ---
 
