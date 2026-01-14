@@ -1,6 +1,6 @@
-'use strict';
+"use strict";
 
-const targetScanSchema = require('../../schemas/targetscan.v1.schema.json');
+const targetScanSchema = require("../../schemas/targetscan.v1.schema.json");
 
 const SYSTEM = [
   "You are Warlord's target scan engine.",
@@ -10,9 +10,9 @@ const SYSTEM = [
   "rating must be one of: strong_buy, buy, watch, avoid.",
   "Use only the provided data; do not invent prices, holders, or risk flags.",
   "If data is missing, state that in notes or risks and lower confidence.",
-  "Keep summary concise and actionable.",
+  "Keep summary concise and actionable.  Must be less than 256 characters.",
   "Return ONLY valid JSON following the schema. No markdown. No extra commentary.",
-].join(' ');
+].join(" ");
 
 /**
  * Build the user payload for target scan.
@@ -24,7 +24,7 @@ function buildUser(payload) {
 }
 
 module.exports = {
-  name: 'targetscan_v1',
+  name: "targetscan_v1",
   schema: targetScanSchema,
   system: SYSTEM,
   buildUser,
