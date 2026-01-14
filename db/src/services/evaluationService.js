@@ -217,6 +217,16 @@ function computeDerived({ position, coin, pool, pnl }) {
     position?.currentTokenAmount ?? position?.current_token_amount ?? null;
   const currentTokenAmountNum =
     currentTokenAmount == null ? null : Number(currentTokenAmount);
+  const entryTokenAmount =
+    position?.entryTokenAmount ?? position?.entry_token_amount ?? null;
+  const entryTokenAmountNum =
+    entryTokenAmount == null ? null : Number(entryTokenAmount);
+  const entryPriceUsdRaw =
+    position?.entryPriceUsd ?? position?.entry_price_usd ?? null;
+  const entryPriceUsd =
+    entryPriceUsdRaw == null ? null : Number(entryPriceUsdRaw);
+  const entryPriceUsdNum =
+    Number.isFinite(entryPriceUsd) && entryPriceUsd > 0 ? entryPriceUsd : null;
   const expectedNotionalUsd =
     position?.expectedNotionalUsd ?? position?.plannedNotionalUsd ?? null;
   const expectedNotionalSol =
@@ -260,21 +270,46 @@ function computeDerived({ position, coin, pool, pnl }) {
   // Cost basis from pnl view (preferred)
   const avgCostUsd =
     pnl?.avg_cost_usd != null ? Number(pnl.avg_cost_usd) : null;
-  const basisTokenAmount =
+  const costPerToken =
+    Number.isFinite(avgCostUsd) && avgCostUsd > 0
+      ? avgCostUsd
+      : entryPriceUsdNum;
+  const pnlTokenAmount =
     pnl?.position_token_amount != null
       ? Number(pnl.position_token_amount)
       : null;
+  const basisTokenAmount =
+    Number.isFinite(pnlTokenAmount) && pnlTokenAmount > 0
+      ? pnlTokenAmount
+      : Number.isFinite(currentTokenAmountNum) && currentTokenAmountNum > 0
+      ? currentTokenAmountNum
+      : Number.isFinite(entryTokenAmountNum) && entryTokenAmountNum > 0
+      ? entryTokenAmountNum
+      : null;
   const costBasisUsd =
-    avgCostUsd != null && basisTokenAmount != null
-      ? avgCostUsd * basisTokenAmount
+    costPerToken != null && basisTokenAmount != null
+      ? costPerToken * basisTokenAmount
       : null;
 
   const unrealUsd =
     pnl?.unrealized_usd != null ? Number(pnl.unrealized_usd) : null;
   const totalUsd = pnl?.total_usd != null ? Number(pnl.total_usd) : null;
 
-  const roiUnrealizedPct =
+  const avgCostUsdValid = Number.isFinite(avgCostUsd) && avgCostUsd > 0;
+  const priceBasedRoiPct =
+    costPerToken != null && priceUsd != null && costPerToken > 0
+      ? ((priceUsd - costPerToken) / costPerToken) * 100
+      : null;
+  let roiUnrealizedPct =
     costBasisUsd && unrealUsd != null ? (unrealUsd / costBasisUsd) * 100 : null;
+  if (
+    roiUnrealizedPct == null ||
+    (!avgCostUsdValid &&
+      priceBasedRoiPct != null &&
+      (unrealUsd == null || Number(unrealUsd) === 0))
+  ) {
+    roiUnrealizedPct = priceBasedRoiPct;
+  }
 
   const roiTotalPct =
     costBasisUsd && totalUsd != null ? (totalUsd / costBasisUsd) * 100 : null;
