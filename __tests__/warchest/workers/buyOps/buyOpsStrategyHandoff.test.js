@@ -83,6 +83,17 @@ const {
 const flushPromises = async () => {
   await Promise.resolve();
 };
+const runEvaluationTicks = async (intervalMs, extraTicks = 0) => {
+  await flushPromises();
+  jest.advanceTimersByTime(0);
+  await flushPromises();
+  for (let i = 0; i < extraTicks; i += 1) {
+    jest.advanceTimersByTime(intervalMs);
+    await flushPromises();
+    jest.advanceTimersByTime(0);
+    await flushPromises();
+  }
+};
 
 describe("buyOps strategy handoff", () => {
   let updateStrategyPromise;
@@ -159,27 +170,31 @@ describe("buyOps strategy handoff", () => {
   });
 
   test("updates newly opened position strategy name after buy", async () => {
+    const intervalMs = 50;
+    const logger = { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() };
     const controller = createBuyOpsController(
       {
         // keep evaluation interval enabled; bootstrap runs an immediate tick
-        evaluationIntervalMs: 60_000,
+        evaluationIntervalMs: intervalMs,
         evalTimeoutMs: 5_000,
         evaluationConcurrency: 1,
         minScore: 65,
         balancePct: "100%", // allow full available
+        regimeConfirmTicks: 1,
       },
       { env: { NODE_ENV: "production" } },
-      console
+      logger
     );
 
     const startPromise = controller.start();
 
-    // Let bootstrap start and evaluation tick run.
-    await flushPromises();
+    // Let bootstrap start, then tick enough times to satisfy trend_up streak.
+    await runEvaluationTicks(intervalMs, 2);
 
-    // The controller's worker loop yields with setImmediate; under fake timers we need to flush.
-    jest.advanceTimersByTime(0);
+    // Allow the post-buy strategy update retry delay to elapse.
+    jest.advanceTimersByTime(300);
     await flushPromises();
+    jest.advanceTimersByTime(0);
     await flushPromises();
 
     const updatePayload = await updateStrategyPromise;

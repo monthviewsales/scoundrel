@@ -55,12 +55,31 @@ const BootyBox = require('../../../db');
 const { forkWorkerWithPayload } = require('../../../lib/warchest/workers/harness');
 const { createBuyOpsController } = require('../../../lib/warchest/workers/buyOps/controller');
 
-const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
+const flushPromises = () => Promise.resolve();
+const flushAll = async (cycles = 3) => {
+  for (let i = 0; i < cycles; i += 1) {
+    await flushPromises();
+    jest.advanceTimersByTime(0);
+  }
+  await flushPromises();
+};
+const runEvaluationTicks = async (intervalMs, extraTicks = 0) => {
+  await flushAll();
+  for (let i = 0; i < extraTicks; i += 1) {
+    jest.advanceTimersByTime(intervalMs);
+    await flushAll();
+  }
+};
 
 describe('buyOps controller', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
     mockGetSolBalance.mockResolvedValue(10);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   test('dispatches a buy swap when decision is buy and regime is trend_up', async () => {
@@ -90,11 +109,15 @@ describe('buyOps controller', () => {
     mockRunSwap.mockResolvedValue({ monitorPayload: null });
 
     const logger = { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() };
-    const controller = createBuyOpsController({ evaluationIntervalMs: 50 }, { env: {} }, logger);
+    const intervalMs = 50;
+    const controller = createBuyOpsController(
+      { evaluationIntervalMs: intervalMs, regimeConfirmTicks: 1 },
+      { env: {} },
+      logger
+    );
     const startPromise = controller.start();
 
-    await flushPromises();
-    await flushPromises();
+    await runEvaluationTicks(intervalMs, 2);
 
     expect(mockRunSwap).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -135,11 +158,15 @@ describe('buyOps controller', () => {
     });
 
     const logger = { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() };
-    const controller = createBuyOpsController({ evaluationIntervalMs: 50 }, { env: {} }, logger);
+    const intervalMs = 50;
+    const controller = createBuyOpsController(
+      { evaluationIntervalMs: intervalMs, regimeConfirmTicks: 1 },
+      { env: {} },
+      logger
+    );
     const startPromise = controller.start();
 
-    await flushPromises();
-    await flushPromises();
+    await runEvaluationTicks(intervalMs, 2);
 
     expect(mockRunSwap).not.toHaveBeenCalled();
 
@@ -173,15 +200,15 @@ describe('buyOps controller', () => {
     });
 
     const logger = { info: jest.fn(), warn: jest.fn(), debug: jest.fn(), error: jest.fn() };
+    const intervalMs = 50;
     const controller = createBuyOpsController(
-      { evaluationIntervalMs: 50, balancePct: 0.5 },
+      { evaluationIntervalMs: intervalMs, balancePct: 0.5, regimeConfirmTicks: 1 },
       { env: {} },
       logger
     );
     const startPromise = controller.start();
 
-    await flushPromises();
-    await flushPromises();
+    await runEvaluationTicks(intervalMs, 2);
 
     const swapPayload = mockRunSwap.mock.calls[0][0];
     expect(swapPayload.amount).toBeCloseTo(0.47, 6);

@@ -6,6 +6,7 @@ BootyBox is the shared persistence layer for the VAULT77 bots. The SQLite file l
 - SQLite adapter split into submodules (wallets, profiles, coins, trading, sessions) under `src/adapters/sqlite/`.
 - Schema bootstrap + migrations for SQLite in `migrations/sqlite/`.
 - Env override `BOOTYBOX_SQLITE_PATH` to point tests or apps at a custom database file.
+- Unified `sc_evaluations` table for buyOps/sellOps snapshots (keyed by `ops_type`).
 - No MySQL support or fallbacks.
 
 ## Quick start

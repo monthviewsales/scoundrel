@@ -145,6 +145,7 @@ BootyBox now lives natively under `/db` (no git submodule) and exports the full 
 - `init()` must run before calling other helpers; it initializes the SQLite adapter and schema.
 - Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`lib/cli/walletCli.js`) and are wrapped under `lib/wallets/walletRegistry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
+- Buy/Sell evaluations are unified in `sc_evaluations` with `ops_type` to distinguish `buyOps` vs `sellOps`.
 - Loader coverage includes `db/test/*.test.js`, which run alongside the rest of Jest.
 
 If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.

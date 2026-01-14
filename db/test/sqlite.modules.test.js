@@ -276,6 +276,58 @@ describe('targets submodule', () => {
   });
 });
 
+describe('evaluations submodule', () => {
+  test('inserts and fetches a buyOps evaluation', () => {
+    const insertedId = adapter.insertEvaluation({
+      opsType: 'buyOps',
+      tsMs: Date.now(),
+      walletId: 1,
+      walletAlias: 'alpha',
+      coinMint: 'mint-buy',
+      recommendation: 'hold',
+      decision: 'buy',
+      reasons: ['status:buy'],
+      payload: { note: 'buy-eval' },
+    });
+
+    expect(insertedId).toBeTruthy();
+
+    const latest = adapter.getLatestBuyOpsEvaluationByMint('mint-buy');
+    expect(latest).toMatchObject({
+      opsType: 'buyOps',
+      walletAlias: 'alpha',
+      coinMint: 'mint-buy',
+      decision: 'buy',
+    });
+    expect(latest.payload).toEqual({ note: 'buy-eval' });
+  });
+
+  test('hydrates trailing state from sellOps evaluations', () => {
+    adapter.insertSellOpsEvaluation({
+      tsMs: Date.now(),
+      walletId: 2,
+      walletAlias: 'beta',
+      tradeUuid: 'trade-123',
+      coinMint: 'mint-sell',
+      recommendation: 'hold',
+      decision: 'hold',
+      reasons: [],
+      payload: {
+        riskControls: {
+          trailing: {
+            active: true,
+            highWaterUsd: 1.23,
+          },
+        },
+      },
+    });
+
+    const ctx = adapter.getLatestSellOpsDecisionContextByTrade(2, 'trade-123');
+    expect(ctx).toBeTruthy();
+    expect(ctx.trailing).toMatchObject({ active: true, highWaterUsd: 1.23 });
+  });
+});
+
 describe('coins submodule', () => {
   test('adds and retrieves coin metadata', () => {
     adapter.addOrUpdateCoin({

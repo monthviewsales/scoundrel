@@ -231,7 +231,7 @@
       "pollMs": 5000,
       "breachConfirmations": 2,
       "actionDebounceMs": 30000,
-      "hardStopLossPct": 30
+      "hardStopLossPct": 15
     },
     "timeStops": [
       {
@@ -277,7 +277,7 @@
   "portfolio": {
     "notes": "Account-level governors.",
     "limits": {
-      "maxOpenPositions": 1,
+      "maxOpenPositions": 3,
       "maxNotionalSolPerPosition": 4.0
     },
     "governors": [
