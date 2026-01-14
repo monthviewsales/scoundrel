@@ -81,7 +81,7 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_HUD_MAX_LOGS` | HUD per-wallet log limit | `5` |
 | `SELL_OPS_OBSERVE_ONLY` | Force SellOps to run in observe-only mode (`true` disables execution) | empty |
 | `WARCHEST_TARGET_LIST_INTERVAL_MS` | Target list fetch interval (ms); set `OFF` to disable | `300000` |
-| `WARCHEST_TARGET_LIST_TIMEOUT_MS` | Target list timeout (ms) | `120000` |
+| `WARCHEST_TARGET_LIST_TIMEOUT_MS` | Target list timeout (ms); defaults to 0.8x interval with a 120000ms min (capped at 600000ms) | `auto` |
 | `WARCHEST_TARGET_SCAN_INTERVAL_MS` | Target scan interval (ms); set `OFF` to disable | `60000` |
 | `WARCHEST_TARGET_SCAN_TIMEOUT_MS` | Target scan timeout (ms) | `120000` |
 | `WARCHEST_TARGET_SCAN_CONCURRENCY` | Target scan concurrency | `5` |
