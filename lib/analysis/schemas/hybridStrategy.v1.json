@@ -277,7 +277,7 @@
   "portfolio": {
     "notes": "Account-level governors.",
     "limits": {
-      "maxOpenPositions": 4,
+      "maxOpenPositions": 1,
       "maxNotionalSolPerPosition": 4.0
     },
     "governors": [
