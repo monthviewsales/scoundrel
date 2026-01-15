@@ -47,6 +47,39 @@ function resolveVersion() {
   return "0.0.0";
 }
 
+function shouldUseTui(opts = {}) {
+  if (!process.stdout.isTTY || !process.stdin.isTTY) return false;
+  if (process.env.SC_NO_TUI === "true") return false;
+  if (Object.prototype.hasOwnProperty.call(opts, "tui") && opts.tui === false) {
+    return false;
+  }
+  return true;
+}
+
+async function runCommandTui({ command, args, options, run }) {
+  const priorInkMode = process.env.SC_INK_MODE;
+  process.env.SC_INK_MODE = "true";
+  try {
+    const { loadCommandTuiApp } = require("./lib/tui/commandTui");
+    const { render } = await import("ink");
+    const { CommandTuiApp } = await loadCommandTuiApp();
+    const { waitUntilExit } = render(
+      React.createElement(CommandTuiApp, {
+        command,
+        args,
+        options,
+        run,
+      })
+    );
+    await waitUntilExit();
+  } finally {
+    if (priorInkMode === undefined) {
+      delete process.env.SC_INK_MODE;
+    } else {
+      process.env.SC_INK_MODE = priorInkMode;
+    }
+  }
+}
 
 program
   .name("scoundrel")
@@ -88,7 +121,9 @@ program
   .option("--delete-file", "Also delete underlying file objects")
   .option("--max-deletes <n>", "Stop after deleting N files")
   .option("--timeout-ms <n>", "Worker timeout in ms (0 disables)", "900000")
+  .option("--no-tui", "Disable TUI")
   .action(async (opts) => {
+    const run = async () => {
     const vectorStoreId = opts?.vectorStoreId
       ? String(opts.vectorStoreId).trim()
       : null;
@@ -165,6 +200,18 @@ program
       );
       process.exitCode = 1;
     }
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "vectorstore-prune",
+        options: opts,
+        run,
+      });
+      return;
+    }
+
+    await run();
   });
 
 program
@@ -177,11 +224,13 @@ program
     "Run in background on interval (uses WARCHEST_TARGET_LIST_INTERVAL_MS)"
   )
   .option("--interval <ms|OFF>", "Override interval in ms (or OFF to disable)")
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `\nExamples:\n  $ scoundrel targetlist\n  $ scoundrel targetlist --interval 600000\n  $ scoundrel targetlist --daemon\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/targetlist/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`
   )
   .action(async (opts) => {
+    const run = async () => {
     const intervalMs =
       opts && opts.interval ? String(opts.interval).trim() : undefined;
     const runOnce = !(opts && opts.daemon);
@@ -241,6 +290,18 @@ program
     } finally {
       closeHubCoordinator();
     }
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "targetlist",
+        options: opts,
+        run,
+      });
+      return;
+    }
+
+    await run();
   });
 
 program
@@ -265,6 +326,7 @@ program
     "-s, --session",
     "Interactive review session for this transaction (TUI)"
   )
+  .option("--no-tui", "Disable TUI")
   .option(
     "-w, --wallet <aliasOrAddress>",
     "Wallet alias or address that initiated the swap (focus wallet)"
@@ -297,6 +359,16 @@ Notes:
         "[scoundrel] ./lib/tx must export a default function or { run }"
       );
       process.exit(1);
+    }
+
+    const opts = cmd && typeof cmd.opts === "function" ? cmd.opts() : cmd || {};
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "tx",
+        args: { signature },
+        options: opts,
+      });
+      return;
     }
 
     try {
@@ -341,6 +413,7 @@ program
     "-c, --config",
     "Manage swap configuration instead of executing a swap"
   )
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --detach\n\n  # Manage swap configuration\n  $ scoundrel swap --config\n`
@@ -371,6 +444,15 @@ program
         process.exitCode = 1;
         return;
       }
+    }
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "swap",
+        args: { mint },
+        options: opts,
+      });
+      return;
     }
 
     // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/swap
@@ -457,6 +539,7 @@ program
     "Force refresh from API and skip cached DB metadata",
     false
   )
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `
@@ -485,6 +568,16 @@ Notes:
       process.exit(1);
     }
 
+    const tuiOpts = cmd && typeof cmd.opts === "function" ? cmd.opts() : opts;
+    if (shouldUseTui(tuiOpts)) {
+      await runCommandTui({
+        command: "addcoin",
+        args: { mint },
+        options: tuiOpts,
+      });
+      return;
+    }
+
     try {
       const opts = cmd && typeof cmd.opts === "function" ? cmd.opts() : {};
       const forceRefresh = !!opts.force;
@@ -511,6 +604,7 @@ program
     "-s, --solo",
     "Select a single wallet interactively (registry-only for now)"
   )
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `
@@ -530,10 +624,26 @@ Examples:
       // wallet CLI expects "-solo" or "--solo" in argv
       args.push("-solo");
     }
+    if (opts.tui === false) {
+      args.push("--no-tui");
+    }
 
     if (subcommand) args.push(subcommand);
     if (arg1) args.push(arg1);
     if (arg2) args.push(arg2);
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "wallet",
+        options: {
+          ...opts,
+          subcommand,
+          walletAlias: arg1,
+          color: arg2,
+        },
+      });
+      return;
+    }
 
     try {
       if (!warchestRun) {
@@ -696,11 +806,13 @@ program
   .command("migrate")
   .description("Run BootyBox SQLite migrations")
   .option("--db <path>", "Override BOOTYBOX_SQLITE_PATH for this run")
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `\nExamples:\n  $ scoundrel migrate\n  $ BOOTYBOX_SQLITE_PATH=/tmp/bootybox.db scoundrel migrate\n  $ scoundrel migrate --db /tmp/bootybox.db\n`
   )
   .action(async (opts) => {
+    const run = async () => {
     const dbPath =
       opts.db ||
       process.env.BOOTYBOX_SQLITE_PATH ||
@@ -727,69 +839,95 @@ program
         );
       }
     }
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "migrate",
+        options: opts,
+        run,
+      });
+      return;
+    }
+
+    await run();
   });
 
 program
   .command("test")
   .description("Run a quick self-check (env + minimal OpenAI config presence)")
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`
   )
-  .action(async () => {
-    console.log("[test] starting test action");
-    const hasKey = !!process.env.OPENAI_API_KEY;
-    logger.info("[scoundrel] environment check:");
-    logger.info(`  OPENAI_API_KEY: ${hasKey ? "present" : "MISSING"}`);
-    logger.info(`  Working directory: ${process.cwd()}`);
-    logger.info(`  Node version: ${process.version}`);
+  .action(async (opts) => {
+    const run = async () => {
+      console.log("[test] starting test action");
+      const hasKey = !!process.env.OPENAI_API_KEY;
+      logger.info("[scoundrel] environment check:");
+      logger.info(`  OPENAI_API_KEY: ${hasKey ? "present" : "MISSING"}`);
+      logger.info(`  Working directory: ${process.cwd()}`);
+      logger.info(`  Node version: ${process.version}`);
 
-    // Check presence of core modules in the new pipeline
-    const pathsToCheck = [
-      join(__dirname, "lib", "cli", "dossier.js"),
-      join(__dirname, "ai", "client.js"),
-      join(__dirname, "ai", "jobs", "walletDossier.js"),
-      join(__dirname, "lib", "cli", "ask.js"),
-    ];
-    logger.info("\n[scoundrel] core files:");
-    pathsToCheck.forEach((p) => {
-      const ok = existsSync(p);
-      logger.info(
-        `  ${relative(process.cwd(), p)}: ${ok ? "present" : "missing"}`
-      );
-    });
+      // Check presence of core modules in the new pipeline
+      const pathsToCheck = [
+        join(__dirname, "lib", "cli", "dossier.js"),
+        join(__dirname, "ai", "client.js"),
+        join(__dirname, "ai", "jobs", "walletDossier.js"),
+        join(__dirname, "lib", "cli", "ask.js"),
+      ];
+      logger.info("\n[scoundrel] core files:");
+      pathsToCheck.forEach((p) => {
+        const ok = existsSync(p);
+        logger.info(
+          `  ${relative(process.cwd(), p)}: ${ok ? "present" : "missing"}`
+        );
+      });
 
-    // DB diagnostics
-    const { BOOTYBOX_SQLITE_PATH = join(__dirname, "db", "bootybox.db") } =
-      process.env;
+      // DB diagnostics
+      const { BOOTYBOX_SQLITE_PATH = join(__dirname, "db", "bootybox.db") } =
+        process.env;
 
-    logger.info("\n[db] configuration:");
-    logger.info(`  Engine   : sqlite`);
-    logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
+      logger.info("\n[db] configuration:");
+      logger.info(`  Engine   : sqlite`);
+      logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
 
-    try {
-      if (typeof BootyBox.init === "function") {
-        await BootyBox.init();
+      try {
+        if (typeof BootyBox.init === "function") {
+          await BootyBox.init();
+        }
+        if (typeof BootyBox.ping === "function") {
+          await BootyBox.ping();
+        }
+        logger.info("[db] ✅ sqlite reachable");
+      } catch (e) {
+        const msg = e && e.message ? e.message : e;
+        logger.info(`[db] ❌ connection failed: ${msg}`);
+        if (e && e.stack) {
+          logger.debug && logger.debug(e.stack);
+        }
       }
-      if (typeof BootyBox.ping === "function") {
-        await BootyBox.ping();
-      }
-      logger.info("[db] ✅ sqlite reachable");
-    } catch (e) {
-      const msg = e && e.message ? e.message : e;
-      logger.info(`[db] ❌ connection failed: ${msg}`);
-      if (e && e.stack) {
-        logger.debug && logger.debug(e.stack);
-      }
-    }
 
-    if (!hasKey) {
-      logger.info("\nTip: add OPENAI_API_KEY to your .env file.");
-      process.exit(1);
-    } else {
+      if (!hasKey) {
+        logger.info("\nTip: add OPENAI_API_KEY to your .env file.");
+        process.exitCode = 1;
+        return;
+      }
       logger.info("\n[scoundrel] ✅ basic checks passed.");
-      process.exit(0);
+      process.exitCode = 0;
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "test",
+        options: opts,
+        run,
+      });
+      return;
     }
+
+    await run();
   });
 
 // Default/help handling is provided by commander
