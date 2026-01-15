@@ -4,7 +4,9 @@
 require('./lib/env/safeDotenv').loadDotenv();
 
 const { Command } = require('commander');
+const { existsSync, readFileSync } = require('fs');
 const { join } = require('path');
+const React = require('react');
 const readline = require('readline');
 const util = require('util');
 const logger = require('./lib/logger');
@@ -161,6 +163,71 @@ async function handleAutopsy(opts) {
   });
 }
 
+async function handleSwap(mint, cmdOrOpts) {
+  const hasOptsMethod = cmdOrOpts && typeof cmdOrOpts.opts === 'function';
+  const opts = hasOptsMethod ? cmdOrOpts.opts() : cmdOrOpts || {};
+
+  if (opts.config) {
+    try {
+      const { loadSwapConfigApp } = require('./lib/tui/swapConfigApp');
+      const { render } = await import('ink');
+      const { SwapConfigApp } = await loadSwapConfigApp();
+      const { waitUntilExit } = render(
+        React.createElement(SwapConfigApp, { onComplete: () => {} })
+      );
+      await waitUntilExit();
+      return;
+    } catch (err) {
+      const msg = err?.message || err;
+      throw new Error(`[warlordai:swap-config] ❌ config UI failed: ${msg}`);
+    }
+  }
+
+  if (!mint) {
+    throw new Error('[warlordai] swap requires a mint when not using -c/--config.');
+  }
+
+  const hasBuy = !!opts.buy;
+  const hasSell = !!opts.sell;
+
+  if (!hasBuy && !hasSell) {
+    throw new Error('[warlordai] swap requires exactly one of -b/--buy or -s/--sell.');
+  }
+
+  if (hasBuy && hasSell) {
+    throw new Error('[warlordai] swap cannot use both -b/--buy and -s/--sell in the same command.');
+  }
+
+  if (hasSell) {
+    const raw = String(opts.sell).trim();
+    if (!raw || raw.toLowerCase() === 'auto') {
+      opts.sell = '100%';
+      opts._panic = true;
+    } else if (raw.endsWith('%')) {
+      opts.sell = raw;
+    } else {
+      opts.sell = raw;
+    }
+  }
+
+  if (hasBuy) {
+    const raw = String(opts.buy).trim();
+    if (raw.endsWith('%')) {
+      opts.buy = raw;
+    } else {
+      opts.buy = raw;
+    }
+  }
+
+  const tradeCli = require('./lib/cli/swap');
+  if (typeof tradeCli !== 'function') {
+    throw new Error(
+      '[warlordai] ./lib/cli/swap must export a default function (module.exports = async (mint, opts) => { ... })'
+    );
+  }
+  await tradeCli(mint, opts);
+}
+
 async function handleDevscan(opts) {
   const mint = opts && opts.mint ? String(opts.mint).trim() : '';
   const developerWallet = opts && opts.dev ? String(opts.dev).trim() : '';
@@ -263,6 +330,36 @@ async function handleDevscan(opts) {
     logger.info('\n=== DevScan Summary ===\n');
     logger.info(result.openAiResult.markdown);
   }
+}
+
+async function handleTuneStrategy(opts) {
+  let profile = null;
+
+  if (opts.name) {
+    const alias = opts.name.replace(/[^a-z0-9_-]/gi, '_');
+    const profilePath = join(process.cwd(), 'profiles', `${alias}.json`);
+    if (!existsSync(profilePath)) {
+      throw new Error(`[warlordai] profile not found: ${profilePath}`);
+    }
+    profile = JSON.parse(readFileSync(profilePath, 'utf8'));
+  }
+
+  const tuneProcessor = require('./lib/cli/tuneStrategy');
+  const runner =
+    typeof tuneProcessor === 'function'
+      ? tuneProcessor
+      : tuneProcessor && tuneProcessor.run;
+  if (!runner) {
+    throw new Error(
+      '[warlordai] ./lib/cli/tuneStrategy must export a default function or { run }'
+    );
+  }
+  await runner({
+    strategyName: opts.strategy,
+    strategyPath: opts.strategyPath || null,
+    profile,
+    showJson: Boolean(opts.showJson),
+  });
 }
 
 async function handleTargetScan(opts) {
@@ -435,6 +532,76 @@ program
       await handleTargetScan(opts);
     } catch (err) {
       logger.error(`[warlordai] targetscan failed: ${err?.message || err}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('swap')
+  .argument('[mint]', 'Token mint address to swap')
+  .description(
+    'Execute a token swap via the SolanaTracker swap API or manage swap configuration'
+  )
+  .option(
+    '-w, --wallet <aliasOrAddress>',
+    'Wallet alias or address from the wallet registry (ignored when using -c/--config)'
+  )
+  .option(
+    '-b, --buy <amount>',
+    "Spend <amount> SOL (number or '<percent>%') to buy the token"
+  )
+  .option(
+    '-s, --sell <amount>',
+    "Sell <amount> of the token (number, 'auto', or '<percent>%')"
+  )
+  .option(
+    '--dry-run',
+    'Build and simulate the swap without broadcasting the transaction'
+  )
+  .option(
+    '--detach',
+    'Return immediately after tx submission; confirmation/persistence runs in background'
+  )
+  .option(
+    '-c, --config',
+    'Manage swap configuration instead of executing a swap'
+  )
+  .addHelpText(
+    'after',
+    '\nExamples:\n  # Execute swaps\n  $ warlordai swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ warlordai swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ warlordai swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --detach\n\n  # Manage swap configuration\n  $ warlordai swap --config\n'
+  )
+  .action(async (mint, cmdOrOpts) => {
+    try {
+      await handleSwap(mint, cmdOrOpts);
+    } catch (err) {
+      const msg = err?.message || err;
+      logger.error(`[warlordai] ❌ swap failed: ${msg}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('tune-strategy')
+  .alias('tune')
+  .description(
+    'Interactive strategy tuner for memecoin sell/buy settings (OpenAI)'
+  )
+  .option('-s, --strategy <name>', 'Strategy name (flash, hybrid, campaign)')
+  .option('-p, --strategy-path <path>', 'Custom path to a strategy JSON file')
+  .option(
+    '-n, --name <traderName>',
+    'Optional trader profile alias (loads ./profiles/<name>.json)'
+  )
+  .option('--show-json', 'Print proposed JSON changes/patches', false)
+  .addHelpText(
+    'after',
+    '\nExamples:\n  $ warlordai tune-strategy --strategy flash\n  $ warlordai tune -s hybrid\n  $ warlordai tune --strategy-path ./lib/analysis/schemas/campaignStrategy.v1.json\n  $ warlordai tune -n Gh0stee\n\nNotes:\n  • If no strategy is specified, a selector will prompt you to choose one.\n  • Reads strategy JSON from ./lib/analysis/schemas by name unless --strategy-path is provided.\n  • Optional profile context is loaded from ./profiles/<name>.json.\n  • Suggestions are advisory only; you manually edit strategy files.\n'
+  )
+  .action(async (opts) => {
+    try {
+      await handleTuneStrategy(opts);
+    } catch (err) {
+      logger.error(`[warlordai] ❌ tune-strategy failed: ${err?.message || err}`);
       process.exitCode = 1;
     }
   });

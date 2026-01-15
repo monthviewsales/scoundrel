@@ -2,18 +2,11 @@
 // index.js — Scoundrel CLI
 require("./lib/env/safeDotenv").loadDotenv();
 const logger = require("./lib/logger");
-const chalk = require("chalk");
 const React = require("react");
 const { program } = require("commander");
-const { existsSync, mkdirSync, writeFileSync, readFileSync } = require("fs");
+const { existsSync, readFileSync } = require("fs");
 const { join, relative } = require("path");
 const BootyBox = require("./db");
-const walletsDomain = require("./lib/wallets");
-const {
-  dossierBaseDir,
-  loadLatestJson,
-  normalizeTraderAlias,
-} = require("./lib/persist/jsonArtifacts");
 const warchestModule = require("./lib/cli/walletCli");
 const warchestService = require("./lib/cli/warchest");
 const { forkWorkerWithPayload } = require("./lib/warchest/workers/harness");
@@ -27,16 +20,6 @@ const warchestRun =
     : warchestModule && typeof warchestModule.run === "function"
     ? warchestModule.run
     : null;
-
-function loadHarvest() {
-  try {
-    // Lazy-load to keep startup fast and allow running without Solana deps during setup
-    return require("./lib/cli/dossier").harvestWallet;
-  } catch (e) {
-    logger.error(`[scoundrel: dossier] ${e}`);
-    process.exit(1);
-  }
-}
 
 function loadProcessor(name) {
   try {
@@ -64,19 +47,6 @@ function resolveVersion() {
   return "0.0.0";
 }
 
-function shortenPubkey(addr) {
-  if (!addr) return "";
-  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
-}
-
-
-function isBase58Mint(v) {
-  if (typeof v !== "string") return false;
-  const s = v.trim();
-  if (s.length < 32 || s.length > 44) return false;
-  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(s);
-}
-
 
 program
   .name("scoundrel")
@@ -93,83 +63,6 @@ program.addHelpText(
   "after",
   `\nDatabase env:\n  BOOTYBOX_SQLITE_PATH        Optional override for db/bootybox.db\n`
 );
-
-program
-  .command("research")
-  .argument("<walletId>", "Solana wallet address to analyze")
-  .description(
-    "Harvest trades for a wallet, snapshot token states at trade time, and prep data for model analysis"
-  )
-  .option("-s, --start <isoOrEpoch>", "Start time (ISO or epoch seconds)")
-  .option("-e, --end <isoOrEpoch>", "End time (ISO or epoch seconds)")
-  .option(
-    "-n, --name <traderName>",
-    "Trader alias for this wallet (e.g., Cupsey, Ansem)"
-  )
-  .option(
-    "-f, --feature-mint-count <num>",
-    "How many recent mints to summarize for technique features (default: FEATURE_MINT_COUNT or 8)"
-  )
-  .addHelpText(
-    "after",
-    `\nExamples:\n  $ scoundrel research <WALLET>\n  $ scoundrel research <WALLET> -n Gh0stee\n  $ scoundrel research <WALLET> --start 2025-01-01T00:00:00Z --end 2025-01-31T23:59:59Z\n\nFlags:\n  -s, --start <isoOrEpoch>  Start time; ISO (e.g., 2025-01-01T00:00:00Z) or epoch seconds\n  -e, --end <isoOrEpoch>    End time; ISO or epoch seconds\n  -n, --name <traderName>   Optional alias to tag harvest artifacts\n  -f, --feature-mint-count <num>  Number of recent mints to summarize for features (default: 8)\n\nNotes:\n  • Writes small samples to ./data/dossier/<alias>/raw/ for inspection in development.\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • The configured feature-mint count is written to the merged meta for traceability.\n`
-  )
-  .action(async (walletId, opts) => {
-    const harvestWallet = loadHarvest();
-
-    // Parse optional times
-    const parseTs = (v) => {
-      if (!v) return undefined;
-      if (/^\d+$/.test(v)) return Number(v);
-      const d = new Date(v);
-      if (isNaN(d.getTime())) {
-        logger.error("[scoundrel] Invalid time:", v);
-        process.exit(1);
-      }
-      return Math.floor(d.getTime() / 1000);
-    };
-
-    const startTime = parseTs(opts.start);
-    const endTime = parseTs(opts.end);
-    const cliTraderName = opts.name ? String(opts.name).trim() : null;
-    const traderName = cliTraderName || process.env.TEST_TRADER || null;
-    const featureMintCount = opts.featureMintCount
-      ? Number(opts.featureMintCount)
-      : undefined;
-
-    if (cliTraderName) {
-      await walletsDomain.kol.ensureKolWallet({
-        walletAddress: walletId,
-        alias: cliTraderName,
-      });
-    }
-
-    logger.warn(
-      '[scoundrel] research is deprecated; use "warlordai dossier --raw-only" instead.'
-    );
-    logger.info(
-      `[scoundrel] Research starting for wallet ${walletId}${
-        traderName ? ` (trader: ${traderName})` : ""
-      }…`
-    );
-    try {
-      const result = await harvestWallet({
-        wallet: walletId,
-        traderName,
-        startTime,
-        endTime,
-        featureMintCount,
-        runAnalysis: false,
-      });
-      const count =
-        result && typeof result.count === "number" ? result.count : 0;
-      logger.info(`[scoundrel] ✅ harvested ${count} trades from ${walletId}`);
-      process.exit(0);
-    } catch (err) {
-      logger.error("[scoundrel] ❌ error during harvest:", err?.message || err);
-      process.exit(1);
-    }
-  });
 
 program
   .command("vectorstore-prune")
@@ -549,135 +442,6 @@ program
       if (err && err.stack && logger.debug) {
         logger.debug(err.stack);
       }
-      process.exit(1);
-    }
-  });
-
-program
-  .command("ask")
-  .description(
-    "Ask a question about a trader using their saved profile (Responses API)"
-  )
-  .option(
-    "-n, --name <traderName>",
-    'Trader alias used when saving the profile (optional, defaults to "default" if omitted)'
-  )
-  .requiredOption("-q, --question <text>", "Question to ask")
-  .addHelpText(
-    "after",
-    `\nExamples:\n  $ scoundrel ask -n Gh0stee -q "What patterns do you see?"\n  $ scoundrel ask -n Gh0stee -q "List common entry mistakes."\n\nFlags:\n  -n, --name <traderName>   Alias that matches ./profiles/<name>.json\n  -q, --question <text>     Natural language question\n\nNotes:\n  • Reads ./profiles/<name>.json as context.\n  • May also include the latest dossier snapshot from ./data/dossier/<alias>/enriched/ when SAVE_ENRICHED is enabled.\n`
-  )
-  .action(async (opts) => {
-    const askProcessor = loadProcessor("ask");
-    const alias = opts.name
-      ? opts.name.replace(/[^a-z0-9_-]/gi, "_")
-      : "default";
-    const profilePath = join(process.cwd(), "profiles", `${alias}.json`);
-    if (!existsSync(profilePath)) {
-      logger.error(`[scoundrel] profile not found: ${profilePath}`);
-      process.exit(1);
-    }
-    const profile = JSON.parse(readFileSync(profilePath, "utf8"));
-
-    // Optionally include recent enriched rows if present
-    const artifactAlias = normalizeTraderAlias(
-      opts.name || alias,
-      opts.name || alias || "default"
-    );
-    let rows = [];
-    const latestEnriched = loadLatestJson(
-      dossierBaseDir(artifactAlias),
-      ["enriched"],
-      "techniqueFeatures-"
-    );
-    if (latestEnriched && latestEnriched.data) {
-      const payload = latestEnriched.data;
-      // Prefer the condensed coins array; otherwise wrap the payload so ask() still receives rows[]
-      const arrayPayload = Array.isArray(payload?.coins)
-        ? payload.coins
-        : Array.isArray(payload)
-        ? payload
-        : payload
-        ? [payload]
-        : [];
-      rows = arrayPayload;
-    }
-
-    try {
-      const runner =
-        typeof askProcessor === "function"
-          ? askProcessor
-          : askProcessor && askProcessor.ask;
-      if (!runner) {
-        logger.error(
-          "[scoundrel] ./lib/ask must export a default function or { ask }"
-        );
-        process.exit(1);
-      }
-      const ans = await runner({
-        profile,
-        question: opts.question,
-        rows: rows.slice(0, 200),
-      });
-      logger.info(ans);
-      process.exit(0);
-    } catch (err) {
-      logger.error("[scoundrel] ❌ ask failed:", err?.message || err);
-      process.exit(1);
-    }
-  });
-
-program
-  .command("tune-strategy")
-  .alias("tune")
-  .description(
-    "Interactive strategy tuner for memecoin sell/buy settings (OpenAI)"
-  )
-  .option("-s, --strategy <name>", "Strategy name (flash, hybrid, campaign)")
-  .option("-p, --strategy-path <path>", "Custom path to a strategy JSON file")
-  .option(
-    "-n, --name <traderName>",
-    "Optional trader profile alias (loads ./profiles/<name>.json)"
-  )
-  .option("--show-json", "Print proposed JSON changes/patches", false)
-  .addHelpText(
-    "after",
-    `\nExamples:\n  $ scoundrel tune-strategy --strategy flash\n  $ scoundrel tune -s hybrid\n  $ scoundrel tune --strategy-path ./lib/analysis/schemas/campaignStrategy.v1.json\n  $ scoundrel tune -n Gh0stee\n\nNotes:\n  • If no strategy is specified, a selector will prompt you to choose one.\n  • Reads strategy JSON from ./lib/analysis/schemas by name unless --strategy-path is provided.\n  • Optional profile context is loaded from ./profiles/<name>.json.\n  • Suggestions are advisory only; you manually edit strategy files.\n`
-  )
-  .action(async (opts) => {
-    const tuneProcessor = loadProcessor("tuneStrategy");
-    let profile = null;
-
-    if (opts.name) {
-      const alias = opts.name.replace(/[^a-z0-9_-]/gi, "_");
-      const profilePath = join(process.cwd(), "profiles", `${alias}.json`);
-      if (!existsSync(profilePath)) {
-        logger.error(`[scoundrel] profile not found: ${profilePath}`);
-        process.exit(1);
-      }
-      profile = JSON.parse(readFileSync(profilePath, "utf8"));
-    }
-
-    try {
-      const runner =
-        typeof tuneProcessor === "function"
-          ? tuneProcessor
-          : tuneProcessor && tuneProcessor.run;
-      if (!runner) {
-        logger.error(
-          "[scoundrel] ./lib/tuneStrategy must export a default function or { run }"
-        );
-        process.exit(1);
-      }
-      await runner({
-        strategyName: opts.strategy,
-        strategyPath: opts.strategyPath || null,
-        profile,
-        showJson: Boolean(opts.showJson),
-      });
-      process.exit(0);
-    } catch (err) {
-      logger.error("[scoundrel] ❌ tune-strategy failed:", err?.message || err);
       process.exit(1);
     }
   });

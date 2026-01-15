@@ -125,9 +125,9 @@ AI clients:
 Use the interactive tuner to ask questions about a strategy schema.
 
 ```bash
-scoundrel tune --help
-scoundrel tune --strategy flash
-scoundrel tune -s campaign -n TraderAlias
+warlordai tune --help
+warlordai tune --strategy flash
+warlordai tune -s campaign -n TraderAlias
 ```
 
 Notes:
@@ -339,15 +339,15 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - **Quick reference**
   
 - `warlordai` — Separate bin: unified WarlordAI CLI for RAG-backed Q&A plus manual dossier/autopsy/devscan/targetscan runs.
+- `warlordai ask` — Q&A with session memory + optional RAG retrieval.
 - `warlordai dossier` — Wallet harvest + optional AI profile build.
 - `warlordai autopsy` — Wallet + mint campaign analysis.
 - `warlordai devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `warlordai targetscan` — Manual mint scan with scoring + HUD event logging.
-- `research <walletId>` — (deprecated) Alias for `warlordai dossier --raw-only --wallet <walletId>`; harvests wallet trades + chart + per-mint user trades without calling AI.
+- `warlordai swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
+- `warlordai tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
-- `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
-- `tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
 - `warchestd <action>` — Start the headless warchest service, launch the HUD TUI, or show hub status.
@@ -356,15 +356,15 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ## CLI Command Index
 
 - `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
+- `warlordai ask` — Q&A with session memory + optional RAG retrieval.
 - `warlordai dossier` — Wallet harvest + optional AI profile build.
 - `warlordai autopsy` — Wallet + mint campaign analysis.
 - `warlordai devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `warlordai targetscan` — Manual mint scan with scoring + HUD event logging.
-- `research` — Deprecated alias for `warlordai dossier --raw-only --wallet <walletId>`.
+- `warlordai swap` — Execute swaps or manage swap config.
+- `warlordai tune-strategy` — Interactive strategy tuner.
 - `tx` — Inspect transaction(s), optionally as swaps.
 - `swap` — Execute swaps or manage swap config.
-- `ask` — Q&A against saved profiles.
-- `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
 - `wallet` — Manage the local wallet registry.
 - `warchestd` — Run the warchest service/HUD or show status.
@@ -373,6 +373,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ### warlordai
 - Separate bin: `warlordai "question"` for one-shot queries or `warlordai --interactive` for follow-ups.
 - Includes manual pipelines: `warlordai dossier`, `warlordai autopsy`, `warlordai devscan`, `warlordai targetscan`.
+- Also hosts `warlordai ask`, `warlordai swap`, and `warlordai tune-strategy`.
 - Uses `WARLORDAI_VECTOR_STORE` for file_search RAG when enabled (`--no-rag` disables).
 - Session memory is stored in BootyBox `sc_asks` via `correlation_id` (pass `--session` to resume).
 
@@ -381,13 +382,6 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Worker harness + hub live under `lib/warchest/workers/` and `lib/warchest/hubCoordinator.js`, coordinating swap/monitor/HUD jobs via IPC.
 - Hub status is written to `data/warchest/status.json`; HUD snapshots go to `data/warchest/hud-state.json`, and tx events to `data/warchest/tx-events.json`. The HUD follows the snapshot + events instead of daemon PID files.
 - See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
-
-### research `<walletId>`
-- (Deprecated) Thin wrapper around the dossier pipeline; equivalent to running `warlordai dossier --raw-only --wallet <walletId>`.
-- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, and writes merged/enriched artifacts when `SAVE_*` toggles are set.
-- Does **not** call OpenAI, write profile JSON under `profiles/<alias>.json`, or upsert wallet analyses; use `warlordai dossier` without `--raw-only` for full AI profiles.
-- Options: `--start <iso|epoch>`, `--end <iso|epoch>`, `--name <alias>`, `--feature-mint-count <num>`.
-- Env: `SOLANATRACKER_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
 
 ### warlordai dossier
 - Core harvest pipeline for building wallet dossiers; runs full AI profile unless `--raw-only` is set.
@@ -415,6 +409,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `--session` launches an interactive review session after inspection.
 
 ### swap `<mint>` (plus config mode)
+- Available as `scoundrel swap` or `warlordai swap`.
 - Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
 - Options: `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
 - Internals: `lib/cli/swap.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
@@ -423,11 +418,10 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Note: Raptor swaps skip `preflight` simulation (not advertised in Raptor docs).
 - Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
-### ask
-- Q&A over `profiles/<name>.json`; includes latest `data/dossier/<alias>/enriched/techniqueFeatures-*` when present.
-- Flags: `--name <alias>` (defaults to `default`), `--question <text>` (required).
-- Persists ask/answer to DB (BootyBox recordAsk).
-- Optional: set `ASK_EXPLICIT_RAG=true` (or `WARLORDAI_EXPLICIT_RAG`) to pull dossier/autopsy sources from the vector store for strategy questions (requires `WARLORDAI_VECTOR_STORE`).
+### warlordai ask
+- Q&A with WarlordAI; supports session memory plus optional vector store retrieval.
+- Flags: `--question <text>` (required), `--session <id>`, `--no-rag`, `--model <name>`, `--timeout <ms>`, `--interactive`.
+- Use `warlordai "question"` for one-shot asks without the subcommand.
 
 ### addcoin `<mint>`
 - Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
