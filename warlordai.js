@@ -16,6 +16,10 @@ const { harvestWallet } = require('./lib/cli/dossier');
 const { runAutopsy } = require('./lib/cli/autopsy');
 const { forkWorkerWithPayload } = require('./lib/warchest/workers/harness');
 const { normalizeMintList, runTargetScan } = require('./lib/targetScan');
+const {
+  assertValidMintAddress,
+  assertValidWalletAddress,
+} = require('./lib/solana/addressValidation');
 
 function parseNumber(value) {
   if (value == null) return null;
@@ -29,13 +33,6 @@ function parseTimestamp(value) {
   if (num != null) return num;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? null : parsed;
-}
-
-function isBase58Mint(value) {
-  if (typeof value !== 'string') return false;
-  const trimmed = value.trim();
-  if (trimmed.length < 32 || trimmed.length > 44) return false;
-  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(trimmed);
 }
 
 async function runInteractiveAsk({ session, rag, model, timeoutMs }, initialQuestion) {
@@ -126,8 +123,9 @@ async function handleDossier(opts) {
   if (!opts.wallet) {
     throw new Error('[warlordai] dossier requires --wallet');
   }
+  const walletAddress = assertValidWalletAddress(opts.wallet);
   const result = await harvestWallet({
-    wallet: opts.wallet,
+    wallet: walletAddress,
     traderName: opts.name || null,
     startTime: parseTimestamp(opts.start),
     endTime: parseTimestamp(opts.end),
@@ -155,11 +153,13 @@ async function handleAutopsy(opts) {
       throw new Error(`[warlordai] autopsy missing required flag(s): ${missing.join(', ')} (use --trade-uuid or --wallet + --mint)`);
     }
   }
+  const walletAddress = opts.wallet ? assertValidWalletAddress(opts.wallet) : null;
+  const mintAddress = opts.mint ? assertValidMintAddress(opts.mint) : null;
   await runAutopsy({
     tradeUuid: opts.tradeUuid || null,
     walletLabel: opts.walletLabel || null,
-    walletAddress: opts.wallet || null,
-    mint: opts.mint || null,
+    walletAddress,
+    mint: mintAddress,
   });
 }
 
@@ -186,6 +186,7 @@ async function handleSwap(mint, cmdOrOpts) {
   if (!mint) {
     throw new Error('[warlordai] swap requires a mint when not using -c/--config.');
   }
+  const normalizedMint = assertValidMintAddress(mint);
 
   const hasBuy = !!opts.buy;
   const hasSell = !!opts.sell;
@@ -225,7 +226,7 @@ async function handleSwap(mint, cmdOrOpts) {
       '[warlordai] ./lib/cli/swap must export a default function (module.exports = async (mint, opts) => { ... })'
     );
   }
-  await tradeCli(mint, opts);
+  await tradeCli(normalizedMint, opts);
 }
 
 async function handleDevscan(opts) {
@@ -243,21 +244,11 @@ async function handleDevscan(opts) {
     throw new Error('[warlordai] devscan requires --mint, --dev, or --devtokens');
   }
 
-  if (mint && !isBase58Mint(mint)) {
-    throw new Error(
-      '[warlordai] devscan --mint must be a valid base58 address (32-44 chars)'
-    );
-  }
-  if (developerWallet && !isBase58Mint(developerWallet)) {
-    throw new Error(
-      '[warlordai] devscan --dev must be a valid base58 address (32-44 chars)'
-    );
-  }
-  if (developerTokensWallet && !isBase58Mint(developerTokensWallet)) {
-    throw new Error(
-      '[warlordai] devscan --devtokens must be a valid base58 address (32-44 chars)'
-    );
-  }
+  const validatedMint = mint ? assertValidMintAddress(mint) : '';
+  const validatedDevWallet = developerWallet ? assertValidWalletAddress(developerWallet) : '';
+  const validatedDevTokensWallet = developerTokensWallet
+    ? assertValidWalletAddress(developerTokensWallet)
+    : '';
 
   if (!process.env.DEVSCAN_API_KEY) {
     throw new Error('[warlordai] DEVSCAN_API_KEY is required for devscan');
@@ -278,9 +269,9 @@ async function handleDevscan(opts) {
   const { result } = await forkWorkerWithPayload(workerPath, {
     timeoutMs: 120000,
     payload: {
-      mint: mint || null,
-      developerWallet: developerWallet || null,
-      developerTokensWallet: developerTokensWallet || null,
+      mint: validatedMint || null,
+      developerWallet: validatedDevWallet || null,
+      developerTokensWallet: validatedDevTokensWallet || null,
       runAnalysis,
     },
   });
@@ -367,10 +358,11 @@ async function handleTargetScan(opts) {
   if (!mints.length) {
     throw new Error('[warlordai] targetscan requires --mint or --mints');
   }
+  const validatedMints = mints.map((mint) => assertValidMintAddress(mint));
 
   const sendVectorStore = Boolean(opts?.sendVectorStore);
   const result = await runTargetScan({
-    mints,
+    mints: validatedMints,
     runAnalysis: !opts.rawOnly,
     concurrency: parseNumber(opts.concurrency) || undefined,
     manual: true,
