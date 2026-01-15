@@ -137,6 +137,11 @@ function createWarlordAI(clientOrOptions) {
     const resolvedTemperature = (typeof temperature === 'number')
       ? temperature
       : resolvedConfig.temperature;
+    const resolvedModel = (typeof model === 'string' && model.trim().length)
+      ? model.trim()
+      : (typeof resolvedConfig.model === 'string' && resolvedConfig.model.trim().length)
+        ? resolvedConfig.model.trim()
+        : null;
     const provider = resolvedConfig.provider || config.provider || defaultProvider;
     const { callResponses, parseResponsesJSON, log } = resolveClient(provider);
     const enableLocalTools = provider === 'openai' && resolvedConfig.enableLocalTools !== false;
@@ -177,9 +182,11 @@ function createWarlordAI(clientOrOptions) {
       system,
       input,
       user,
-      model,
       metadata,
     };
+    if (resolvedModel) {
+      options.model = resolvedModel;
+    }
     const include = Array.isArray(resolvedConfig.include) ? [...resolvedConfig.include] : [];
     if (resolvedConfig.includeFileSearchResults) {
       include.push('file_search_call.results');

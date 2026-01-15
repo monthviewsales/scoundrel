@@ -5,7 +5,7 @@ require("dotenv").config({ quiet: true });
 const OpenAI = require("openai");
 const log = require("../lib/log");
 
-// Default to GPT-5.2; can be overridden via OPENAI_RESPONSES_MODEL.
+// Default to GPT-5-mini; can be overridden via OPENAI_RESPONSES_MODEL.
 const DEFAULT_MODEL = process.env.OPENAI_RESPONSES_MODEL || "gpt-5-mini";
 let client = null;
 
@@ -34,7 +34,7 @@ function getClient() {
  * @param {string} [opts.system] - Optional system-level instructions
  * @param {string|Object} [opts.user] - User content or JSON payload (will be JSON.stringified if object)
  * @param {Array|String} [opts.input] - Optional prebuilt input list or string (overrides system/user)
- * @param {string} [opts.model=DEFAULT_MODEL] - Model name, e.g. 'gpt-5.2'
+ * @param {string} [opts.model=DEFAULT_MODEL] - Model name, e.g. 'gpt-5-mini'
  * @param {number} [opts.temperature] - Optional temperature; only sent if explicitly provided
  * @param {string|{id:string,version?:string}} [opts.prompt] - Dashboard Prompt id or { id, version }
  * @param {Object} [opts.reasoning] - Optional reasoning config (if supported by the model)

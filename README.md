@@ -59,7 +59,7 @@ Common env vars (full list in `.env.sample`):
 | `LOG_LEVEL` | Global log level | `info` |
 | `LOG_ROOT_DIR` | Root directory for log files | `./data/logs` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
-| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5.2` |
+| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5-mini` |
 | `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads + RAG retrieval (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
 | `TARGETSCAN_SEND_VECTOR_STORE` | Upload targetscan payloads to vector store when set to `true` (default skips) | empty |
 | `TARGETSCAN_SKIP_VECTOR_STORE` | Deprecated: force skip targetscan vector store uploads when set to `true` | empty |

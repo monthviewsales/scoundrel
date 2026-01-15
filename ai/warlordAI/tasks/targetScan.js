@@ -26,6 +26,7 @@ function buildUser(payload) {
 module.exports = {
   name: "targetscan_v1",
   schema: targetScanSchema,
+  model: "gpt-5-nano",
   system: SYSTEM,
   buildUser,
 };

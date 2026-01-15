@@ -79,7 +79,7 @@ beforeAll(() => {
   console.error = jest.fn();
 
   process.env.OPENAI_API_KEY = originalOpenAiKey || 'test-openai-key';
-  process.env.OPENAI_RESPONSES_MODEL = originalOpenAiModel || 'gpt-5.2';
+  process.env.OPENAI_RESPONSES_MODEL = originalOpenAiModel || 'gpt-5-mini';
 });
 
 afterAll(() => {

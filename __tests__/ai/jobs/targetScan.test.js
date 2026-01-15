@@ -41,7 +41,7 @@ describe('targetScan AI job', () => {
       token: { summary: { symbol: 'SYM', name: 'Token' } },
     };
 
-    const result = await analyzeTargetScan({ payload, model: 'gpt-5.2', purpose: 'unit' });
+    const result = await analyzeTargetScan({ payload, model: 'gpt-5-mini', purpose: 'unit' });
 
     expect(result.rating).toBe('avoid');
     expect(result.mint).toBe('Mint111');
@@ -63,13 +63,13 @@ describe('targetScan AI job', () => {
     const { analyzeTargetScan } = createTargetScanAnalysis(client);
     const payload = { meta: { mint: 'Mint111' } };
 
-    const result = await analyzeTargetScan({ payload, model: 'gpt-5.2' });
+    const result = await analyzeTargetScan({ payload, model: 'gpt-5-mini' });
 
     expect(result).toEqual({ rating: 'buy', summary: 'ok' });
     expect(runTask).toHaveBeenCalledWith({
       task: 'targetScan',
       payload: { payload, purpose: undefined },
-      model: 'gpt-5.2',
+      model: 'gpt-5-mini',
     });
   });
 });
