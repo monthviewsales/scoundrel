@@ -162,6 +162,7 @@ async function handleTargetScan(opts) {
     mints,
     runAnalysis: !opts.rawOnly,
     concurrency: parseNumber(opts.concurrency) || undefined,
+    manual: true,
     ...(sendVectorStore ? { sendVectorStore: true } : {}),
   });
 

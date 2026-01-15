@@ -798,6 +798,7 @@ program
           mints,
           runAnalysis,
           concurrency,
+          manual: true,
           ...(sendVectorStore ? { sendVectorStore: true } : {}),
         },
       });
