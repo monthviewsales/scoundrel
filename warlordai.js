@@ -4,12 +4,15 @@
 require('./lib/env/safeDotenv').loadDotenv();
 
 const { Command } = require('commander');
+const { join } = require('path');
 const readline = require('readline');
+const util = require('util');
 const logger = require('./lib/logger');
 const { runWarlordAIAsk } = require('./lib/cli/warlordai');
 const { createWarlordAIClient } = require('./lib/warchest/warlordAIClient');
 const { harvestWallet } = require('./lib/cli/dossier');
 const { runAutopsy } = require('./lib/cli/autopsy');
+const { forkWorkerWithPayload } = require('./lib/warchest/workers/harness');
 const { normalizeMintList, runTargetScan } = require('./lib/targetScan');
 
 function parseNumber(value) {
@@ -24,6 +27,13 @@ function parseTimestamp(value) {
   if (num != null) return num;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function isBase58Mint(value) {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (trimmed.length < 32 || trimmed.length > 44) return false;
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(trimmed);
 }
 
 async function runInteractiveAsk({ session, rag, model, timeoutMs }, initialQuestion) {
@@ -151,6 +161,110 @@ async function handleAutopsy(opts) {
   });
 }
 
+async function handleDevscan(opts) {
+  const mint = opts && opts.mint ? String(opts.mint).trim() : '';
+  const developerWallet = opts && opts.dev ? String(opts.dev).trim() : '';
+  const developerTokensWallet =
+    opts && opts.devtokens ? String(opts.devtokens).trim() : '';
+  let runAnalysis = !(opts && opts.rawOnly);
+
+  if (mint && !developerWallet && !developerTokensWallet) {
+    runAnalysis = false;
+  }
+
+  if (!mint && !developerWallet && !developerTokensWallet) {
+    throw new Error('[warlordai] devscan requires --mint, --dev, or --devtokens');
+  }
+
+  if (mint && !isBase58Mint(mint)) {
+    throw new Error(
+      '[warlordai] devscan --mint must be a valid base58 address (32-44 chars)'
+    );
+  }
+  if (developerWallet && !isBase58Mint(developerWallet)) {
+    throw new Error(
+      '[warlordai] devscan --dev must be a valid base58 address (32-44 chars)'
+    );
+  }
+  if (developerTokensWallet && !isBase58Mint(developerTokensWallet)) {
+    throw new Error(
+      '[warlordai] devscan --devtokens must be a valid base58 address (32-44 chars)'
+    );
+  }
+
+  if (!process.env.DEVSCAN_API_KEY) {
+    throw new Error('[warlordai] DEVSCAN_API_KEY is required for devscan');
+  }
+  if (runAnalysis && !process.env.xAI_API_KEY) {
+    throw new Error(
+      '[warlordai] xAI_API_KEY is required for devscan AI summaries'
+    );
+  }
+
+  const workerPath = join(
+    __dirname,
+    'lib',
+    'warchest',
+    'workers',
+    'devscanWorker.js'
+  );
+  const { result } = await forkWorkerWithPayload(workerPath, {
+    timeoutMs: 120000,
+    payload: {
+      mint: mint || null,
+      developerWallet: developerWallet || null,
+      developerTokensWallet: developerTokensWallet || null,
+      runAnalysis,
+    },
+  });
+
+  if (result && result.token) {
+    if (result.token.artifactPath) {
+      logger.info(
+        `[warlordai] devscan token artifact: ${result.token.artifactPath}`
+      );
+    } else {
+      logger.info(
+        '[warlordai] devscan token response captured (artifact save disabled).'
+      );
+    }
+  }
+  if (result && result.developer) {
+    if (result.developer.artifactPath) {
+      logger.info(
+        `[warlordai] devscan developer artifact: ${result.developer.artifactPath}`
+      );
+    } else {
+      logger.info(
+        '[warlordai] devscan developer response captured (artifact save disabled).'
+      );
+    }
+  }
+  if (result && result.developerTokens) {
+    if (result.developerTokens.artifactPath) {
+      logger.info(
+        `[warlordai] devscan developer tokens artifact: ${result.developerTokens.artifactPath}`
+      );
+    } else {
+      logger.info(
+        '[warlordai] devscan developer tokens response captured (artifact save disabled).'
+      );
+    }
+  }
+
+  if (result && result.promptPath) {
+    logger.info(`[warlordai] devscan prompt artifact: ${result.promptPath}`);
+  }
+  if (result && result.responsePath) {
+    logger.info(`[warlordai] devscan response artifact: ${result.responsePath}`);
+  }
+
+  if (result && result.openAiResult && result.openAiResult.markdown) {
+    logger.info('\n=== DevScan Summary ===\n');
+    logger.info(result.openAiResult.markdown);
+  }
+}
+
 async function handleTargetScan(opts) {
   const mints = normalizeMintList([opts.mint, opts.mints]);
   if (!mints.length) {
@@ -255,6 +369,51 @@ program
       await handleAutopsy(opts);
     } catch (err) {
       logger.error(`[warlordai] autopsy failed: ${err?.message || err}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('devscan')
+  .description(
+    'Fetch DevScan token/developer data, persist artifacts, and optionally summarize with AI'
+  )
+  .option('--mint <address>', 'Token mint address to query')
+  .option('--dev <wallet>', 'Developer wallet address to query')
+  .option('--devtokens <wallet>', 'Developer wallet address to list tokens for')
+  .option('--raw-only', 'Skip OpenAI analysis and only write raw artifacts')
+  .addHelpText(
+    'after',
+    '\nExamples:\n  $ warlordai devscan --mint <MINT>\n  $ warlordai devscan --dev <WALLET>\n  $ warlordai devscan --devtokens <WALLET>\n  $ warlordai devscan --mint <MINT> --dev <WALLET>\n\nNotes:\n  • Requires DEVSCAN_API_KEY in the environment.\n  • Uses xAI_API_KEY for AI summaries unless --raw-only is set.\n  • Writes JSON artifacts under ./data/devscan/.\n'
+  )
+  .action(async (opts) => {
+    try {
+      await handleDevscan(opts);
+    } catch (err) {
+      let message = err?.message || '';
+      if (!message && err) {
+        try {
+          message = typeof err === 'string' ? err : JSON.stringify(err);
+        } catch (_) {
+          message = String(err);
+        }
+      }
+      logger.error(
+        `[warlordai] devscan failed: ${message || '(unknown error)'}`
+      );
+      if (err && err.devscanError) {
+        logger.error(
+          `[warlordai] devscan error: ${err.devscanError.code} - ${err.devscanError.message}`
+        );
+      }
+      if (err && err.body) {
+        logger.error(
+          `[warlordai] devscan response: ${util.inspect(err.body, {
+            depth: 4,
+            breakLength: 120,
+          })}`
+        );
+      }
       process.exitCode = 1;
     }
   });

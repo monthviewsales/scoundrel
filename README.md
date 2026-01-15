@@ -334,44 +334,45 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 ## Commands
 
-> Run `node index.js --help` or append `--help` to any command for flags & examples.
+> Run `node index.js --help` (scoundrel) or `node warlordai.js --help` for flags & examples.
 
 - **Quick reference**
   
-- `warlordai` — Separate bin: unified WarlordAI CLI for RAG-backed Q&A and manual dossier/autopsy/targetscan runs.
-- `research <walletId>` — (deprecated) Alias for `dossier --harvest-only`; harvests wallet trades + chart + per-mint user trades without calling AI.
-- `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
-- `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
+- `warlordai` — Separate bin: unified WarlordAI CLI for RAG-backed Q&A plus manual dossier/autopsy/devscan/targetscan runs.
+- `warlordai dossier` — Wallet harvest + optional AI profile build.
+- `warlordai autopsy` — Wallet + mint campaign analysis.
+- `warlordai devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
+- `warlordai targetscan` — Manual mint scan with scoring + HUD event logging.
+- `research <walletId>` — (deprecated) Alias for `warlordai dossier --raw-only --wallet <walletId>`; harvests wallet trades + chart + per-mint user trades without calling AI.
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
-- `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
-- `targetscan` — Manual mint scan that scores a buy opportunity, writes `sc_targets`, and emits a HUD event with symbol/buyScore/summary.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
 - `warchestd <action>` — Start the headless warchest service, launch the HUD TUI, or show hub status.
 - `test` — Environment + dependency smoke test.
 
 ## CLI Command Index
 
-- `research` — Deprecated alias for `dossier --harvest-only`.
-- `dossier` — Wallet harvest + optional AI profile build.
-- `autopsy` — Wallet + mint campaign analysis.
+- `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
+- `warlordai dossier` — Wallet harvest + optional AI profile build.
+- `warlordai autopsy` — Wallet + mint campaign analysis.
+- `warlordai devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
+- `warlordai targetscan` — Manual mint scan with scoring + HUD event logging.
+- `research` — Deprecated alias for `warlordai dossier --raw-only --wallet <walletId>`.
 - `tx` — Inspect transaction(s), optionally as swaps.
 - `swap` — Execute swaps or manage swap config.
 - `ask` — Q&A against saved profiles.
 - `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
-- `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
-- `targetscan` — Manual mint scan with scoring + HUD event logging.
-- `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
 - `wallet` — Manage the local wallet registry.
 - `warchestd` — Run the warchest service/HUD or show status.
 - `test` — Environment + DB self-check.
 
 ### warlordai
 - Separate bin: `warlordai "question"` for one-shot queries or `warlordai --interactive` for follow-ups.
+- Includes manual pipelines: `warlordai dossier`, `warlordai autopsy`, `warlordai devscan`, `warlordai targetscan`.
 - Uses `WARLORDAI_VECTOR_STORE` for file_search RAG when enabled (`--no-rag` disables).
 - Session memory is stored in BootyBox `sc_asks` via `correlation_id` (pass `--session` to resume).
 
@@ -382,28 +383,30 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
 
 ### research `<walletId>`
-- (Deprecated) Thin wrapper around the dossier pipeline; equivalent to running `dossier <walletId> --harvest-only`.
+- (Deprecated) Thin wrapper around the dossier pipeline; equivalent to running `warlordai dossier --raw-only --wallet <walletId>`.
 - Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, and writes merged/enriched artifacts when `SAVE_*` toggles are set.
-- Does **not** call OpenAI, write profile JSON under `profiles/<alias>.json`, or upsert wallet analyses; use `dossier` without `--harvest-only` for full AI profiles.
+- Does **not** call OpenAI, write profile JSON under `profiles/<alias>.json`, or upsert wallet analyses; use `warlordai dossier` without `--raw-only` for full AI profiles.
 - Options: `--start <iso|epoch>`, `--end <iso|epoch>`, `--name <alias>`, `--feature-mint-count <num>`.
 - Env: `SOLANATRACKER_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
 
-### dossier `<walletId>`
-- Core harvest pipeline for building wallet dossiers; drives both full AI profiles and harvest-only runs.
+### warlordai dossier
+- Core harvest pipeline for building wallet dossiers; runs full AI profile unless `--raw-only` is set.
+  - `--wallet <address>` (required) plus optional `--name <alias>`
+  - `--start <ts>` / `--end <ts>` (epoch ms or ISO)
   - `--limit <num>` cap trades
-  - `--feature-mint-count <num>` override mint sampling
-  - `--resend` re-run AI on latest merged payload without new data pulls
-  - `--track-kol` upsert this wallet into the KOL registry (requires `--name`)
-  - `--harvest-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
+  - `--concurrency <n>` parallel mint fetches
+  - `--include-outcomes` include outcome labels in analysis
+  - `--feature-mint-count <n>` override mint sampling
+  - `--raw-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
 - Default: writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, and persists an `sc_profiles` snapshot.
-- With `--harvest-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
+- With `--raw-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
 
-### autopsy
+### warlordai autopsy
 - Prompts for HUD wallet (or custom address) + mint, then builds a campaign payload:
   - user token trades, token metadata, price range, PnL, ATH, OHLCV window, derived metrics
 - Runs `tradeAutopsy` AI job, prints graded analysis, and writes final artifacts under `data/autopsy/<wallet>/<mint>/final/` when `SAVE_ENRICHED` is enabled.
 - Raw/prompt/response/final artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
-- Options: `--trade-uuid <uuid>` (DB-driven autopsy), `--wallet <alias|address>`, `--mint <mint>`, `--no-tui` for non-interactive runs.
+- Options: `--trade-uuid <uuid>` (DB-driven autopsy), `--wallet <alias|address>`, `--wallet-label <label>`, `--mint <mint>`.
 
 ### tx `<signature>` [--sig ...] [--swap --wallet <alias|address> --mint <mint>] [--session]
 - Fetches transaction(s) via `rpcMethods.getTransaction`.
@@ -430,11 +433,16 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
 - `--force` skips cache; when `SAVE_RAW` is on, writes token info to `data/addcoin/<mint>-<runId>.json`.
 
-### devscan
+### warlordai devscan
 - Queries DevScan for a token mint and/or developer wallet; supports `--mint`, `--dev`, `--devtokens`.
 - Runs Grok summaries by default; use `--raw-only` to skip AI.
 - Env: `DEVSCAN_API_KEY`, `xAI_API_KEY`, optional `DEVSCAN_RESPONSES_MODEL`.
 - Artifacts land under `data/devscan/<segments>/{raw,prompt,response}/` when enabled.
+
+### warlordai targetscan
+- Scans one or more mints via `--mint` or `--mints`, scores buy opportunities unless `--raw-only` is set.
+- Manual runs upsert the mint into `sc_targets` and emit a HUD event with `symbol`, `buyScore`, and `summary`.
+- Options: `--concurrency <n>`, `--send-vector-store` to upload final artifacts.
 
 ### wallet `[add|list|remove|set-color]` [args]
 - Wallet registry backed by BootyBox. `--solo` opens a picker for quick lookups.
