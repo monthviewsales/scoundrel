@@ -750,7 +750,7 @@ program
   .option("--send-vector-store", "Upload final artifacts to vector store")
   .addHelpText(
     "after",
-    `\nExamples:\n  $ scoundrel targetscan --mint <MINT>\n  $ scoundrel targetscan --mints <MINT1,MINT2>\n\nNotes:\n  • Uses WarlordAI (gpt-5-nano) for scoring unless --raw-only is set.\n  • Writes JSON artifacts under ./data/targetscan/.\n`
+    `\nExamples:\n  $ scoundrel targetscan --mint <MINT>\n  $ scoundrel targetscan --mints <MINT1,MINT2>\n\nNotes:\n  • Uses WarlordAI (gpt-5-nano) for scoring unless --raw-only is set.\n  • Manual runs emit a HUD event with symbol, buyScore, and summary.\n  • Writes JSON artifacts under ./data/targetscan/.\n`
   )
   .action(async (opts) => {
     const { normalizeMintList } = require("./lib/targetScan");

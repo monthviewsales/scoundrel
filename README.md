@@ -348,6 +348,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
 - `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
+- `targetscan` — Manual mint scan that scores a buy opportunity, writes `sc_targets`, and emits a HUD event with symbol/buyScore/summary.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
 - `warchestd <action>` — Start the headless warchest service, launch the HUD TUI, or show hub status.
 - `test` — Environment + dependency smoke test.
@@ -363,6 +364,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tune` — Interactive strategy tuner.
 - `addcoin` — Fetch and persist token metadata.
 - `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
+- `targetscan` — Manual mint scan with scoring + HUD event logging.
 - `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
 - `wallet` — Manage the local wallet registry.
 - `warchestd` — Run the warchest service/HUD or show status.

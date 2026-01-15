@@ -267,6 +267,10 @@ program
   .option('--concurrency <n>', 'Parallel scans to run')
   .option('--raw-only', 'Skip AI scoring and only write artifacts')
   .option('--send-vector-store', 'Upload final artifacts to vector store')
+  .addHelpText(
+    'after',
+    '\nNotes:\n  • Manual runs emit a HUD event with symbol, buyScore, and summary.\n'
+  )
   .action(async (opts) => {
     try {
       await handleTargetScan(opts);
