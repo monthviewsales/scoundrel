@@ -163,7 +163,7 @@ describe('targets submodule', () => {
       status: 'watch',
       strategy: 'flash',
       strategyId: 'flash-1',
-      source: 'target-list',
+      source: 'targetlist',
       tags: 'pumpfun,volume',
       notes: 'initial pass',
       vectorStoreId: 'vs-1',
