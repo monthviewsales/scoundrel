@@ -29,14 +29,14 @@ describe('getWalletPrivateKey', () => {
 
   test('errors when no usable private key is resolved', async () => {
     registry.getWalletByAlias.mockResolvedValue({ alias: 'alpha' });
-    getPrivateKeyForWallet.mockReturnValue(null);
+    getPrivateKeyForWallet.mockResolvedValue(null);
 
     await expect(getWalletPrivateKey('alpha')).rejects.toThrow('has no usable private key');
   });
 
   test('returns the resolved private key', async () => {
     registry.getWalletByAlias.mockResolvedValue({ alias: 'alpha' });
-    getPrivateKeyForWallet.mockReturnValue('secret-key');
+    getPrivateKeyForWallet.mockResolvedValue('secret-key');
 
     await expect(getWalletPrivateKey('alpha')).resolves.toBe('secret-key');
     expect(getPrivateKeyForWallet).toHaveBeenCalledWith(

@@ -5,6 +5,7 @@ const getWalletForSwap = require('../../lib/wallets/getWalletForSwap');
 
 jest.mock('@solana/kit', () => ({
   createKeyPairSignerFromBytes: jest.fn(),
+  createKeyPairSignerFromPrivateKeyBytes: jest.fn(),
 }));
 
 jest.mock('../../lib/wallets/secretProvider', () => ({
@@ -27,7 +28,7 @@ describe('getWalletForSwap', () => {
     const walletRow = { alias: 'alpha', pubkey: 'AlphaPub', walletId: 42 };
     registry.getWalletByAlias.mockResolvedValue(walletRow);
     hasUsablePrivateKey.mockReturnValue(true);
-    getPrivateKeyForWallet.mockReturnValue(keyArray);
+    getPrivateKeyForWallet.mockResolvedValue(keyArray);
     createKeyPairSignerFromBytes.mockResolvedValue({ address: walletRow.pubkey });
 
     const wallet = await getWalletForSwap('alpha');
@@ -67,7 +68,7 @@ describe('getWalletForSwap', () => {
   it('throws when the derived signer address does not match the stored pubkey', async () => {
     const walletRow = { alias: 'bravo', pubkey: 'ExpectedPub', walletId: 2 };
     hasUsablePrivateKey.mockReturnValue(true);
-    getPrivateKeyForWallet.mockReturnValue(keyArray);
+    getPrivateKeyForWallet.mockResolvedValue(keyArray);
     createKeyPairSignerFromBytes.mockResolvedValue({ address: 'DifferentPub' });
 
     await expect(getWalletForSwap(walletRow)).rejects.toThrow('does not match stored pubkey');

@@ -600,7 +600,7 @@ Notes:
 program
   .command("wallet")
   .description("Manage your Scoundrel wallet registry")
-  .argument("[subcommand]", "add|list|remove|set-color")
+  .argument("[subcommand]", "add|list|remove|set-color|set-key")
   .argument("[arg1]", "First argument for subcommand (e.g., alias)")
   .argument("[arg2]", "Second argument for subcommand (e.g., color)")
   .option(
@@ -616,6 +616,7 @@ Examples:
   $ scoundrel wallet list
   $ scoundrel wallet remove sampleWallet
   $ scoundrel wallet set-color sampleWallet cyan
+  $ scoundrel wallet set-key sampleWallet
   $ scoundrel wallet -solo
 `
   )
