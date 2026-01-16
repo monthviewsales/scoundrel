@@ -1,107 +1,77 @@
 'use strict';
 
-jest.mock('../ai/grokClient', () => {
-  const mockCallResponses = jest.fn();
-  const mockParseResponsesJSON = jest.fn();
-  const mockLog = { debug: jest.fn(), warn: jest.fn() };
+jest.mock('../ai/warlordAI', () => {
+  const mockRunTask = jest.fn();
   return {
-    callResponses: mockCallResponses,
-    parseResponsesJSON: mockParseResponsesJSON,
-    log: mockLog,
-    __mock: { callResponses: mockCallResponses, parseResponsesJSON: mockParseResponsesJSON, log: mockLog }
+    createWarlordAI: jest.fn(() => ({ runTask: mockRunTask })),
+    __mock: { runTask: mockRunTask },
   };
 });
 
 describe('devscanAnalysis job', () => {
   let analyzeDevscan;
-  let clientMock;
+  let runTaskMock;
+  const originalXaiKey = process.env.xAI_API_KEY;
 
   beforeEach(() => {
     jest.resetModules();
-    clientMock = require('../ai/grokClient').__mock;
+    process.env.xAI_API_KEY = originalXaiKey || 'test-xai-key';
+    runTaskMock = require('../ai/warlordAI').__mock.runTask;
     ({ analyzeDevscan } = require('../ai/jobs/devscanAnalysis'));
   });
 
-  test('uses mint schema when mint is present', async () => {
-    clientMock.callResponses.mockResolvedValue({ ok: true });
-    clientMock.parseResponsesJSON.mockReturnValue({
-      version: 'devscan.mint.v1',
-      markdown: '# ok',
-      entity_type: 'mint',
-      target: 'Mint1',
-      mint: {
-        address: 'Mint1',
-        symbol: null,
-        name: null,
-        status: null,
-        createdAt: null,
-        priceUsd: null,
-        marketCapUsd: null,
-        migrated: null,
-        creatorWallet: null,
-        launchPlatform: null,
-      },
-      developer: null,
-      x_mentions: {
-        query: 'Mint1',
-        last_60m: null,
-        last_30m: null,
-        last_5m: null,
-        top_accounts: [],
-        notes: '',
-      },
-      x_profiles: [],
-      highlights: [],
-      risk_flags: [],
-      confidence: 0.5,
-    });
-
-    await analyzeDevscan({ payload: { meta: { mint: 'Mint1' } } });
-
-    expect(clientMock.callResponses).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'devscan_mint_v1',
-      schema: expect.any(Object),
-      tools: [{ type: 'x_search' }],
-      tool_choice: 'auto',
-    }));
+  afterAll(() => {
+    process.env.xAI_API_KEY = originalXaiKey;
   });
 
-  test('uses mint schema when token payload includes mint address', async () => {
-    clientMock.callResponses.mockResolvedValue({ ok: true });
-    clientMock.parseResponsesJSON.mockReturnValue({
-      version: 'devscan.mint.v1',
-      markdown: '# ok',
-      entity_type: 'mint',
-      target: 'MintToken',
-      mint: {
-        address: 'MintToken',
-        symbol: null,
-        name: null,
-        status: null,
-        createdAt: null,
-        priceUsd: null,
-        marketCapUsd: null,
-        migrated: null,
-        creatorWallet: null,
-        launchPlatform: null,
-      },
-      developer: null,
-      x_mentions: {
-        query: 'MintToken',
-        last_60m: null,
-        last_30m: null,
-        last_5m: null,
-        top_accounts: [],
-        notes: '',
-      },
-      x_profiles: [],
-      highlights: [],
-      risk_flags: [],
-      confidence: 0.5,
-    });
+  test('delegates to warlordAI and returns output', async () => {
+    const payload = { meta: { mint: 'Mint1' } };
+    const response = { version: 'devscan.mint.v1', markdown: '# ok' };
+    runTaskMock.mockResolvedValue(response);
 
+    const res = await analyzeDevscan({ payload, model: 'grok-test' });
+
+    const callArgs = runTaskMock.mock.calls[0][0];
+    expect(callArgs.task).toBe('devscanAnalysis');
+    expect(callArgs.payload.payload).toEqual(payload);
+    expect(callArgs.model).toBe('grok-test');
+    expect(res).toBe(response);
+  });
+
+  test('builds fallback output when task throws', async () => {
+    runTaskMock.mockRejectedValue({ response: 'raw text' });
+
+    const res = await analyzeDevscan({ payload: { meta: { mint: 'MintFallback' } } });
+
+    expect(res.version).toBe('devscan.mint.v1');
+    expect(res.entity_type).toBe('mint');
+    expect(res.mint.address).toBe('MintFallback');
+    expect(res.markdown).toBe('raw text');
+  });
+
+  test('wraps response when markdown is missing', async () => {
+    runTaskMock.mockResolvedValue({ version: 'devscan.developer.v1' });
+
+    const res = await analyzeDevscan({ payload: { meta: { developerWallet: 'Dev1' } } });
+
+    expect(res.version).toBe('devscan.developer.v1');
+    expect(res.entity_type).toBe('developer');
+    expect(res.markdown).toContain('devscan.developer.v1');
+  });
+});
+
+describe('devscanAnalysis task helpers', () => {
+  const devscanTask = require('../ai/warlordAI/tasks/devscanAnalysis');
+
+  test('resolves mint config when payload includes a mint', () => {
+    const result = devscanTask.resolve({ payload: { meta: { mint: 'Mint1' } } });
+    expect(result.name).toBe('devscan_mint_v1');
+    expect(result.version).toBe('devscan.mint.v1');
+  });
+
+  test('buildUser collects mint candidates and x handles', () => {
     const mint = 'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump';
-    await analyzeDevscan({
+    const user = devscanTask.buildUser({
       payload: {
         token: {
           data: {
@@ -112,83 +82,12 @@ describe('devscanAnalysis job', () => {
       },
     });
 
-    const callArgs = clientMock.callResponses.mock.calls[0][0];
-    expect(callArgs.name).toBe('devscan_mint_v1');
-    expect(callArgs.user.context.knownMints).toEqual([mint]);
-    expect(callArgs.user.context.xHandles).toEqual(['testtoken']);
+    expect(user.context.knownMints).toEqual([mint]);
+    expect(user.context.xHandles).toEqual(['testtoken']);
   });
 
-  test('uses developer schema when no mint is present', async () => {
-    clientMock.callResponses.mockResolvedValue({ ok: true });
-    clientMock.parseResponsesJSON.mockReturnValue({
-      version: 'devscan.developer.v1',
-      markdown: '# ok',
-      entity_type: 'developer',
-      target: 'Dev1',
-      developer: {
-        wallet: 'Dev1',
-        name: null,
-        rating: null,
-        totalTokensCreated: null,
-        migrationCount: null,
-        feesCollected: null,
-        x_handles: [],
-      },
-      tokens_summary: {
-        total: 0,
-        alive: 0,
-        dead: 0,
-        migrated: 0,
-        top_market_caps: [],
-        recent_mints: [],
-      },
-      x_profiles: [],
-      x_mints_mentioned: [],
-      highlights: [],
-      risk_flags: [],
-      confidence: 0.4,
-    });
-
-    await analyzeDevscan({ payload: { meta: { developerWallet: 'Dev1' } } });
-
-    expect(clientMock.callResponses).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'devscan_developer_v1',
-      schema: expect.any(Object),
-    }));
-  });
-
-  test('filters developer mint candidates to alive tokens', async () => {
-    clientMock.callResponses.mockResolvedValue({ ok: true });
-    clientMock.parseResponsesJSON.mockReturnValue({
-      version: 'devscan.developer.v1',
-      markdown: '# ok',
-      entity_type: 'developer',
-      target: 'Dev1',
-      developer: {
-        wallet: 'Dev1',
-        name: null,
-        rating: null,
-        totalTokensCreated: null,
-        migrationCount: null,
-        feesCollected: null,
-        x_handles: [],
-      },
-      tokens_summary: {
-        total: 0,
-        alive: 0,
-        dead: 0,
-        migrated: 0,
-        top_market_caps: [],
-        recent_mints: [],
-      },
-      x_profiles: [],
-      x_mints_mentioned: [],
-      highlights: [],
-      risk_flags: [],
-      confidence: 0.4,
-    });
-
-    await analyzeDevscan({
+  test('filters developer mint candidates to alive tokens', () => {
+    const user = devscanTask.buildUser({
       payload: {
         meta: { developerWallet: 'Dev1' },
         developer: {
@@ -202,23 +101,8 @@ describe('devscanAnalysis job', () => {
       },
     });
 
-    const callArgs = clientMock.callResponses.mock.calls[0][0];
-    expect(callArgs.user.context.knownMints).toEqual([
+    expect(user.context.knownMints).toEqual([
       'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump',
     ]);
-  });
-
-  test('builds fallback output when JSON parsing fails', async () => {
-    clientMock.callResponses.mockResolvedValue('raw text');
-    clientMock.parseResponsesJSON.mockImplementation(() => { throw new Error('bad json'); });
-
-    const res = await analyzeDevscan({ payload: { meta: { mint: 'MintFallback' } } });
-
-    expect(res.version).toBe('devscan.mint.v1');
-    expect(res.entity_type).toBe('mint');
-    expect(res.mint).toBeDefined();
-    expect(res.x_mentions).toBeDefined();
-    expect(Array.isArray(res.highlights)).toBe(true);
-    expect(Array.isArray(res.risk_flags)).toBe(true);
   });
 });

@@ -79,7 +79,7 @@ beforeAll(() => {
   console.error = jest.fn();
 
   process.env.OPENAI_API_KEY = originalOpenAiKey || 'test-openai-key';
-  process.env.OPENAI_RESPONSES_MODEL = originalOpenAiModel || 'gpt-4o-mini';
+  process.env.OPENAI_RESPONSES_MODEL = originalOpenAiModel || 'gpt-5-mini';
 });
 
 afterAll(() => {
@@ -170,12 +170,11 @@ describe('harvestWallet (dossier)', () => {
     // Ensure merged payload exists
     expect(result.merged).toBeDefined();
     expect(result.merged.meta.wallet).toBe(WALLET);
-    expect(result.merged.trades).toEqual(sampleTrades);
+    expect(result.merged.walletChart).toEqual(sampleChart);
 
     // We expect the mint derivation logic to pick up our single mint
-    expect(result.merged.userTokenTradesByMint).toBeDefined();
-    expect(result.merged.userTokenTradesByMint[MINT]).toBeDefined();
-    expect(result.merged.userTokenTradesByMint[MINT].length).toBe(sampleMintTrades.length);
+    expect(result.techniqueFeatures).toBeDefined();
+    expect(result.techniqueFeatures.coins[0].mint).toBe(MINT);
 
     // Technique features should be built from the mint map
     expect(mockBuildTechniqueFeaturesFromMintMap).toHaveBeenCalledTimes(1);
@@ -183,8 +182,8 @@ describe('harvestWallet (dossier)', () => {
     expect(Object.keys(mintMapArg)).toContain(MINT);
 
     // Coins slice comes from the mocked technique features
-    expect(result.merged.coins).toBeDefined();
-    expect(result.merged.coins[0].mint).toBe(MINT);
+    expect(result.merged.techniqueFeatures).toBeDefined();
+    expect(result.merged.techniqueFeatures.coins[0].mint).toBe(MINT);
 
     // Data client was used correctly
     expect(mockGetWalletTrades).toHaveBeenCalledWith({ wallet: WALLET, startTime: undefined, endTime: undefined, limit: expect.any(Number) });

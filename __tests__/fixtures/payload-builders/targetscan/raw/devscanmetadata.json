@@ -1,0 +1,50 @@
+{
+  "mint": "BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+  "source": "devscan",
+  "fetchedAt": "2026-01-10T17:19:43.239Z",
+  "metadataId": "01KEMCV5TX1VCJPBNYJ4591RZS",
+  "updatedAt": 1768063604574,
+  "devscanResponseStatus": "success",
+  "error": null,
+  "data": {
+    "creator": "57rXqaQsvgyBKwebP2StfqQeCBjBS4jsrZFJN5aU2V9b",
+    "creatorWallet": "57rXqaQsvgyBKwebP2StfqQeCBjBS4jsrZFJN5aU2V9b",
+    "mainDeveloperWallet": "57rXqaQsvgyBKwebP2StfqQeCBjBS4jsrZFJN5aU2V9b",
+    "status": "alive",
+    "launchPlatform": "pumpfun",
+    "fnfDeveloperWallet": null,
+    "fnfName": null,
+    "isFNFToken": false,
+    "isCurrentlyLive": null,
+    "dexpaid": true,
+    "dexboosts": {
+      "amount": 100,
+      "total": 500
+    },
+    "links": {
+      "pumpfun": "https://pump.fun/BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+      "dexscreener": "https://dexscreener.com/solana/BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+      "solscan": "https://solscan.io/token/BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump"
+    },
+    "socials": null,
+    "developerInfo": {
+      "wallet": "57rXqaQsvgyBKwebP2StfqQeCBjBS4jsrZFJN5aU2V9b",
+      "name": "ram",
+      "rating": 5.886557697794824,
+      "totalTokensCreated": 32,
+      "migrationCount": 11,
+      "dev_type": "dev",
+      "profilePicture": "/api/images/dev/57rXqaQsvgyBKwebP2StfqQeCBjBS4jsrZFJN5aU2V9b/profile?t=1768063604516",
+      "social": {
+        "displayName": "ram",
+        "twitter": "https://x.com/ramonos",
+        "twitterAccounts": []
+      }
+    }
+  },
+  "meta": {
+    "timestamp": "2026-01-10T16:46:44.517Z",
+    "version": "v1",
+    "responseTime": "60ms"
+  }
+}

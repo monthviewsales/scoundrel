@@ -53,7 +53,7 @@ describe('wallets submodule', () => {
       usageType: 'strategy',
       autoAttachWarchest: true,
       isDefaultFunding: true,
-      strategyId: 'strat-1',
+      strategy: 'strat-1',
       color: '#abcdef',
     });
 
@@ -62,7 +62,7 @@ describe('wallets submodule', () => {
       usageType: 'strategy',
       autoAttachWarchest: true,
       isDefaultFunding: true,
-      strategyId: 'strat-1',
+      strategy: 'strat-1',
       color: '#abcdef',
     });
 
@@ -110,6 +110,48 @@ describe('profiles submodule', () => {
     expect(autopsies).toHaveLength(1);
     expect(autopsies[0].symbol).toBe('XYZ');
   });
+
+  test('lists asks by correlation id in chronological order', () => {
+    const nowSpy = jest.spyOn(Date, 'now');
+    nowSpy
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(2_000)
+      .mockReturnValueOnce(3_000);
+
+    adapter.recordAsk({
+      askId: 'ask-1',
+      correlationId: 'session-1',
+      question: 'Q1',
+      answer: 'A1',
+      bullets: ['b1'],
+      actions: [],
+    });
+
+    adapter.recordAsk({
+      askId: 'ask-2',
+      correlationId: 'session-1',
+      question: 'Q2',
+      answer: 'A2',
+      bullets: [],
+      actions: ['a2'],
+    });
+
+    adapter.recordAsk({
+      askId: 'ask-3',
+      correlationId: 'session-2',
+      question: 'Q3',
+      answer: 'A3',
+    });
+
+    const rows = adapter.listAsksByCorrelationId({ correlationId: 'session-1', limit: 10 });
+    expect(rows).toHaveLength(2);
+    expect(rows[0].question).toBe('Q1');
+    expect(rows[1].question).toBe('Q2');
+    expect(rows[0].bullets).toEqual(['b1']);
+    expect(rows[1].actions).toEqual(['a2']);
+
+    nowSpy.mockRestore();
+  });
 });
 
 describe('targets submodule', () => {
@@ -118,12 +160,15 @@ describe('targets submodule', () => {
       mint: 'mint-abc',
       symbol: 'ABC',
       name: 'Alpha Beta Coin',
-      status: 'watching',
+      status: 'watch',
       strategy: 'flash',
       strategyId: 'flash-1',
-      source: 'target-list',
+      source: 'targetlist',
       tags: 'pumpfun,volume',
       notes: 'initial pass',
+      vectorStoreId: 'vs-1',
+      vectorStoreFileId: 'file-1',
+      vectorStoreUpdatedAt: 1234,
       confidence: 0.72,
       score: 0.31,
       mintVerified: true,
@@ -131,16 +176,36 @@ describe('targets submodule', () => {
     });
 
     expect(inserted.mint).toBe('mint-abc');
-    expect(inserted.status).toBe('watching');
+    expect(inserted.status).toBe('watch');
     expect(inserted.strategy).toBe('flash');
 
     const fetched = adapter.getTarget('mint-abc');
     expect(fetched).toBeTruthy();
     expect(fetched.symbol).toBe('ABC');
+    expect(fetched.status).toBe('watch');
+    expect(fetched.vector_store_id).toBe('vs-1');
+    expect(fetched.vector_store_file_id).toBe('file-1');
 
     const removed = adapter.removeTarget('mint-abc');
     expect(removed).toBe(1);
     expect(adapter.getTarget('mint-abc')).toBeNull();
+  });
+
+  test('updates vector store fields for targets', () => {
+    adapter.addUpdateTarget({
+      mint: 'mint-vs',
+      status: 'new',
+    });
+
+    const updated = adapter.updateTargetVectorStore('mint-vs', {
+      vectorStoreId: 'vs-2',
+      vectorStoreFileId: 'file-2',
+      vectorStoreUpdatedAt: 4242,
+    });
+
+    expect(updated.vector_store_id).toBe('vs-2');
+    expect(updated.vector_store_file_id).toBe('file-2');
+    expect(updated.vector_store_updated_at).toBe(4242);
   });
 
   test('prunes targets by status and last_checked_at', () => {
@@ -179,12 +244,19 @@ describe('targets submodule', () => {
       lastCheckedAt: now,
     });
 
+    const prunable = adapter.listPrunableTargets({
+      now,
+      staleMs: 2 * 60 * 60 * 1000,
+      archivedTtlMs: 7 * 24 * 60 * 60 * 1000,
+    });
+
     const pruned = adapter.pruneTargets({
       now,
       staleMs: 2 * 60 * 60 * 1000,
       archivedTtlMs: 7 * 24 * 60 * 60 * 1000,
     });
 
+    expect(prunable).toHaveLength(3);
     expect(pruned).toBe(3);
     expect(adapter.getTarget('mint-approved')).toBeTruthy();
     expect(adapter.getTarget('mint-archived-fresh')).toBeTruthy();
@@ -192,6 +264,67 @@ describe('targets submodule', () => {
     expect(adapter.getTarget('mint-archived-stale')).toBeNull();
     expect(adapter.getTarget('mint-rejected')).toBeNull();
     expect(adapter.getTarget('mint-stale')).toBeNull();
+  });
+
+  test('lists targets by priority with watch lowest', () => {
+    adapter.addUpdateTarget({ mint: 'mint-strong', status: 'strong_buy', score: 80, confidence: 0.9 });
+    adapter.addUpdateTarget({ mint: 'mint-buy', status: 'buy', score: 80, confidence: 0.9 });
+    adapter.addUpdateTarget({ mint: 'mint-watch', status: 'watch', score: 80, confidence: 0.9 });
+
+    const list = adapter.listTargetsByPriority({ statuses: ['strong_buy', 'buy', 'watch'] });
+    expect(list.map((row) => row.mint)).toEqual(['mint-strong', 'mint-buy', 'mint-watch']);
+  });
+});
+
+describe('evaluations submodule', () => {
+  test('inserts and fetches a buyOps evaluation', () => {
+    const insertedId = adapter.insertEvaluation({
+      opsType: 'buyOps',
+      tsMs: Date.now(),
+      walletId: 1,
+      walletAlias: 'alpha',
+      coinMint: 'mint-buy',
+      recommendation: 'hold',
+      decision: 'buy',
+      reasons: ['status:buy'],
+      payload: { note: 'buy-eval' },
+    });
+
+    expect(insertedId).toBeTruthy();
+
+    const latest = adapter.getLatestBuyOpsEvaluationByMint('mint-buy');
+    expect(latest).toMatchObject({
+      opsType: 'buyOps',
+      walletAlias: 'alpha',
+      coinMint: 'mint-buy',
+      decision: 'buy',
+    });
+    expect(latest.payload).toEqual({ note: 'buy-eval' });
+  });
+
+  test('hydrates trailing state from sellOps evaluations', () => {
+    adapter.insertSellOpsEvaluation({
+      tsMs: Date.now(),
+      walletId: 2,
+      walletAlias: 'beta',
+      tradeUuid: 'trade-123',
+      coinMint: 'mint-sell',
+      recommendation: 'hold',
+      decision: 'hold',
+      reasons: [],
+      payload: {
+        riskControls: {
+          trailing: {
+            active: true,
+            highWaterUsd: 1.23,
+          },
+        },
+      },
+    });
+
+    const ctx = adapter.getLatestSellOpsDecisionContextByTrade(2, 'trade-123');
+    expect(ctx).toBeTruthy();
+    expect(ctx.trailing).toMatchObject({ active: true, highWaterUsd: 1.23 });
   });
 });
 
@@ -214,6 +347,45 @@ describe('coins submodule', () => {
 
     adapter.updateCoinStatus('mint-1', 'blacklist');
     expect(adapter.getCoinStatus('mint-1')).toBe('blacklist');
+  });
+});
+
+describe('coin metadata submodule', () => {
+  test('upserts and retrieves coin metadata by mint', () => {
+    const first = adapter.upsertCoinMetadata({
+      metadataId: 'meta-1',
+      mint: 'mint-meta',
+      source: 'devscan',
+      response: { source: 'devscan', score: 7 },
+    });
+
+    expect(first.mint).toBe('mint-meta');
+    expect(first.source).toBe('devscan');
+    expect(first.response_json).toBe(JSON.stringify({ source: 'devscan', score: 7 }));
+
+    const second = adapter.upsertCoinMetadata({
+      metadataId: 'meta-2',
+      mint: 'mint-meta',
+      source: 'partner',
+      response: { source: 'partner', score: 4 },
+    });
+
+    expect(second.source).toBe('partner');
+
+    const updated = adapter.upsertCoinMetadata({
+      metadataId: 'meta-3',
+      mint: 'mint-meta',
+      source: 'devscan',
+      response: { source: 'devscan', score: 9 },
+    });
+
+    const count = context.db
+      .prepare('SELECT COUNT(*) as count FROM sc_coin_metadata WHERE mint = ?')
+      .get('mint-meta').count;
+
+    expect(count).toBe(2);
+    expect(updated.metadata_id).toBe('meta-1');
+    expect(updated.response_json).toBe(JSON.stringify({ source: 'devscan', score: 9 }));
   });
 });
 

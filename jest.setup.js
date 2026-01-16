@@ -3,6 +3,14 @@
 const os = require('os');
 const path = require('path');
 
+if (!process.env.LOG_ROOT_DIR) {
+  process.env.LOG_ROOT_DIR = path.join(os.tmpdir(), `scoundrel-logs-${process.pid}`);
+}
+
+if (!process.env.LOG_LEVEL) {
+  process.env.LOG_LEVEL = 'error';
+}
+
 if (!process.env.BOOTYBOX_SQLITE_PATH) {
   const filename = `bootybox-test-${process.pid}-${Date.now()}.db`;
   process.env.BOOTYBOX_SQLITE_PATH = path.join(os.tmpdir(), filename);

@@ -4,6 +4,8 @@
 > It harvests and analyzes the trading patterns of top wallets, relays strategies, and keeps the link open to save our futures.*
 
 Docs: For a high-level repo overview (LLM-friendly), see `docs/scoundrel-overview.md`.
+For creating new CLI analysis flows (dossier/autopsy/devscan pattern), see `docs/analysis-flow-factory.md`.
+For agentic tool registration, see the tool registry at `ai/tools/index.js` and guidelines in `ai/tools/AGENTS.md`.
 
 ## 📡 Connect with VAULT77
 
@@ -55,10 +57,13 @@ Common env vars (full list in `.env.sample`):
 | `DOTENV_SILENT` | Suppress dotenv banners | `true` |
 | `NODE_ENV` | Environment mode | `production` |
 | `LOG_LEVEL` | Global log level | `info` |
+| `LOG_ROOT_DIR` | Root directory for log files | `./data/logs` |
 | `OPENAI_API_KEY` | OpenAI Responses access | required |
-| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-4.1-mini` |
-| `DOSSIER_VECTOR_STORE_ID` | Vector store for dossier analysis uploads | optional |
-| `AUTOPSY_VECTOR_STORE_ID` | Vector store for autopsy analysis uploads | optional |
+| `OPENAI_RESPONSES_MODEL` | Responses model for AI jobs | `gpt-5-mini` |
+| `WARLORDAI_VECTOR_STORE` | Vector store for WarlordAI uploads + RAG retrieval (autopsy, dossier, targetscan, devscan AI); uploads final payloads only | optional |
+| `TARGETSCAN_SEND_VECTOR_STORE` | Upload targetscan payloads to vector store when set to `true` (default skips) | empty |
+| `TARGETSCAN_SKIP_VECTOR_STORE` | Deprecated: force skip targetscan vector store uploads when set to `true` | empty |
+| `ASK_EXPLICIT_RAG` | Enable explicit vector store search for ask strategy questions (alias: `WARLORDAI_EXPLICIT_RAG`) | empty |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
 | `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
@@ -76,6 +81,15 @@ Common env vars (full list in `.env.sample`):
 | `WARCHEST_HUD_MAX_LOGS` | HUD per-wallet log limit | `5` |
 | `SELL_OPS_OBSERVE_ONLY` | Force SellOps to run in observe-only mode (`true` disables execution) | empty |
 | `WARCHEST_TARGET_LIST_INTERVAL_MS` | Target list fetch interval (ms); set `OFF` to disable | `300000` |
+| `WARCHEST_TARGET_LIST_TIMEOUT_MS` | Target list timeout (ms); defaults to 0.8x interval with a 120000ms min (capped at 600000ms) | `auto` |
+| `WARCHEST_TARGET_SCAN_INTERVAL_MS` | Target scan interval (ms); set `OFF` to disable | `60000` |
+| `WARCHEST_TARGET_SCAN_TIMEOUT_MS` | Target scan timeout (ms) | `120000` |
+| `WARCHEST_TARGET_SCAN_CONCURRENCY` | Target scan concurrency | `5` |
+| `WARCHEST_BUYOPS_EVAL_INTERVAL_MS` | BuyOps evaluation interval (ms); set `OFF` to disable | `60000` |
+| `WARCHEST_BUYOPS_EVAL_TIMEOUT_MS` | BuyOps per-mint evaluation timeout (ms) | `20000` |
+| `WARCHEST_BUYOPS_EVAL_CONCURRENCY` | BuyOps per-mint evaluation concurrency | `6` |
+| `WARCHEST_BUYOPS_MIN_SCORE` | BuyOps min score threshold | `65` |
+| `WARCHEST_BUYOPS_BALANCE_PCT` | Cap BuyOps SOL spend to this % of available wallet SOL (0-1 or percent; reserves 0.03 SOL per open position) | `1` |
 | `WARCHEST_WS_STALE_MS` | WS heartbeat stale threshold | `20000` |
 | `WARCHEST_WS_RESTART_GAP_MS` | Minimum WS restart gap | `30000` |
 | `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` | WS restart backoff cap | `300000` |
@@ -87,14 +101,16 @@ Common env vars (full list in `.env.sample`):
 | `KIT_RPC_RETRY_BASE_MS` | Base backoff delay for RPC retries (ms) | `200` |
 | `KIT_RPC_RETRY_MAX_MS` | Max backoff delay for RPC retries (ms) | `2000` |
 | `KIT_RPC_LOG_PAYLOAD` | Log full RPC payloads when set to `full` | empty |
-| `SAVE_PARSED` | Write parsed artifacts under `data/` | `FALSE` |
-| `SAVE_ENRICHED` | Write enriched artifacts under `data/` | `FALSE` |
+| `SAVE_PROMPT` | Write prompt artifacts under `data/` | `FALSE` |
+| `SAVE_RESPONSE` | Write response artifacts under `data/` | `FALSE` |
+| `SAVE_PARSED` | Legacy alias for `SAVE_PROMPT` | `FALSE` |
+| `SAVE_ENRICHED` | Legacy: enable prompt + response + final artifacts | `FALSE` |
 | `SAVE_RAW` | Write raw artifacts under `data/` | `FALSE` |
 | `TEST_TRADER` | Test trader label for local runs | optional |
 | `TEST_PUBKEY` | Test wallet pubkey for local runs | optional |
 
 AI clients:
-- OpenAI powers dossier + autopsy summaries.
+- OpenAI powers dossier, autopsy, and targetscan summaries; it also uploads final payloads to vector stores.
 - Grok (xAI) powers `devscan` summaries; set `xAI_API_KEY` and optionally `DEVSCAN_RESPONSES_MODEL`.
 
 ## Testing
@@ -103,6 +119,20 @@ AI clients:
 - For CI-grade runs with coverage output to `artifacts/coverage/`, use `npm run test:ci` (also used by GitHub Actions).
 - Run static checks with `npm run lint` (syntax validation).
 - Dossier now includes its own dedicated unit test at `__tests__/dossier.test.js`, which validates merged payload construction, user-token-trade harvesting, and technique feature assembly.
+
+## Strategy Tuning (CLI)
+
+Use the interactive tuner to ask questions about a strategy schema.
+
+```bash
+warlordai tune --help
+warlordai tune --strategy flash
+warlordai tune -s campaign -n TraderAlias
+```
+
+Notes:
+- The tuner is Ink-only and requires a TTY (interactive terminal).
+- Use `:exit`, `:clear`, and `:help` inside the session.
 
 ## Error Handling Notes
 
@@ -115,6 +145,7 @@ BootyBox now lives natively under `/db` (no git submodule) and exports the full 
 - `init()` must run before calling other helpers; it initializes the SQLite adapter and schema.
 - Wallet registry helpers (`listWarchestWallets`, `insertWarchestWallet`, etc.) power the CLI (`lib/cli/walletCli.js`) and are wrapped under `lib/wallets/walletRegistry.js`.
 - Persistence helpers wrap every Scoundrel table: `recordAsk`, `recordTune`, `recordJobRun`, `recordWalletAnalysis`, `upsertProfileSnapshot`, and `persistWalletProfileArtifacts`.
+- Buy/Sell evaluations are unified in `sc_evaluations` with `ops_type` to distinguish `buyOps` vs `sellOps`.
 - Loader coverage includes `db/test/*.test.js`, which run alongside the rest of Jest.
 
 If you add a new persistence path, implement it inside BootyBox so the helper surface stays centralized.
@@ -207,16 +238,17 @@ Scoundrel’s RPC client is tuned specifically for SolanaTracker’s mainnet RPC
 For daemon/HUD work, prefer `subscribeSlot` for chain heartbeat and `subscribeAccount`/`subscribeLogs` for wallet and token activity, and fall back to HTTP polling (`getBlockHeight`, `getSolBalance`, etc.) where WebSocket methods are not available.
 
 
-The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
-- The HUD also calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
-- Session lifecycle is persisted via `sc_sessions`: the worker closes any stale session it finds (using the last snapshot in `data/warchest/status.json`) before opening a new one, heartbeats the active session via its health loop, and records the session metadata inside `health.session` for CLI status commands.
+The warchest service (`lib/warchest/workers/warchestService.js`) refreshes wallet balances and pricing, then writes HUD snapshots to `data/warchest/hud-state.json` for the separate Ink TUI worker (`lib/warchest/workers/warchestHudWorker.js`).
+- The service leans on `rpcMethods.getSolBalance`, keeping SOL deltas accurate without poking the raw Kit client.
+- The service calls `getMultipleTokenPrices` from the SolanaTracker Data API to fetch live USD prices for SOL and all held tokens.
+- Session lifecycle is persisted via `sc_sessions`: the service closes any stale session it finds (using the last snapshot in `data/warchest/status.json`) before opening a new one, heartbeats the active session via its health loop, and records the session metadata inside `health.session` for CLI status commands.
 - Clean shutdowns (`SIGINT`, CLI stop) now finalize the open session with the most recent slot/block time; unexpected exits are recorded as `end_reason='crash'` on the next launch.
-- The worker runs a WS heartbeat watchdog: if `slotSubscribe` goes stale, it restarts the SolanaTracker Kit RPC client + resubscribes, and surfaces restarts/errors in the HUD + `data/warchest/status.json`.
-  - `WARCHEST_WS_STALE_MS` (default `20000`) – restart when no slot update for this long.
+- The service runs a WS heartbeat watchdog: if `slotSubscribe` goes stale, it restarts the SolanaTracker Kit RPC client + resubscribes, and surfaces restarts/errors in the HUD snapshot + `data/warchest/status.json`.
+- `WARCHEST_WS_STALE_MS` (default `20000`) – restart when no slot update for this long.
   - `WARCHEST_WS_RESTART_GAP_MS` (default `30000`) – minimum time between restarts.
   - `WARCHEST_WS_RESTART_MAX_BACKOFF_MS` (default `300000`) – cap exponential backoff after failed restarts.
   - `WARCHEST_WS_UNSUB_TIMEOUT_MS` (default `2500`) – timeout for unsubscribe/close during restarts.
-- HUD shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
+- The HUD worker shows a live “Recent Transactions” feed (default 10) sourced from `data/warchest/tx-events.json`, with status emoji (🟢 confirmed, 🔴 failed, 🟡 processed), side, mint/name, price + 1m/5m/15m/30m deltas when tokenInfo is available. Recent per-wallet logs remain but are capped (default 5).
   - `WARCHEST_HUD_MAX_TX` (default `10`) – max transactions displayed.
   - `WARCHEST_HUD_MAX_LOGS` (default `5`) – max recent logs per wallet.
 - See `.env.sample` for the full set of warchest and proxy defaults.
@@ -224,7 +256,7 @@ The warchest HUD worker (`lib/warchest/workers/warchestService.js`) now leans on
 
 ### Reading `data/warchest/status.json`
 
-- Location: `./data/warchest/status.json` is refreshed every ~5s (daemon or HUD).
+- Location: `./data/warchest/status.json` is refreshed every ~5s by the warchest service.
 - Key fields:
   - `process.rssBytes` / `loadAvg1m` – memory and host pressure; sustained climbs suggest leaks or stuck jobs.
   - `ws.lastSlotAgeMs` – WS freshness; values > `WARCHEST_WS_STALE_MS` should trigger a restart. Healthy is single-digit ms–seconds.
@@ -272,7 +304,7 @@ const risk  = await data.getTokenRiskScores('Mint...');
 | `healthCheck` | lightweight readiness probe used by dossier + CLI smoke tests. |
 | `getUserTokenTrades` | wallet + mint–specific trades, replaces legacy REST integration. |
 
-These price endpoints are now used by the HUD worker to display live USD estimates for SOL and each token in the warchest.
+These price endpoints are now used by the warchest service to populate live USD estimates for SOL and each token in the HUD snapshot.
 
 All helpers share the same error contract: retries on `RateLimitError`, 5xx, or transient network faults, and they rethrow enriched `DataApiError` instances so callers can branch on `.status` / `.code`.
 
@@ -302,65 +334,73 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 ## Commands
 
-> Run `node index.js --help` or append `--help` to any command for flags & examples.
+> Run `node index.js --help` (scoundrel) or `node warlordai.js --help` for flags & examples.
 
 - **Quick reference**
   
-- `research <walletId>` — (deprecated) Alias for `dossier --harvest-only`; harvests wallet trades + chart + per-mint user trades without calling AI.
-- `dossier <walletId>` — Harvest pipeline with richer flags (`--limit`, `--feature-mint-count`, `--resend`, `--harvest-only`).
-- `autopsy` — Interactive wallet+mint campaign review; builds enriched payload and runs the `tradeAutopsy` AI job.
+- `warlordai` — Separate bin: unified WarlordAI CLI for RAG-backed Q&A plus manual dossier/autopsy/devscan/targetscan runs.
+- `warlordai ask` — Q&A with session memory + optional RAG retrieval.
+- `warlordai dossier` — Wallet harvest + optional AI profile build.
+- `warlordai autopsy` — Wallet + mint campaign analysis.
+- `warlordai devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
+- `warlordai targetscan` — Manual mint scan with scoring + HUD event logging.
+- `warlordai swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
+- `warlordai tune` — Interactive strategy tuner (Ink UI) for strategy JSON schemas.
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
-- `ask` — Q&A against a saved dossier profile (plus optional enriched rows).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
-- `devscan` — Fetch DevScan token/developer data and (optionally) summarize with Grok.
 - `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
-- `warchestd <action>` — Launch the HUD follower in the foreground, clean legacy daemon artifacts, or show hub status.
+- `warchestd <action>` — Start the headless warchest service, launch the HUD TUI, or show hub status.
 - `test` — Environment + dependency smoke test.
 
 ## CLI Command Index
 
-- `research` — Deprecated alias for `dossier --harvest-only`.
-- `dossier` — Wallet harvest + optional AI profile build.
-- `autopsy` — Wallet + mint campaign analysis.
+- `warlordai` — Separate bin for WarlordAI ask/session flows and manual analysis pipelines.
+- `warlordai ask` — Q&A with session memory + optional RAG retrieval.
+- `warlordai dossier` — Wallet harvest + optional AI profile build.
+- `warlordai autopsy` — Wallet + mint campaign analysis.
+- `warlordai devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
+- `warlordai targetscan` — Manual mint scan with scoring + HUD event logging.
+- `warlordai swap` — Execute swaps or manage swap config.
+- `warlordai tune-strategy` — Interactive strategy tuner.
 - `tx` — Inspect transaction(s), optionally as swaps.
 - `swap` — Execute swaps or manage swap config.
-- `ask` — Q&A against saved profiles.
 - `addcoin` — Fetch and persist token metadata.
-- `devscan` — Fetch DevScan token/developer data (+ optional Grok summary).
 - `wallet` — Manage the local wallet registry.
-- `warchestd` — Run HUD follower or show status.
+- `warchestd` — Run the warchest service/HUD or show status.
 - `test` — Environment + DB self-check.
+
+### warlordai
+- Separate bin: `warlordai "question"` for one-shot queries or `warlordai --interactive` for follow-ups.
+- Includes manual pipelines: `warlordai dossier`, `warlordai autopsy`, `warlordai devscan`, `warlordai targetscan`.
+- Also hosts `warlordai ask`, `warlordai swap`, and `warlordai tune-strategy`.
+- Uses `WARLORDAI_VECTOR_STORE` for file_search RAG when enabled (`--no-rag` disables).
+- Session memory is stored in BootyBox `sc_asks` via `correlation_id` (pass `--session` to resume).
 
 ## Warchest architecture
 
 - Worker harness + hub live under `lib/warchest/workers/` and `lib/warchest/hubCoordinator.js`, coordinating swap/monitor/HUD jobs via IPC.
-- Hub status + HUD events are written to `data/warchest/status.json` and `data/warchest/tx-events.json`; the HUD follows these files instead of daemon PID files.
+- Hub status is written to `data/warchest/status.json`; HUD snapshots go to `data/warchest/hud-state.json`, and tx events to `data/warchest/tx-events.json`. The HUD follows the snapshot + events instead of daemon PID files.
 - See `docs/warchest_process_notes.md` and `docs/warchest_worker_phased_plan.md` for orchestration details and phased goals.
 
-### research `<walletId>`
-- (Deprecated) Thin wrapper around the dossier pipeline; equivalent to running `dossier <walletId> --harvest-only`.
-- Harvests trades + wallet chart + latest mints (skips SOL/stables), builds technique features, and writes merged/enriched artifacts when `SAVE_*` toggles are set.
-- Does **not** call OpenAI, write profile JSON under `profiles/<alias>.json`, or upsert wallet analyses; use `dossier` without `--harvest-only` for full AI profiles.
-- Options: `--start <iso|epoch>`, `--end <iso|epoch>`, `--name <alias>`, `--feature-mint-count <num>`.
-- Env: `SOLANATRACKER_API_KEY`, optional `FEATURE_MINT_COUNT`, `HARVEST_LIMIT`.
-
-### dossier `<walletId>`
-- Core harvest pipeline for building wallet dossiers; drives both full AI profiles and harvest-only runs.
+### warlordai dossier
+- Core harvest pipeline for building wallet dossiers; runs full AI profile unless `--raw-only` is set.
+  - `--wallet <address>` (required) plus optional `--name <alias>`
+  - `--start <ts>` / `--end <ts>` (epoch ms or ISO)
   - `--limit <num>` cap trades
-  - `--feature-mint-count <num>` override mint sampling
-  - `--resend` re-run AI on latest merged payload without new data pulls
-  - `--track-kol` upsert this wallet into the KOL registry (requires `--name`)
-  - `--harvest-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
+  - `--concurrency <n>` parallel mint fetches
+  - `--include-outcomes` include outcome labels in analysis
+  - `--feature-mint-count <n>` override mint sampling
+  - `--raw-only` harvests trades + chart + per-mint trades and writes artifacts but skips the OpenAI dossier call and DB upsert.
 - Default: writes merged/enriched artifacts (when `SAVE_*` toggles are set), saves dossier JSON to `profiles/<alias>.json`, and persists an `sc_profiles` snapshot.
-- With `--harvest-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
+- With `--raw-only`: writes only the harvest artifacts (no dossier JSON, no profile DB upsert).
 
-### autopsy
+### warlordai autopsy
 - Prompts for HUD wallet (or custom address) + mint, then builds a campaign payload:
   - user token trades, token metadata, price range, PnL, ATH, OHLCV window, derived metrics
-- Runs `tradeAutopsy` AI job, prints graded analysis, and saves `profiles/autopsy-<wallet>-<mint>-<ts>.json`.
-- Raw/parsed/enriched artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
-- Options: `--trade-uuid <uuid>` (DB-driven autopsy), `--wallet <alias|address>`, `--mint <mint>`, `--no-tui` for non-interactive runs.
+- Runs `tradeAutopsy` AI job, prints graded analysis, and writes final artifacts under `data/autopsy/<wallet>/<mint>/final/` when `SAVE_ENRICHED` is enabled.
+- Raw/prompt/response/final artifacts land under `data/autopsy/<wallet>/<mint>/` when enabled.
+- Options: `--trade-uuid <uuid>` (DB-driven autopsy), `--wallet <alias|address>`, `--wallet-label <label>`, `--mint <mint>`.
 
 ### tx `<signature>` [--sig ...] [--swap --wallet <alias|address> --mint <mint>] [--session]
 - Fetches transaction(s) via `rpcMethods.getTransaction`.
@@ -369,6 +409,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `--session` launches an interactive review session after inspection.
 
 ### swap `<mint>` (plus config mode)
+- Available as `scoundrel swap` or `warlordai swap`.
 - Swap execution: requires `--wallet <alias|address>` plus exactly one of `--buy <SOL|%>` or `--sell <amount|%|auto>`.
 - Options: `--dry-run`, `--detach` (return after submit; txMonitor persists in background).
 - Internals: `lib/cli/swap.js` → `lib/warchest/workers/swapWorker.js` → `lib/warchest/workers/txMonitorWorker.js` (Ink progress UI when TTY).
@@ -377,29 +418,33 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Note: Raptor swaps skip `preflight` simulation (not advertised in Raptor docs).
 - Outputs txid/solscan link, token/SOL deltas, fees, price impact, and raw quote when enabled.
 
-### ask
-- Q&A over `profiles/<name>.json`; includes latest `data/dossier/<alias>/enriched/techniqueFeatures-*` when present.
-- Flags: `--name <alias>` (defaults to `default`), `--question <text>` (required).
-- Persists ask/answer to DB (BootyBox recordAsk).
+### warlordai ask
+- Q&A with WarlordAI; supports session memory plus optional vector store retrieval.
+- Flags: `--question <text>` (required), `--session <id>`, `--no-rag`, `--model <name>`, `--timeout <ms>`, `--interactive`.
+- Use `warlordai "question"` for one-shot asks without the subcommand.
 
 ### addcoin `<mint>`
 - Validates Base58 mint, fetches metadata via SolanaTracker Data API, and caches to DB through `tokenInfoService.ensureTokenInfo`.
 - `--force` skips cache; when `SAVE_RAW` is on, writes token info to `data/addcoin/<mint>-<runId>.json`.
 
-### devscan
+### warlordai devscan
 - Queries DevScan for a token mint and/or developer wallet; supports `--mint`, `--dev`, `--devtokens`.
 - Runs Grok summaries by default; use `--raw-only` to skip AI.
 - Env: `DEVSCAN_API_KEY`, `xAI_API_KEY`, optional `DEVSCAN_RESPONSES_MODEL`.
 - Artifacts land under `data/devscan/<segments>/{raw,prompt,response}/` when enabled.
+
+### warlordai targetscan
+- Scans one or more mints via `--mint` or `--mints`, scores buy opportunities unless `--raw-only` is set.
+- Manual runs upsert the mint into `sc_targets` and emit a HUD event with `symbol`, `buyScore`, and `summary`.
+- Options: `--concurrency <n>`, `--send-vector-store` to upload final artifacts.
 
 ### wallet `[add|list|remove|set-color]` [args]
 - Wallet registry backed by BootyBox. `--solo` opens a picker for quick lookups.
 - `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
 
 ### warchestd `<start|stop|restart|hud|status>`
-- HUD follower controller around `lib/warchest/workers/warchestService.js` (foreground only).
-- `start/restart` optionally accept `--wallet alias:pubkey:color` (repeatable) and `--hud` to render the HUD alongside hub status/events.
-- `hud` runs foreground HUD (with selector fallback); `status` reads hub status snapshot and reports health (slot, RPC timings, wallet count).
+- Service/HUD controller around `lib/warchest/workers/warchestService.js` (service) and `lib/warchest/workers/warchestHudWorker.js` (Ink TUI).
+- `start/restart` launch the headless service (accept `--wallet alias:pubkey:color` repeatable). `hud` runs the foreground HUD (selector fallback). `status` reads the health snapshot and reports slot/RPC timings/wallet count.
 
 ### test
 - Verifies `OPENAI_API_KEY` presence, prints core file existence, DB config, and attempts BootyBox ping.
@@ -410,11 +455,11 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ## Data artifacts
 
 - `./profiles/<alias>.json` — final dossier with markdown + operator_summary
-- `./profiles/autopsy-<wallet>-<mint>-<ts>.json` — trade autopsy payload + AI output
+- `./data/autopsy/<wallet>/<mint>/final/autopsy_<label>_final-<ts>.json` — trade autopsy payload + AI output (when `SAVE_ENRICHED` is enabled)
 - `./data/dossier/<alias>/merged/merged-*.json` — full merged payload (used for resend mode)
-- `./data/autopsy/<wallet>/<mint>/{raw,parsed,enriched}/` — campaign artifacts gated by `SAVE_*`
+- `./data/autopsy/<wallet>/<mint>/{raw,prompt,response,final}/` — campaign artifacts gated by `SAVE_*`
 - `./data/devscan/<segments>/{raw,prompt,response}/` — DevScan artifacts and Grok summaries
-- `./data/warchest/{tx-events.json,status.json}` — Hub/HUD event feed + health snapshot
+- `./data/warchest/{hud-state.json,tx-events.json,status.json}` — HUD snapshot, tx event feed, health snapshot
 
 ---
 

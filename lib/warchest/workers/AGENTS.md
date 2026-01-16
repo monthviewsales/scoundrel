@@ -9,4 +9,5 @@ This directory contains warchest worker entrypoints.
 - Always clean up timers and subscriptions you start in a worker.
 - When adding monitors or other long-running workers, persist lightweight status snapshots via the hooks in `lib/warchest/client.js` instead of opening new BootyBox instances.
 - The HUD/daemon worker manages `sc_sessions`: close any stale session found in `data/warchest/status.json`, start a new session only after RPC is ready, update it via the health loop, and end it on every shutdown code path (`SIGINT`, `SIGTERM`, CLI stop, crash handlers).
+- The HUD is now a dedicated worker (`warchestHudWorker.js`) that renders Ink from `data/warchest/hud-state.json` plus `data/warchest/tx-events.json`; the service (`warchestService.js`) writes the HUD snapshot file and stays headless.
 - Hub-facing workers (HUD, monitors, hub coordinator) should listen to `lib/warchest/events.js` followers instead of duplicating subscriptions when a hub is present, and must close any followers/watchers during shutdown.

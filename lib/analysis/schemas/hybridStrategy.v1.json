@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.0.0",
-  "strategyId": "hybrid-v1",
+  "schemaVersion": "1.0.4",
+  "strategyId": "hybrid-v1.04",
   "name": "HYBRID",
   "description": "Momentum-based trade management with partial entries, trailing exits, and a medium holding horizon. Allows brief weakness while enforcing structural risk controls. Sits between FLASH and CAMPAIGN.",
   "defaults": {
@@ -20,10 +20,10 @@
     "requires": ["coin", "pool", "risk"],
     "recommended": ["ohlcv", "indicators", "pnl", "events"],
     "freshnessMs": {
-      "coin": 120000,
-      "pool": 120000,
-      "events": 120000,
-      "risk": 600000
+      "coin": 240000,
+      "pool": 240000,
+      "events": 240000,
+      "risk": 240000
     },
     "warnings": {
       "forbidden": [
@@ -45,9 +45,9 @@
     }
   },
   "discovery": {
-    "enabled": false,
+    "enabled": true,
     "universe": {
-      "sources": ["manual", "watchlist"],
+      "sources": ["manual", "targetlist"],
       "notes": "HYBRID currently assumes manual entry. Automation can reuse FLASH scanners with relaxed confirmation."
     },
     "candidateFilters": [],
@@ -63,7 +63,7 @@
         "id": "gate.data.freshness",
         "type": "warnings_forbidden_absent",
         "params": {
-          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "coin_stale", "pool_stale", "risk_stale"]
+          "forbidden": ["coin_missing", "pool_missing", "risk_missing", "pool_stale", "risk_stale"]
         },
         "severityOnFail": "exit"
       },
@@ -82,7 +82,7 @@
       {
         "id": "gate.holders.top10",
         "type": "number_lte",
-        "params": { "path": "risk.top10Percent", "max": 25 },
+        "params": { "path": "risk.top10Percent", "max": 22 },
         "severityOnFail": "degrade"
       },
       {
@@ -102,12 +102,6 @@
         "type": "number_gte",
         "params": { "path": "pool.liquidity_usd", "min": 20000 },
         "severityOnFail": "exit"
-      },
-      {
-        "id": "gate.liquidity.exitability",
-        "type": "number_gte",
-        "params": { "path": "derived.liquidityToPositionRatio", "min": 15 },
-        "severityOnFail": "trim"
       }
     ]
   },
@@ -121,7 +115,7 @@
       "method": "risk_budget",
       "notes": "Sizing is advisory for manual entries and enforceable post-entry for de-risking.",
       "inputs": {
-        "baseUnitSol": 0.5,
+        "baseUnitSol": 0.05,
         "maxNotionalSol": 4.0,
         "riskPerTradePct": 1.0,
         "stopDistanceModel": {
@@ -229,9 +223,15 @@
       "mustBePaidFor": true
     },
     "trailingStop": {
-      "enabledAfterFirstProfitTake": true,
-      "trailPct": 10,
-      "minProfitToEnablePct": 12
+      "notes": "Early live testing: arm trailing at +10% and exit on 4% drawdown from high-water. Decoupled from profit-takes.",
+      "enabledAfterFirstProfitTake": false,
+      "minProfitToEnablePct": 10,
+      "activationPct": 10,
+      "trailPct": 4,
+      "pollMs": 5000,
+      "breachConfirmations": 2,
+      "actionDebounceMs": 30000,
+      "hardStopLossPct": 15
     },
     "timeStops": [
       {
@@ -277,7 +277,7 @@
   "portfolio": {
     "notes": "Account-level governors.",
     "limits": {
-      "maxOpenPositions": 10,
+      "maxOpenPositions": 3,
       "maxNotionalSolPerPosition": 4.0
     },
     "governors": [

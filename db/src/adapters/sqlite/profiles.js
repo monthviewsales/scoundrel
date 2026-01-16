@@ -243,6 +243,51 @@ function recordAsk({
   });
 }
 
+/**
+ * List recent asks for a correlation/session id.
+ *
+ * @param {{ correlationId?: string, limit?: number }} opts
+ * @returns {Array<{ askId: string, correlationId: string|null, question: string, answer: string, bullets: string[], actions: string[], createdAt: number }>}
+ */
+function listAsksByCorrelationId(opts = {}) {
+  const correlationId = opts.correlationId ? String(opts.correlationId) : null;
+  if (!correlationId) return [];
+  const limit = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : 20;
+  const safeLimit = Math.max(1, Math.trunc(limit));
+
+  const rows = db
+    .prepare(
+      `SELECT ask_id, correlation_id, question, answer, bullets, actions, created_at
+       FROM sc_asks
+       WHERE correlation_id = ?
+       ORDER BY created_at DESC
+       LIMIT ?`
+    )
+    .all(correlationId, safeLimit);
+
+  const safeParseArray = (value) => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  return rows
+    .map((row) => ({
+      askId: row.ask_id,
+      correlationId: row.correlation_id,
+      question: row.question,
+      answer: row.answer,
+      bullets: safeParseArray(row.bullets),
+      actions: safeParseArray(row.actions),
+      createdAt: row.created_at,
+    }))
+    .reverse();
+}
+
 function recordTune({
   tuneId,
   correlationId,
@@ -428,6 +473,7 @@ module.exports = {
   getWalletAnalysisById,
   listTradeAutopsiesByWallet,
   listWalletAnalysesByWallet,
+  listAsksByCorrelationId,
   persistWalletProfileArtifacts,
   recordAsk,
   recordJobRun,

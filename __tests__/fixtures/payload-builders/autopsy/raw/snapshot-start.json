@@ -1,0 +1,464 @@
+{
+  "request": {
+    "mint": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+    "timestamp": 1767840823
+  },
+  "response": {
+    "token": {
+      "name": "Mogged",
+      "symbol": "Mog",
+      "mint": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+      "decimals": 6,
+      "uri": "https://ipfs.io/ipfs/bafkreido7zzmtggvl63trlv3wfrgo2i3jogsrptku3rlvebdwqzhv42tpu",
+      "hasFileMetaData": true,
+      "description": "",
+      "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreihju6rkind2kqmke3yb2ehypptuxygzppdmnjzmmxunwjniegpxci",
+      "showName": true,
+      "createdOn": "https://pump.fun",
+      "twitter": "https://x.com/i/communities/2009067389271593270",
+      "website": "https://www.tiktok.com/tag/mog",
+      "strictSocials": {
+        "twitter": "https://x.com/i/communities/2009067389271593270",
+        "tiktok": "https://www.tiktok.com/tag/mog"
+      },
+      "creation": {
+        "creator": "HBg8au7Wn3kYMcTFhx6gxDcxCiF8AqTkFhm1E34J8Yno",
+        "created_tx": "2Mnbf7JqDETvkmKaNzbvk9avMSh7e5GUifstqBgtVLRyDWanWktC5JMGyuy8PBk5Vr21DRZVKZFjvxH7bwynGZpv",
+        "created_time": 1767834200
+      }
+    },
+    "pools": [
+      {
+        "poolId": "HG2Bw2CAeZ6WvoF6whkR1VP8W4sQ2xSBem8MWGA415P9",
+        "liquidity": {
+          "quote": 37.153012525,
+          "usd": 10094.284031226678
+        },
+        "price": {
+          "quote": 7.133959736448129e-8,
+          "usd": 0.000009691302394198306
+        },
+        "tokenSupply": 991386700.610557,
+        "lpBurn": 100,
+        "tokenAddress": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+        "marketCap": {
+          "quote": 70.72512805405869,
+          "usd": 9607.82830520345
+        },
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "market": "pumpfun-amm",
+        "pumpfun-amm": {
+          "isMayhemMode": false,
+          "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        "lastUpdated": 1768005924620,
+        "createdAt": 1767835326252,
+        "deployer": "5FLr8vQ9jMEvWQ47Fs2giJ7NvthwNubR3jHsD896mMdx",
+        "txns": {
+          "buys": 7507,
+          "sells": 6176,
+          "total": 13683,
+          "volume": 793018,
+          "volume24h": 6307
+        }
+      },
+      {
+        "poolId": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+        "liquidity": {
+          "quote": 0,
+          "usd": 0
+        },
+        "price": {
+          "quote": null,
+          "usd": null
+        },
+        "tokenSupply": 1000000000,
+        "lpBurn": 100,
+        "tokenAddress": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+        "marketCap": {
+          "quote": 0,
+          "usd": 0
+        },
+        "decimals": 6,
+        "security": {
+          "freezeAuthority": null,
+          "mintAuthority": null
+        },
+        "quoteToken": "So11111111111111111111111111111111111111112",
+        "market": "pumpfun",
+        "deployer": "HBg8au7Wn3kYMcTFhx6gxDcxCiF8AqTkFhm1E34J8Yno",
+        "pumpfun": {
+          "isMayhemMode": false,
+          "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        "curvePercentage": 100,
+        "curve": "51S2cgtvXWHaw89tii2WeLdezH4LRx8j5i9sw7barQsF",
+        "lastUpdated": 1767835439529,
+        "createdAt": 1767834199945,
+        "txns": {
+          "buys": 1508,
+          "sells": 849,
+          "total": 2357,
+          "volume": 121891,
+          "volume24h": 0
+        }
+      }
+    ],
+    "priceAt": {
+      "usd": 0.00012050643029394284,
+      "time": 1767840823
+    },
+    "raw": {
+      "price": {
+        "timestamp": 1767840823,
+        "price": 0.00012050643029394284,
+        "closest_timestamp": 1767840822743,
+        "closest_timestamp_unix": 1767840823,
+        "pool": "HG2Bw2CAeZ6WvoF6whkR1VP8W4sQ2xSBem8MWGA415P9"
+      },
+      "info": {
+        "token": {
+          "name": "Mogged",
+          "symbol": "Mog",
+          "mint": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+          "decimals": 6,
+          "uri": "https://ipfs.io/ipfs/bafkreido7zzmtggvl63trlv3wfrgo2i3jogsrptku3rlvebdwqzhv42tpu",
+          "hasFileMetaData": true,
+          "description": "",
+          "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreihju6rkind2kqmke3yb2ehypptuxygzppdmnjzmmxunwjniegpxci",
+          "showName": true,
+          "createdOn": "https://pump.fun",
+          "twitter": "https://x.com/i/communities/2009067389271593270",
+          "website": "https://www.tiktok.com/tag/mog",
+          "strictSocials": {
+            "twitter": "https://x.com/i/communities/2009067389271593270",
+            "tiktok": "https://www.tiktok.com/tag/mog"
+          },
+          "creation": {
+            "creator": "HBg8au7Wn3kYMcTFhx6gxDcxCiF8AqTkFhm1E34J8Yno",
+            "created_tx": "2Mnbf7JqDETvkmKaNzbvk9avMSh7e5GUifstqBgtVLRyDWanWktC5JMGyuy8PBk5Vr21DRZVKZFjvxH7bwynGZpv",
+            "created_time": 1767834200
+          }
+        },
+        "pools": [
+          {
+            "poolId": "HG2Bw2CAeZ6WvoF6whkR1VP8W4sQ2xSBem8MWGA415P9",
+            "liquidity": {
+              "quote": 37.153012525,
+              "usd": 10094.284031226678
+            },
+            "price": {
+              "quote": 7.133959736448129e-8,
+              "usd": 0.000009691302394198306
+            },
+            "tokenSupply": 991386700.610557,
+            "lpBurn": 100,
+            "tokenAddress": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+            "marketCap": {
+              "quote": 70.72512805405869,
+              "usd": 9607.82830520345
+            },
+            "decimals": 6,
+            "security": {
+              "freezeAuthority": null,
+              "mintAuthority": null
+            },
+            "quoteToken": "So11111111111111111111111111111111111111112",
+            "market": "pumpfun-amm",
+            "pumpfun-amm": {
+              "isMayhemMode": false,
+              "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+            },
+            "lastUpdated": 1768005924620,
+            "createdAt": 1767835326252,
+            "deployer": "5FLr8vQ9jMEvWQ47Fs2giJ7NvthwNubR3jHsD896mMdx",
+            "txns": {
+              "buys": 7507,
+              "sells": 6176,
+              "total": 13683,
+              "volume": 793018,
+              "volume24h": 6307
+            }
+          },
+          {
+            "poolId": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+            "liquidity": {
+              "quote": 0,
+              "usd": 0
+            },
+            "price": {
+              "quote": null,
+              "usd": null
+            },
+            "tokenSupply": 1000000000,
+            "lpBurn": 100,
+            "tokenAddress": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+            "marketCap": {
+              "quote": 0,
+              "usd": 0
+            },
+            "decimals": 6,
+            "security": {
+              "freezeAuthority": null,
+              "mintAuthority": null
+            },
+            "quoteToken": "So11111111111111111111111111111111111111112",
+            "market": "pumpfun",
+            "deployer": "HBg8au7Wn3kYMcTFhx6gxDcxCiF8AqTkFhm1E34J8Yno",
+            "pumpfun": {
+              "isMayhemMode": false,
+              "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+            },
+            "curvePercentage": 100,
+            "curve": "51S2cgtvXWHaw89tii2WeLdezH4LRx8j5i9sw7barQsF",
+            "lastUpdated": 1767835439529,
+            "createdAt": 1767834199945,
+            "txns": {
+              "buys": 1508,
+              "sells": 849,
+              "total": 2357,
+              "volume": 121891,
+              "volume24h": 0
+            }
+          }
+        ],
+        "events": {
+          "1m": {
+            "priceChangePercentage": 0
+          },
+          "5m": {
+            "priceChangePercentage": 0
+          },
+          "15m": {
+            "priceChangePercentage": -0.93337441313368
+          },
+          "30m": {
+            "priceChangePercentage": -0.99843626132687
+          },
+          "1h": {
+            "priceChangePercentage": -1.1053190830421
+          },
+          "2h": {
+            "priceChangePercentage": -1.1091215830196
+          },
+          "3h": {
+            "priceChangePercentage": -5.7641480330347
+          },
+          "4h": {
+            "priceChangePercentage": -3.1471229453444
+          },
+          "5h": {
+            "priceChangePercentage": 13.734719336261
+          },
+          "6h": {
+            "priceChangePercentage": 10.951729910899
+          },
+          "12h": {
+            "priceChangePercentage": 50.781271690655
+          },
+          "24h": {
+            "priceChangePercentage": -20.069440296341
+          }
+        },
+        "risk": {
+          "snipers": {
+            "count": 28,
+            "totalBalance": 0.000002,
+            "totalPercentage": 0,
+            "wallets": [
+              {
+                "wallet": "2ezv4U5HmPpkt2xLsKnw1FyyGmjFBeW7c166p99Hw2xB",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "kqWtSdMrbq4rRYTh92UE254EbhZ8pVqQUYiEG7CeQHo",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "61RECRnme7nCw8d4pNoDaDuZ5PStYyTPmjUkznnsu33Y",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "EJmgYzP68BQhCELqDPXwDdjVztM32aqXWt4NWEuLyyuG",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "D3PXVgujmryhkRtxaPZecADgyFuaFFkwDgZcW43eB17n",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "9pUgbXaDjqDcf3t8HWcfMyTKcUTHaKZCPB2N9QU2aFE7",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "47C7tMnawGvP3WSUQwf9P41giUCe11WUNC7B28xzhzVq",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "FZ9xGUfwMKDCuoRtuLVkXCa3iQSd3ETaJUJLgV5VHyoJ",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "8bD6e45F83Bw1YrhSpzDjyd2oSh3RFCD64FUhX1xRxJz",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "4mPsKMnqiAY5DJ1b5NvJZHbEMkiiVMAv6zaDZaTPtYNT",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "AowTUid5daQr9EqwazF7hDm3jBTQSisv6LaHGhQL8k92",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "2fg5QD1eD7rzNNCsvnhmXFm5hqNgwTTG8p7kQ6f3rx6f",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "DH2ULYyrySyxaJDuTnzMgMxGqyPiEKBuLtBan6AFnxVF",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "ATQpgXGrgzFzfJGaNV81zotqzuhL8yngtJxUTSMLYBX6",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "38p1zcAWkFYqejsUo1ZLnuMWviUW4wZMqzhxkB94iBmg",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "7NAd2EpYGGeFofpyvgehSXhH5vg6Ry6VRMW2Y6jiqCu1",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "Frr5s2n1yD9R5GqtkW2AHcUXLVgAiaaE6yeuJUM2eBqn",
+                "balance": 0.000002,
+                "percentage": 0
+              },
+              {
+                "wallet": "FxN3VZ4BosL5urG2yoeQ156JSdmavm9K5fdLxjkPmaMR",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "nya666pQkP3PzWxi7JngU3rRMHuc7zbLK8c8wxQ4qpT",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "HBg8au7Wn3kYMcTFhx6gxDcxCiF8AqTkFhm1E34J8Yno",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "GhXtCwfznbLYpLKhtuDqbN7ByTin3GiJCFmvVP3G7HQb",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "FWVsoKB34ope9LezXvwMaHSXLi7jK4tko44d9mYZpyym",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "9iCQ879GYy5uwxUc3xdYdd7VvpwBviWQztz15iiMNPFw",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "H1Gpg4x7o7A2WHaBSEdnEZeJsAAPXKhqHjdfWoSksvYQ",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "AMME4Vko9yPjGicYTm93LZeN8gDdZuXUtvYzM6XRpGUf",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "G28WrqYadbhUaA8dZpgA7zk7TuM2qftqB51tiRnnGVRk",
+                "balance": 0,
+                "percentage": 0
+              },
+              {
+                "wallet": "FwFxVQXEFacPK5fUe7b4YauQzf38ShrhA2L7QSnpUrxB",
+                "balance": 0,
+                "percentage": 0
+              }
+            ]
+          },
+          "insiders": {
+            "count": 0,
+            "totalBalance": 0,
+            "totalPercentage": 0,
+            "wallets": []
+          },
+          "top10": 19.8343,
+          "dev": {
+            "percentage": 0,
+            "amount": 0
+          },
+          "fees": {
+            "0slot": 1.01986579,
+            "network": 2.332239763,
+            "helius-sender": 0.095017673,
+            "jito": 0.885856835,
+            "maestro": 0.122458989,
+            "padre": 4.888408319,
+            "bullx": 0.337657577,
+            "trojan": 1.103199698,
+            "photon": 1.496919491,
+            "nextblock": 0.207968901,
+            "soltradingbot": 0.039261819,
+            "bloom": 0.274371447,
+            "axiom": 0.016,
+            "totalTrading": 8.278277339999999,
+            "totalTips": 4.540948962000001,
+            "total": 12.819226302
+          },
+          "rugged": false,
+          "risks": [
+            {
+              "name": "Top 10 Holders",
+              "description": "Top 10 holders own more than 19.83% of the total supply.",
+              "value": "19.83%",
+              "level": "danger",
+              "score": 5000
+            }
+          ],
+          "score": 4
+        },
+        "buys": 1,
+        "sells": 1,
+        "txns": 2,
+        "holders": 441
+      }
+    }
+  }
+}

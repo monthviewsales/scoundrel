@@ -1,0 +1,203 @@
+{
+  "trades": [
+    {
+      "tx": "4f1ezcdRFB8hvmHRbGgbRBqEjUP2B1UWPLsFKhquHJd5tmkBWA8cHi91KKAYf1tJ3tRugeHZpF6G1DjQHseGtct4",
+      "amount": 11948467.063069,
+      "priceUsd": 0.000051566825382821586,
+      "volume": 616.1445146336742,
+      "volumeSol": 4.417827483,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767976897773,
+      "program": "pumpfun-amm",
+      "pools": [
+        "GrJW5HrbHLeQpLwBjmCoWiwQ8qehZFWDkgrVHFMTbUzB"
+      ]
+    },
+    {
+      "tx": "236ZgxNKT3duV9dupXxzSszvsC8ik5bKLL3MFWzPqZmYz7YzDuNgBswkJcvb4RRYD2tGZ27nfs4UxP867matAw1w",
+      "amount": 585710.847235,
+      "priceUsd": 0.00004629459014908988,
+      "volume": 27.115243618620518,
+      "volumeSol": 0.1975,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767969183928,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "58BHoCHPnbpHeJK6EHJuyRVkUifmU7ptqDwTG42p2RKPs3HRkNsNXtE6jKbekBUPA1sNYyTciF5sHrFLYA9j6cTP",
+      "amount": 547059.977784,
+      "priceUsd": 0.000049598679559136226,
+      "volume": 27.133452537736797,
+      "volumeSol": 0.1975,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767969175667,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "rwqBTabg9gPa3vwSiTRBcQrDUfnjsirZhUTBoNHCCY92Rd6AFgcyHK63aPHyvMUTZti9Ux26pZGGvBBx21XJrXL",
+      "amount": 859003.076796,
+      "priceUsd": 0.00003164189098891037,
+      "volume": 27.180481715117637,
+      "volumeSol": 0.1975,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767968651903,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "wT2JauL4UxZWhTHptuGSWVyYgSkCf9Q16yw6o3nbKDU9sPgxe7M53ZLfC7en1ZKdqhC15u6ADUdgwGpymaN5dQj",
+      "amount": 4553139.80985,
+      "priceUsd": 0.000020849441479635963,
+      "volume": 94.93042201406838,
+      "volumeSol": 0.69125,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767968158813,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "3sggB5JZP4VZbwu7LvjncncVddKgoLmDmo5aFhNYgNMFCWhVoRi9FV6wTb8zXumDTTU8Ufr8hECRa6U3FQDPEjGH",
+      "amount": 4022679.915996,
+      "priceUsd": 0.00002359761084539541,
+      "volume": 94.9256352132615,
+      "volumeSol": 0.69125,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767967947637,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "ps9pBPFJaDNcwUzPiDkrhUKbS6Ge2orhv4XEo2wzxR2tVe8txfdFQYbocJbt542eUHfcXktggYuEs3PWobtEUpe",
+      "amount": 3115810.960788,
+      "priceUsd": 0.00003076873622145534,
+      "volume": 95.8695655684053,
+      "volumeSol": 0.69125,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767966923728,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "4587uLV4MEqnc4ga18LDML9i5rJCVhNdHkawZ6Dyjb9CxFTu2qRG8SHXdhNFppTjhqkNGBuXS1pdv9HMkSceZdY5",
+      "amount": 7813212.393445,
+      "priceUsd": 0.000026194478492104236,
+      "volume": 204.66302399433732,
+      "volumeSol": 1.48125,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767964806825,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "2RAq1K5hksvdpvwj1a3Z2kFiyc6hzqQ3LmpdhNwtjKtFvPsy2vEEB3uBDvVH1vhgHhGbZ9eMbK2SLfhnTc2v3C7g",
+      "amount": 28388423.560388,
+      "priceUsd": 0.000008348375566228696,
+      "volume": 236.9972216152942,
+      "volumeSol": 1.712913469,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767916943575,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "2xz3yaXQpcwsE8A1PYsVsyecVizEHDyoAj3fyqSDJ418kMfrqGCqvBgnFMdSaQyJhPPArDvvtbWjR5XxDokaf18K",
+      "amount": 4055489.080055,
+      "priceUsd": 0.000009602828331053794,
+      "volume": 38.94416543423144,
+      "volumeSol": 0.280498043,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767915685681,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "3sv2vchYELd5jDMetSJfN5ehDDuFbCv7tBe2eZ2yg2kDfSGiqBzyBxmS6E7r6ZuxE3kUisRK3Ms9wXNyqKcxy1RC",
+      "amount": 4055489.080055,
+      "priceUsd": 0.000009718025861640241,
+      "volume": 39.41134776157408,
+      "volumeSol": 0.283862956,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767915685609,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "4bsqYqCHpgEbc22MaVFrKiubzWgQadzNtJQ4WB22gw5dQi2o4NeYAWEv3cYeeQ8SW7hAeLHHF6oDgCVTZD8t3uXF",
+      "amount": 4055489.080055,
+      "priceUsd": 0.000009393232798813856,
+      "volume": 38.09415304200406,
+      "volumeSol": 0.27437577,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767915685458,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "64CvQMdddaoFq15bikxSGmkdgYUxJSxBgPdooaJiZgRVj1MmZymmMGvQR8qvDvhtwYHFW8WB9CZmfRmwa2hMDSCb",
+      "amount": 40554890.800553,
+      "priceUsd": 0.000008113676267108861,
+      "volume": 329.04925500363834,
+      "volumeSol": 2.37,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767915683297,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    },
+    {
+      "tx": "2Xu3hjPEDJoM7bYxLfymmNeGj8YDwPnJCsDLqcpUousFfEc1UKB4XyX47y2Y7sFNPsLECrWfi9F5e2wPvPirp1Xn",
+      "amount": 29828430.004554,
+      "priceUsd": 0.000016203561707554998,
+      "volume": 483.32680621827575,
+      "volumeSol": 3.45625,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767910526971,
+      "program": "pump",
+      "pools": [
+        "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump"
+      ]
+    }
+  ],
+  "nextCursor": null,
+  "hasNextPage": false,
+  "sortDirection": "DESC"
+}

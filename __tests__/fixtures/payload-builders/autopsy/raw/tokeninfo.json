@@ -1,0 +1,26 @@
+{
+  "tokenInfo": {
+    "mint": "J5y4mRPHimVz13tT5Ty6efvq6Nn7oBdTpNQLFusPpump",
+    "symbol": "Mog",
+    "name": "Mogged",
+    "decimals": 6,
+    "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafkreihju6rkind2kqmke3yb2ehypptuxygzppdmnjzmmxunwjniegpxci",
+    "uri": "https://ipfs.io/ipfs/bafkreido7zzmtggvl63trlv3wfrgo2i3jogsrptku3rlvebdwqzhv42tpu",
+    "marketCap": 9327.697521529719,
+    "status": "complete",
+    "lastUpdated": 1767997652109,
+    "lastEvaluated": 0,
+    "price": 6.937790819722907e-8,
+    "liquidity": 36.638544666,
+    "buyScore": 0,
+    "priceSol": 6.937790819722907e-8,
+    "priceUsd": 0.000009408737797052503,
+    "liquiditySol": 36.638544666,
+    "liquidityUsd": 9937.528212813964,
+    "marketCapSol": 68.78033550291303,
+    "marketCapUsd": 9327.697521529719,
+    "tokenCreatedAt": 1767834200000,
+    "firstSeenAt": 1767997652109,
+    "strictSocials": "{\"twitter\":\"https://x.com/i/communities/2009067389271593270\",\"tiktok\":\"https://www.tiktok.com/tag/mog\"}"
+  }
+}

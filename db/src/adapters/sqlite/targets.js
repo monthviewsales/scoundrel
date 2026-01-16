@@ -15,6 +15,9 @@ const { db } = require('./context');
  * @param {string} [target.source]
  * @param {string} [target.tags]
  * @param {string} [target.notes]
+ * @param {string} [target.vectorStoreId]
+ * @param {string} [target.vectorStoreFileId]
+ * @param {number} [target.vectorStoreUpdatedAt]
  * @param {number} [target.confidence]
  * @param {number} [target.score]
  * @param {boolean} [target.mintVerified]
@@ -39,6 +42,11 @@ function addUpdateTarget(target) {
     source: target.source || null,
     tags: target.tags || null,
     notes: target.notes || null,
+    vector_store_id: target.vectorStoreId || null,
+    vector_store_file_id: target.vectorStoreFileId || null,
+    vector_store_updated_at: Number.isFinite(target.vectorStoreUpdatedAt)
+      ? target.vectorStoreUpdatedAt
+      : ((target.vectorStoreFileId || target.vectorStoreId) ? now : null),
     confidence: Number.isFinite(target.confidence) ? target.confidence : null,
     score: Number.isFinite(target.score) ? target.score : null,
     mint_verified: target.mintVerified ? 1 : 0,
@@ -49,10 +57,12 @@ function addUpdateTarget(target) {
 
   db.prepare(
     `INSERT INTO sc_targets (
-       mint, symbol, name, status, strategy, strategy_id, source, tags, notes, confidence, score,
+       mint, symbol, name, status, strategy, strategy_id, source, tags, notes,
+       vector_store_id, vector_store_file_id, vector_store_updated_at, confidence, score,
        mint_verified, created_at, updated_at, last_checked_at
      ) VALUES (
-       @mint, @symbol, @name, @status, @strategy, @strategy_id, @source, @tags, @notes, @confidence, @score,
+       @mint, @symbol, @name, @status, @strategy, @strategy_id, @source, @tags, @notes,
+       @vector_store_id, @vector_store_file_id, @vector_store_updated_at, @confidence, @score,
        @mint_verified, @created_at, @updated_at, @last_checked_at
      )
      ON CONFLICT(mint) DO UPDATE SET
@@ -64,6 +74,9 @@ function addUpdateTarget(target) {
        source = excluded.source,
        tags = excluded.tags,
        notes = excluded.notes,
+       vector_store_id = excluded.vector_store_id,
+       vector_store_file_id = excluded.vector_store_file_id,
+       vector_store_updated_at = excluded.vector_store_updated_at,
        confidence = excluded.confidence,
        score = excluded.score,
        mint_verified = excluded.mint_verified,
@@ -99,6 +112,173 @@ function removeTarget(mint) {
 }
 
 /**
+ * Update vector store tracking fields for a target.
+ *
+ * @param {string} mint
+ * @param {{ vectorStoreId?: string|null, vectorStoreFileId?: string|null, vectorStoreUpdatedAt?: number }} [updates]
+ * @returns {object|null}
+ */
+function updateTargetVectorStore(mint, updates = {}) {
+  if (!mint) {
+    throw new Error('updateTargetVectorStore: mint is required');
+  }
+  const now = Date.now();
+  const vectorStoreUpdatedAt = Number.isFinite(updates.vectorStoreUpdatedAt)
+    ? updates.vectorStoreUpdatedAt
+    : now;
+
+  const info = db.prepare(
+    `UPDATE sc_targets
+     SET vector_store_id = ?,
+         vector_store_file_id = ?,
+         vector_store_updated_at = ?,
+         updated_at = ?
+     WHERE mint = ?`
+  ).run(
+    updates.vectorStoreId || null,
+    updates.vectorStoreFileId || null,
+    vectorStoreUpdatedAt,
+    now,
+    mint,
+  );
+
+  if (info.changes === 0) {
+    return addUpdateTarget({
+      mint,
+      status: 'new',
+      vectorStoreId: updates.vectorStoreId || null,
+      vectorStoreFileId: updates.vectorStoreFileId || null,
+      vectorStoreUpdatedAt,
+      updatedAt: now,
+      lastCheckedAt: now,
+    });
+  }
+
+  return getTarget(mint);
+}
+
+function buildStatusPriorityCase() {
+  return `CASE status
+    WHEN 'strong_buy' THEN 1
+    WHEN 'buy' THEN 2
+    WHEN 'watch' THEN 3
+    WHEN 'watching' THEN 4
+    WHEN 'approved' THEN 5
+    WHEN 'new' THEN 6
+    WHEN 'archived' THEN 7
+    WHEN 'rejected' THEN 8
+    WHEN 'avoid' THEN 9
+    ELSE 99
+  END`;
+}
+
+/**
+ * List targets ordered by rating/status priority, score, and confidence.
+ *
+ * @param {{ statuses?: string[], minScore?: number, limit?: number }} [options]
+ * @returns {object[]}
+ */
+function listTargetsByPriority(options = {}) {
+  const statuses = Array.isArray(options.statuses) && options.statuses.length
+    ? options.statuses
+    : ['strong_buy', 'buy', 'watch', 'watching', 'approved', 'new'];
+  const minScore = Number.isFinite(options.minScore) ? Number(options.minScore) : null;
+  const limit = Number.isFinite(options.limit) ? Number(options.limit) : null;
+
+  const conditions = [];
+  const params = [];
+
+  if (statuses.length) {
+    const placeholders = statuses.map(() => '?').join(', ');
+    conditions.push(`status IN (${placeholders})`);
+    params.push(...statuses);
+  }
+  if (minScore != null) {
+    conditions.push('COALESCE(score, -1) >= ?');
+    params.push(minScore);
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderBy = `
+    ORDER BY ${buildStatusPriorityCase()} ASC,
+             COALESCE(score, -1) DESC,
+             COALESCE(confidence, -1) DESC,
+             COALESCE(updated_at, 0) DESC`;
+  const limitClause = limit != null ? 'LIMIT ?' : '';
+
+  if (limit != null) params.push(limit);
+
+  const rows = db.prepare(
+    `SELECT *
+     FROM sc_targets
+     ${whereClause}
+     ${orderBy}
+     ${limitClause}`
+  ).all(params);
+
+  return rows || [];
+}
+
+/**
+ * List targets that should be rescanned (oldest first).
+ *
+ * @param {{ statuses?: string[], limit?: number }} [options]
+ * @returns {object[]}
+ */
+function listTargetsForScan(options = {}) {
+  const statuses = Array.isArray(options.statuses) && options.statuses.length
+    ? options.statuses
+    : ['strong_buy', 'buy', 'watch', 'watching', 'approved', 'new'];
+  const limit = Number.isFinite(options.limit) ? Number(options.limit) : null;
+  const placeholders = statuses.map(() => '?').join(', ');
+  const limitClause = limit != null ? 'LIMIT ?' : '';
+  const params = [...statuses];
+  if (limit != null) params.push(limit);
+
+  const rows = db.prepare(
+    `SELECT *
+     FROM sc_targets
+     WHERE status IN (${placeholders})
+     ORDER BY COALESCE(last_checked_at, 0) ASC,
+              COALESCE(updated_at, 0) DESC
+     ${limitClause}`
+  ).all(params);
+
+  return rows || [];
+}
+
+function resolvePruneCutoffs(options = {}) {
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const staleMs = Number.isFinite(options.staleMs) ? options.staleMs : 2 * 60 * 60 * 1000;
+  const archivedTtlMs = Number.isFinite(options.archivedTtlMs) ? options.archivedTtlMs : 7 * 24 * 60 * 60 * 1000;
+
+  return {
+    staleCutoff: now - staleMs,
+    archivedCutoff: now - archivedTtlMs,
+  };
+}
+
+/**
+ * List stale targets by status + age without deleting them.
+ *
+ * @param {{ now?: number, staleMs?: number, archivedTtlMs?: number }} [options]
+ * @returns {object[]}
+ */
+function listPrunableTargets(options = {}) {
+  const { staleCutoff, archivedCutoff } = resolvePruneCutoffs(options);
+  return db.prepare(
+    `SELECT * FROM sc_targets
+     WHERE status IN ('rejected','avoid')
+        OR (status = 'archived' AND (last_checked_at IS NULL OR last_checked_at < @archivedCutoff))
+        OR (status NOT IN ('approved','strong_buy','buy','archived','rejected','avoid')
+          AND (last_checked_at IS NULL OR last_checked_at < @staleCutoff))`
+  ).all({
+    staleCutoff,
+    archivedCutoff,
+  });
+}
+
+/**
  * Prune stale targets by status + age.
  *
  * Rules:
@@ -111,18 +291,14 @@ function removeTarget(mint) {
  * @returns {number} number of rows removed
  */
 function pruneTargets(options = {}) {
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
-  const staleMs = Number.isFinite(options.staleMs) ? options.staleMs : 2 * 60 * 60 * 1000;
-  const archivedTtlMs = Number.isFinite(options.archivedTtlMs) ? options.archivedTtlMs : 7 * 24 * 60 * 60 * 1000;
-
-  const staleCutoff = now - staleMs;
-  const archivedCutoff = now - archivedTtlMs;
+  const { staleCutoff, archivedCutoff } = resolvePruneCutoffs(options);
 
   const info = db.prepare(
     `DELETE FROM sc_targets
-     WHERE status = 'rejected'
+     WHERE status IN ('rejected','avoid')
         OR (status = 'archived' AND (last_checked_at IS NULL OR last_checked_at < @archivedCutoff))
-        OR (status NOT IN ('approved','archived','rejected') AND (last_checked_at IS NULL OR last_checked_at < @staleCutoff))`
+        OR (status NOT IN ('approved','strong_buy','buy','archived','rejected','avoid')
+          AND (last_checked_at IS NULL OR last_checked_at < @staleCutoff))`
   ).run({
     staleCutoff,
     archivedCutoff,
@@ -135,5 +311,9 @@ module.exports = {
   addUpdateTarget,
   getTarget,
   removeTarget,
+  updateTargetVectorStore,
+  listTargetsByPriority,
+  listTargetsForScan,
+  listPrunableTargets,
   pruneTargets,
 };

@@ -13,6 +13,10 @@ Agents **must** read and follow this document before making any changes.
 - If you work inside a directory that contains its own `AGENTS.md`, follow that file too; **nearest file wins** when rules conflict.
 - Local rules extend or override these root rules; do not ignore them.
 
+## Shared Patterns
+
+- For creating new CLI analysis flows (dossier/autopsy/devscan pattern), follow `docs/analysis-flow-factory.md`.
+
 ### Known locations
 
 - `ai/AGENTS.md`
@@ -212,3 +216,4 @@ Failure to do so will leave open WS handles and prevent Scoundrel's daemon from 
 
 - Long-running warchest workers must keep `sc_sessions` accurate: close stale records using `data/warchest/status.json`, start a new session only after the RPC client is healthy, heartbeat via `BootyBox.updateSessionStats`, and end the session on every shutdown path.
 - `data/warchest/status.json` should now include `health.session` (session id, slots, block times) so CLI commands and crash recovery logic can read it without poking the database directly.
+- The HUD TUI now runs in a separate worker (`lib/warchest/workers/warchestHudWorker.js`) and consumes `data/warchest/hud-state.json` plus `data/warchest/tx-events.json`. The service (`lib/warchest/workers/warchestService.js`) is responsible for writing the HUD snapshot file.

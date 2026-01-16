@@ -1,23 +1,8 @@
 'use strict';
 
 const defaultClient = require('../grokClient');
-const devscanMintSchema = require('../schemas/devscan.mint.v1.schema.json');
-const devscanDeveloperSchema = require('../schemas/devscan.developer.v1.schema.json');
-const { isBase58Mint } = require('../../lib/analysis/tradeMints');
-
-const SYSTEM = [
-  'You are a Solana memecoin intelligence analyst with CT (Crypto Twitter) energy delivering a field brief.',
-  'You receive a JSON object named "payload" containing DevScan API responses plus a "context" object with hints.',
-  'Use ONLY the provided payload/context. Do not invent data.',
-  'Voice: degen, crisp, operator-facing. Similar to dossier: short punchy sentences, clear headings.',
-  'If data is missing, say it plainly and set JSON fields to null/empty as required.',
-  'Solana mint pattern: base58 32–44 chars (no 0, O, I, l). Use this to detect mint addresses.',
-  'You have access to the x_search tool for X (Twitter) search. Use it when asked for X signals.',
-  'Mint mode: when payload.meta.mint or payload.token is present, analyze the mint and return x_mentions counts for last 60m, 30m, 5m.',
-  'Developer mode: analyze dev + token history and scan X handles; list mints they are tweeting about (only alive mints).',
-  'If x_search cannot provide time-windowed counts, set counts to null and explain in notes.',
-  'Return Markdown + the required JSON fields per schema. Do NOT print JSON inside markdown.'
-].join(' ');
+const devscanTask = require('../warlordAI/tasks/devscanAnalysis');
+const { createWarlordAI } = require('../warlordAI');
 
 /**
  * Create a DevScan analysis runner bound to a specific AI client.
@@ -25,63 +10,29 @@ const SYSTEM = [
  * @returns {{ analyzeDevscan: (args: { payload: Object, model?: string, purpose?: string }) => Promise<Object> }}
  */
 function createDevscanAnalysis(client) {
-  const { callResponses, parseResponsesJSON, log } = client || defaultClient;
-  const logger = log || console;
+  const resolvedClient = client || defaultClient;
+  const { runTask } = createWarlordAI({
+    clients: { grok: resolvedClient },
+    defaultProvider: 'grok',
+  });
+  const logger = resolvedClient.log || console;
 
-  function extractHandlesFromValue(value) {
-    if (!value) return [];
-    const text = String(value);
-    const match = text.match(/(?:x|twitter)\.com\/([A-Za-z0-9_]+)/i);
-    return match && match[1] ? [match[1]] : [];
-  }
-
-  function extractXHandles(payload) {
-    const handles = new Set();
-    const devTwitter = payload?.developer?.data?.developer?.social?.twitter;
-    const devTwArray = Array.isArray(devTwitter) ? devTwitter : devTwitter ? [devTwitter] : [];
-    devTwArray.forEach((val) => extractHandlesFromValue(val).forEach((h) => handles.add(h)));
-
-    const tokenTwitter = payload?.token?.data?.socials?.twitter;
-    extractHandlesFromValue(tokenTwitter).forEach((h) => handles.add(h));
-
-    const devInfoTwitter = payload?.token?.data?.developerInfo?.social?.twitter;
-    extractHandlesFromValue(devInfoTwitter).forEach((h) => handles.add(h));
-
-    return Array.from(handles);
-  }
-
-  function extractMintCandidates(payload) {
-    const mints = new Set();
-    const metaMint = payload?.meta?.mint;
-    if (metaMint && isBase58Mint(metaMint)) mints.add(metaMint);
-
-    const tokenMint = payload?.token?.data?.mintAddress;
-    if (tokenMint && isBase58Mint(tokenMint)) mints.add(tokenMint);
-
-    const devTokens = payload?.developerTokens?.data?.tokens;
-    if (Array.isArray(devTokens)) {
-      devTokens.forEach((t) => {
-        if (t && isBase58Mint(t.mintAddress)) mints.add(t.mintAddress);
-      });
+  /**
+   * Extract a best-effort text payload from a raw response.
+   * @param {any} res
+   * @returns {string}
+   */
+  function extractTextFromResponse(res) {
+    if (!res) return '';
+    if (typeof res === 'string') return res;
+    if (typeof res.output_text === 'string') return res.output_text;
+    const first = Array.isArray(res.output) && res.output[0];
+    const content = first && Array.isArray(first.content) ? first.content : [];
+    for (const c of content) {
+      if (typeof c?.text === 'string') return c.text;
+      if (typeof c?.data === 'object') return JSON.stringify(c.data);
     }
-
-    const devTokensAlt = payload?.developer?.data?.tokens;
-    if (Array.isArray(devTokensAlt)) {
-      devTokensAlt.forEach((t) => {
-        const status = typeof t?.status === 'string' ? t.status.toLowerCase() : null;
-        if (status && status !== 'alive') return;
-        if (t && isBase58Mint(t.mintAddress)) mints.add(t.mintAddress);
-      });
-    }
-
-    return Array.from(mints).slice(0, 25);
-  }
-
-  function resolveSchema(payload) {
-    const hasMint = Boolean(payload?.meta?.mint || payload?.token?.data?.mintAddress);
-    return hasMint
-      ? { schema: devscanMintSchema, name: 'devscan_mint_v1', version: 'devscan.mint.v1' }
-      : { schema: devscanDeveloperSchema, name: 'devscan_developer_v1', version: 'devscan.developer.v1' };
+    return '';
   }
 
   function buildFallback(version, payload) {
@@ -162,28 +113,16 @@ function createDevscanAnalysis(client) {
       throw new Error('[devscanAnalysis] missing payload');
     }
 
-    const { schema, name, version } = resolveSchema(payload);
-    const context = {
-      knownMints: extractMintCandidates(payload),
-      xHandles: extractXHandles(payload),
-    };
-
-    const res = await callResponses({
-      system: SYSTEM,
-      model,
-      name,
-      schema,
-      user: { payload, context, purpose: purpose || 'Summarize the DevScan data for quick operator review.' },
-      temperature: 0.3,
-      tools: [{ type: 'x_search' }],
-      tool_choice: 'auto',
-    });
-
+    const { version } = devscanTask.resolve({ payload });
     let out;
     try {
-      out = parseResponsesJSON(res);
+      out = await runTask({
+        task: 'devscanAnalysis',
+        payload: { payload, purpose },
+        model,
+      });
     } catch (e) {
-      const text = (res && typeof res === 'string') ? res : '';
+      const text = extractTextFromResponse(e && e.response);
       out = buildFallback(version, payload);
       out.markdown = String(text || '').trim();
     }

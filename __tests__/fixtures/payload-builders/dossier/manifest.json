@@ -1,0 +1,35 @@
+{
+  "runId": "2026-01-10T01-48-28-651Z",
+  "tradesFile": "raw/trades.json",
+  "chartFile": "raw/chart.json",
+  "mintTrades": [
+    {
+      "mint": "Cm6fNnMk7NfzStP9CZpsQA2v3jjzbcYGAxdJySmHpump",
+      "file": "raw/minttrades-1.json"
+    },
+    {
+      "mint": "GJiZ5XcjbDvwMFwyVkqj5M8PFE5m3BNUA17ZZpVPpump",
+      "file": "raw/minttrades-2.json"
+    },
+    {
+      "mint": "AY4sSvJGzLjNqAoUCsxwZZKCk2MSPoQFT78ybQ6wpump",
+      "file": "raw/minttrades-3.json"
+    },
+    {
+      "mint": "G87p2jenHoMtTi65RLRcDGbg7MBMLaTAuztFvh3dpump",
+      "file": "raw/minttrades-4.json"
+    },
+    {
+      "mint": "BGGFZLb29NZSqDz5T6K5Bj5VcwWM7YJc1XAKS8oSBAGS",
+      "file": "raw/minttrades-5.json"
+    },
+    {
+      "mint": "7kWVhpREHGsZ6fUZc5MtGiqFU26PmZ2KkDzLdPkqBAGS",
+      "file": "raw/minttrades-6.json"
+    },
+    {
+      "mint": "6LCMDeiFLA7rLKQWNqCY57XgNiVejcN2m7Cuhni8pump",
+      "file": "raw/minttrades-7.json"
+    }
+  ]
+}

@@ -5,6 +5,80 @@ function ensureColumn(db, table, column, definition) {
   }
 }
 
+function ensureWalletStrategyColumn(db) {
+  const cols = db.prepare('PRAGMA table_info(sc_wallets)').all();
+  const hasStrategy = cols.some((c) => c.name === 'strategy');
+  const hasStrategyId = cols.some((c) => c.name === 'strategy_id');
+
+  if (hasStrategy) return;
+  if (hasStrategyId) {
+    try {
+      db.exec('ALTER TABLE sc_wallets RENAME COLUMN strategy_id TO strategy');
+      return;
+    } catch (_) {
+      // Fall through to add + copy when rename isn't supported.
+    }
+  }
+
+  db.exec('ALTER TABLE sc_wallets ADD COLUMN strategy TEXT');
+  if (hasStrategyId) {
+    db.exec("UPDATE sc_wallets SET strategy = strategy_id WHERE strategy IS NULL OR TRIM(strategy) = ''");
+  }
+}
+
+function listUniqueIndexColumns(db, table) {
+  const indexes = db.prepare(`PRAGMA index_list(${table})`).all();
+  return indexes
+    .filter((idx) => idx.unique)
+    .map((idx) => db.prepare(`PRAGMA index_info(${idx.name})`).all().map((row) => row.name));
+}
+
+function ensureCoinMetadataSchema(db) {
+  const table = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sc_coin_metadata'").get();
+  if (!table) return;
+
+  const cols = db.prepare('PRAGMA table_info(sc_coin_metadata)').all();
+  const hasSource = cols.some((c) => c.name === 'source');
+  const uniqueIndexes = listUniqueIndexColumns(db, 'sc_coin_metadata');
+  const hasCompositeUnique = uniqueIndexes.some((colsList) =>
+    colsList.length === 2 && colsList.includes('mint') && colsList.includes('source')
+  );
+  const hasMintUnique = uniqueIndexes.some((colsList) => colsList.length === 1 && colsList[0] === 'mint');
+
+  if (hasSource && hasCompositeUnique && !hasMintUnique) {
+    return;
+  }
+
+  db.exec('BEGIN');
+  try {
+    db.exec(`
+      ALTER TABLE sc_coin_metadata RENAME TO sc_coin_metadata_old;
+      CREATE TABLE sc_coin_metadata (
+        metadata_id  TEXT PRIMARY KEY,
+        mint         TEXT NOT NULL,
+        source       TEXT NOT NULL,
+        response_json TEXT,
+        created_at   INTEGER NOT NULL,
+        updated_at   INTEGER NOT NULL,
+        UNIQUE(mint, source)
+      );
+    `);
+
+    const selectSource = hasSource ? "COALESCE(source, 'devscan')" : "'devscan'";
+    db.exec(`
+      INSERT INTO sc_coin_metadata (metadata_id, mint, source, response_json, created_at, updated_at)
+      SELECT metadata_id, mint, ${selectSource}, response_json, created_at, updated_at
+      FROM sc_coin_metadata_old;
+    `);
+
+    db.exec('DROP TABLE sc_coin_metadata_old;');
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+
 function ensureSqliteSchema(db, tradeUuidMap) {
 db.exec(`
   CREATE TABLE IF NOT EXISTS coins (
@@ -222,7 +296,7 @@ db.exec(`
     usage_type           TEXT NOT NULL DEFAULT 'other',              -- 'funding','strategy','kol','deployer','other'
     is_default_funding   INTEGER NOT NULL DEFAULT 0,
     auto_attach_warchest INTEGER NOT NULL DEFAULT 0,
-    strategy_id          TEXT NULL,
+    strategy             TEXT NULL,
     color                TEXT NULL,
     has_private_key      INTEGER NOT NULL DEFAULT 0,
     key_source           TEXT NOT NULL DEFAULT 'none',               -- 'none','keychain','db_encrypted'
@@ -239,6 +313,16 @@ db.exec(`
     source      TEXT,
     created_at  INTEGER,
     updated_at  INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS sc_coin_metadata (
+    metadata_id  TEXT PRIMARY KEY,
+    mint         TEXT NOT NULL,
+    source       TEXT NOT NULL,
+    response_json TEXT,
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL,
+    UNIQUE(mint, source)
   );
 
   CREATE TABLE IF NOT EXISTS sc_wallet_analyses (
@@ -281,6 +365,9 @@ db.exec(`
     created_at     INTEGER
   );
 
+  CREATE INDEX IF NOT EXISTS idx_sc_asks_correlation_id
+    ON sc_asks (correlation_id);
+
   CREATE TABLE IF NOT EXISTS sc_tunes (
     tune_id         TEXT PRIMARY KEY,
     correlation_id  TEXT,
@@ -313,12 +400,15 @@ db.exec(`
     mint             TEXT NOT NULL UNIQUE,
     symbol           TEXT,
     name             TEXT,
-    status           TEXT NOT NULL CHECK(status IN ('new','watching','approved','rejected','archived')) DEFAULT 'new',
+    status           TEXT NOT NULL CHECK(status IN ('new','watching','approved','rejected','archived','strong_buy','buy','watch','avoid')) DEFAULT 'new',
     strategy         TEXT,
     strategy_id      TEXT,
     source           TEXT,
     tags             TEXT,
     notes            TEXT,
+    vector_store_id  TEXT,
+    vector_store_file_id TEXT,
+    vector_store_updated_at INTEGER,
     confidence       REAL,
     score            REAL,
     mint_verified    INTEGER NOT NULL DEFAULT 0,
@@ -404,25 +494,31 @@ db.exec(`
     PRIMARY KEY (wallet_id, coin_mint, trade_uuid)
   );
 
- -- Store our sellOpsWorker evaluations
-  CREATE TABLE IF NOT EXISTS sc_sellops_evaluations (
+  -- Store unified buy/sell evaluation snapshots
+  CREATE TABLE IF NOT EXISTS sc_evaluations (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
 
   -- Timing / identity
+  ops_type VARCHAR(16) NOT NULL,
   ts_ms BIGINT NOT NULL,
   wallet_id INTEGER NOT NULL,
   wallet_alias VARCHAR(64) NOT NULL,
 
-  trade_uuid CHAR(36) NOT NULL,
+  trade_uuid CHAR(36),
   coin_mint VARCHAR(64) NOT NULL,
   symbol VARCHAR(32),
+
+  -- Target snapshot (buyOps only)
+  target_status VARCHAR(16),
+  target_score DOUBLE,
+  target_confidence DOUBLE,
 
   -- Strategy & decision
   strategy_name VARCHAR(32),
   strategy_source VARCHAR(32),
-  recommendation VARCHAR(16) NOT NULL,   -- hold / exit / scale / etc
-  decision VARCHAR(16) NOT NULL,         -- actual action taken (currently hold)
-  regime VARCHAR(16),                    -- chop / bias_up / bias_down
+  recommendation VARCHAR(16) NOT NULL,
+  decision VARCHAR(16) NOT NULL,
+  regime VARCHAR(16),
 
   -- Qualification / gating
   qualify_failed_count INTEGER DEFAULT 0,
@@ -432,7 +528,7 @@ db.exec(`
   -- Market snapshot
   price_usd DOUBLE,
   liquidity_usd DOUBLE,
-  chart_interval VARCHAR(8),             -- e.g. 1m
+  chart_interval VARCHAR(8),
   chart_points INTEGER,
 
   -- Indicators
@@ -454,21 +550,32 @@ db.exec(`
   inserted_at BIGINT NOT NULL
 );
 
--- Create the evaluation indexes
-CREATE INDEX IF NOT EXISTS idx_sellops_trade_time
-  ON sc_sellops_evaluations (wallet_id, trade_uuid, ts_ms);
+CREATE INDEX IF NOT EXISTS idx_evals_wallet_time
+  ON sc_evaluations (wallet_id, ts_ms);
 
-CREATE INDEX IF NOT EXISTS idx_sellops_mint_time
-  ON sc_sellops_evaluations (coin_mint, ts_ms);
+CREATE INDEX IF NOT EXISTS idx_evals_trade_time
+  ON sc_evaluations (wallet_id, trade_uuid, ts_ms);
 
-CREATE INDEX IF NOT EXISTS idx_sellops_recommendation
-  ON sc_sellops_evaluations (recommendation, ts_ms);
+CREATE INDEX IF NOT EXISTS idx_evals_mint_time
+  ON sc_evaluations (coin_mint, ts_ms);
 
-CREATE INDEX IF NOT EXISTS idx_sellops_gate_fail
-  ON sc_sellops_evaluations (gate_fail, ts_ms);
+CREATE INDEX IF NOT EXISTS idx_evals_ops_type
+  ON sc_evaluations (ops_type, ts_ms);
 
-CREATE INDEX IF NOT EXISTS idx_sellops_strategy
-  ON sc_sellops_evaluations (strategy_name, ts_ms);
+CREATE INDEX IF NOT EXISTS idx_evals_decision
+  ON sc_evaluations (decision, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_evals_recommendation
+  ON sc_evaluations (recommendation, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_evals_gate_fail
+  ON sc_evaluations (gate_fail, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_evals_strategy
+  ON sc_evaluations (strategy_name, ts_ms);
+
+CREATE INDEX IF NOT EXISTS idx_evals_target_status
+  ON sc_evaluations (target_status, ts_ms);
 
   CREATE VIEW IF NOT EXISTS sc_pnl_live AS
     SELECT
@@ -772,8 +879,9 @@ CREATE INDEX IF NOT EXISTS idx_sc_trades_wallet_executed
 
   // Ensure txid is unique for UPSERTs. Older DB files may have been created before UNIQUE(txid) existed.
   // This is safe to run repeatedly; it will no-op if already present.
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_trades_txid ON sc_trades(txid)');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sc_trades_txid ON sc_trades(txid)');
 
+ensureCoinMetadataSchema(db);
 
 ensureColumn(db, "pools", "txns_buys", "INTEGER");
 ensureColumn(db, "pools", "txns_sells", "INTEGER");
@@ -834,11 +942,13 @@ ensureColumn(db, "risk", "feesTotalSol", "REAL");
 ensureColumn(db, "risk", "feesTotalSolDelta", "REAL");
 ensureColumn(db, "risk", "riskScoreDelta", "REAL");
 ensureColumn(db, "risk", "risksJson", "TEXT");
-
+ensureColumn(db, "sc_targets", "vector_store_id", "TEXT");
+ensureColumn(db, "sc_targets", "vector_store_file_id", "TEXT");
+ensureColumn(db, "sc_targets", "vector_store_updated_at", "INTEGER");
 ensureColumn(db, "sc_wallets", "usage_type", "TEXT NOT NULL DEFAULT 'other'");
 ensureColumn(db, "sc_wallets", "is_default_funding", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn(db, "sc_wallets", "auto_attach_warchest", "INTEGER NOT NULL DEFAULT 0");
-ensureColumn(db, "sc_wallets", "strategy_id", "TEXT");
+ensureWalletStrategyColumn(db);
 
 ensureColumn(db, 'sc_sessions', 'service_instance_id', 'TEXT');
 ensureColumn(db, 'sc_sessions', 'start_slot', 'INTEGER');

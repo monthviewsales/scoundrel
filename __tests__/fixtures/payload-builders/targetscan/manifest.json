@@ -1,0 +1,10 @@
+{
+  "tokenInfoFile": "raw/tokeninfo.json",
+  "priceRangeFile": "raw/pricerange.json",
+  "athPriceFile": "raw/athprice.json",
+  "ohlcvFile": "raw/ohlcv.json",
+  "devscanMetadataFile": "raw/devscanmetadata.json",
+  "promptFile": "expected-prompt.json",
+  "responseFile": "response.json",
+  "finalFile": "expected-final.json"
+}

@@ -1,0 +1,35 @@
+{
+  "trades": [
+    {
+      "tx": "nus6xgbr8mXb2ogbuj3ZbnV6JP1riwboi8WnTT9oYqwuhtLQ4RmRhZBzBCKVH8GEa6Pexr2cYFLRPfBPXofrnQq",
+      "amount": 29990881.003997,
+      "priceUsd": 0.000015986319427771552,
+      "volume": 479.4438036501821,
+      "volumeSol": 3.52693521,
+      "type": "sell",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767985995643,
+      "program": "pumpfun-amm",
+      "pools": [
+        "4ep8kS37LmV6iJgXA3eMQyYSgT7xEpN2pX4QUM16Vncy"
+      ]
+    },
+    {
+      "tx": "DypUJDP87k2qskCzDduLTN7v4GXuqshYC5DiUoiLKZxHTEew5orPpooVRDUaPDei1swG4czaN1P9M4PJe5qNHKm",
+      "amount": 29990881.003997,
+      "priceUsd": 0.000015849916965219247,
+      "volume": 475.3529736271237,
+      "volumeSol": 3.45748148,
+      "type": "buy",
+      "wallet": "J9TYAsWWidbrcZybmLSfrLzryANf4CgJBLdvwdGuC8MB",
+      "time": 1767980247856,
+      "program": "pumpfun-amm",
+      "pools": [
+        "4ep8kS37LmV6iJgXA3eMQyYSgT7xEpN2pX4QUM16Vncy"
+      ]
+    }
+  ],
+  "nextCursor": null,
+  "hasNextPage": false,
+  "sortDirection": "DESC"
+}

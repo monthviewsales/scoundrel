@@ -1,0 +1,29 @@
+{
+  "version": "targetscan.v1",
+  "mint": "BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+  "symbol": "CC©",
+  "name": "Copyrighted Coin ©",
+  "buyScore": 55,
+  "rating": "watch",
+  "confidence": 0.54,
+  "summary": "Short-term momentum breakout: price trading above VWAP (0.00031285) and fast EMA (0.00031520) with RSI ~66 and regime bias_up. Heavy traded volume sits below current price (high-volume nodes ~0.0003136–0.0003173); liquidity thins above current price, and token shows paid promotion (dexpaid, dexboosts) on a pump-oriented launch platform. Small marketcap (~250k–330k in window) — attractive for fast moves but high manipulation risk. Trade with tight stops or wait for pullback to VWAP/EMA for lower-risk entries.",
+  "keySignals": [
+    "price > VWAP (0.00031284875) and > EMA_fast (0.00031520471) — momentum up",
+    "RSI 66.3 (near upper-mid) — momentum but not extreme overbought",
+    "Regime: bias_up (confidence 0.57) — short-term trend bullish",
+    "Volume profile concentrated at 0.00031365–0.00031729 (33% of volume) — major node below current price",
+    "Low liquidity above current price (very small volume buckets above) — breakout can wick",
+    "ATH 0.00086195 (ATH market cap 861,944) — historical upside exists (~2.6x from current to ATH)"
+  ],
+  "risks": [
+    "dexpaid & dexboosts present — paid promotion / pump risk",
+    "Creator == main developer wallet (centralization / single-key control)",
+    "Small marketcap (~256k–332k during window) — easily moved by modest flows",
+    "Thin liquidity above current price — susceptible to sharp wicks and slippage",
+    "Price already near short-term high; RSI ~66 — chasing increases pullback risk",
+    "Developer metadata shows 11 migrations historically — potential project instability"
+  ],
+  "invalidation": "Loss of bullish bias: sustained close below VWAP 0.00031285 and failure to reclaim EMA_fast 0.00031520 on rising volume (preferable invalidation = daily/1H close <0.00031285). A regime flip to bias_down or RSI dropping below ~50 also invalidates the setup.",
+  "timeHorizon": "intraday to 48–72h swing (scalp-first; short swing if momentum continues)",
+  "notes": "Warlord: momentum looks playable but this reeks of paid pump — if you want to live, use a tight stop at VWAP/0.00031285 or wait for a pullback to 0.000315–0.000313. Don’t get greedy; thin liquidity can turn your profit into ashes."
+}

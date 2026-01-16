@@ -11,9 +11,18 @@ const waitForWrite = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 describe('workerLogger', () => {
   let tmpDir;
+  const originalLogLevel = process.env.LOG_LEVEL;
 
   beforeEach(() => {
+    process.env.LOG_LEVEL = 'info';
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-worker-logs-'));
+  });
+  afterAll(() => {
+    if (typeof originalLogLevel === 'undefined') {
+      delete process.env.LOG_LEVEL;
+    } else {
+      process.env.LOG_LEVEL = originalLogLevel;
+    }
   });
 
   test('creates worker log file', async () => {

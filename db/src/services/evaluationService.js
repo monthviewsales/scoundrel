@@ -1,6 +1,6 @@
-'use strict';
+"use strict";
 
-const { db: contextDb } = require('../adapters/sqlite');
+const { db: contextDb } = require("../adapters/sqlite");
 const {
   computeRsi,
   computeAtr,
@@ -9,7 +9,7 @@ const {
   computeEmaSeriesAll,
   computeMacd,
   computeVwap,
-} = require('./indicators');
+} = require("./indicators");
 
 /**
  * Evaluation Service
@@ -27,7 +27,7 @@ const {
 // Defaults / policy
 // --------------------------
 
-const DEFAULT_EVENT_INTERVALS = ['5m', '15m', '1h'];
+const DEFAULT_EVENT_INTERVALS = ["5m", "15m", "1h"];
 
 const DEFAULT_FRESHNESS = {
   coin: 2 * 60 * 1000, // 2 minutes
@@ -38,7 +38,7 @@ const DEFAULT_FRESHNESS = {
 
 // Chart/TA defaults (opt-in)
 const DEFAULT_OHLCV = {
-  type: '5m',
+  type: "5m",
   lookbackMs: 6 * 60 * 60 * 1000, // 6 hours
   fastCache: true,
   removeOutliers: true,
@@ -77,30 +77,33 @@ function normalizeRows(result) {
 
 async function dbQuery(db, sql, params) {
   const resolvedDb = db || contextDb;
-  if (!resolvedDb) throw new Error('evaluationService requires a sqlite db handle');
+  if (!resolvedDb)
+    throw new Error("evaluationService requires a sqlite db handle");
 
   // Preferred: better-sqlite3 style
-  if (typeof resolvedDb.prepare === 'function') {
+  if (typeof resolvedDb.prepare === "function") {
     const stmt = resolvedDb.prepare(sql);
     const rows = stmt.all(params || []);
     return rows;
   }
 
   // Compatibility: mysql2-like / wrapper-like adapters
-  if (typeof resolvedDb.query === 'function') {
+  if (typeof resolvedDb.query === "function") {
     return resolvedDb.query(sql, params);
   }
-  if (typeof resolvedDb.execute === 'function') {
+  if (typeof resolvedDb.execute === "function") {
     return resolvedDb.execute(sql, params);
   }
 
-  throw new Error('db handle does not support prepare(), query(), or execute()');
+  throw new Error(
+    "db handle does not support prepare(), query(), or execute()"
+  );
 }
 
 function isStale(tsMs, maxAgeMs, nowMs) {
   const ts = Number(tsMs || 0);
   if (!ts) return true;
-  return (nowMs - ts) > maxAgeMs;
+  return nowMs - ts > maxAgeMs;
 }
 
 // --------------------------
@@ -136,8 +139,11 @@ async function loadBestPool(db, mint) {
 }
 
 async function loadLatestEventsByInterval(db, mint, intervals) {
-  const wanted = Array.isArray(intervals) && intervals.length ? intervals : DEFAULT_EVENT_INTERVALS;
-  const placeholders = wanted.map(() => '?').join(',');
+  const wanted =
+    Array.isArray(intervals) && intervals.length
+      ? intervals
+      : DEFAULT_EVENT_INTERVALS;
+  const placeholders = wanted.map(() => "?").join(",");
 
   const sql = `
     SELECT *
@@ -198,32 +204,115 @@ async function loadPnlPositionLive(db, { walletId, coinMint, tradeUuid }) {
 // --------------------------
 
 function computeDerived({ position, coin, pool, pnl }) {
-  const priceUsd = Number(coin?.priceUsd || coin?.price_usd || 0);
+  const coinPriceUsd = Number(coin?.priceUsd ?? coin?.price_usd);
+  const poolPriceUsd = Number(pool?.price_usd ?? pool?.priceUsd);
+  const priceUsd =
+    Number.isFinite(coinPriceUsd) && coinPriceUsd > 0
+      ? coinPriceUsd
+      : Number.isFinite(poolPriceUsd) && poolPriceUsd > 0
+      ? poolPriceUsd
+      : null;
 
-  const currentTokenAmount = position?.currentTokenAmount ?? position?.current_token_amount ?? null;
-  const currentTokenAmountNum = currentTokenAmount == null ? null : Number(currentTokenAmount);
+  const currentTokenAmount =
+    position?.currentTokenAmount ?? position?.current_token_amount ?? null;
+  const currentTokenAmountNum =
+    currentTokenAmount == null ? null : Number(currentTokenAmount);
+  const entryTokenAmount =
+    position?.entryTokenAmount ?? position?.entry_token_amount ?? null;
+  const entryTokenAmountNum =
+    entryTokenAmount == null ? null : Number(entryTokenAmount);
+  const entryPriceUsdRaw =
+    position?.entryPriceUsd ?? position?.entry_price_usd ?? null;
+  const entryPriceUsd =
+    entryPriceUsdRaw == null ? null : Number(entryPriceUsdRaw);
+  const entryPriceUsdNum =
+    Number.isFinite(entryPriceUsd) && entryPriceUsd > 0 ? entryPriceUsd : null;
+  const expectedNotionalUsd =
+    position?.expectedNotionalUsd ?? position?.plannedNotionalUsd ?? null;
+  const expectedNotionalSol =
+    position?.expectedNotionalSol ?? position?.plannedNotionalSol ?? null;
 
-  const positionValueUsd = priceUsd && currentTokenAmountNum != null
-    ? currentTokenAmountNum * priceUsd
-    : null;
+  const positionValueUsd = (() => {
+    if (priceUsd != null && currentTokenAmountNum != null) {
+      return currentTokenAmountNum * priceUsd;
+    }
+
+    const expectedUsd = Number(expectedNotionalUsd);
+    if (Number.isFinite(expectedUsd) && expectedUsd > 0) return expectedUsd;
+
+    const expectedSol = Number(expectedNotionalSol);
+    if (Number.isFinite(expectedSol) && expectedSol > 0) {
+      const coinPriceSol = Number(coin?.priceSol ?? coin?.price_sol);
+      const poolPriceSol = Number(pool?.price_quote ?? pool?.priceSol);
+      const solPriceFromCoin =
+        Number.isFinite(coinPriceSol) && coinPriceSol > 0 && priceUsd != null
+          ? priceUsd / coinPriceSol
+          : null;
+      const quoteToken = String(pool?.quoteToken || "").toUpperCase();
+      const isSolQuote = quoteToken === "SOL" || quoteToken === "WSOL";
+      const solPriceFromPool =
+        isSolQuote &&
+        Number.isFinite(poolPriceSol) &&
+        poolPriceSol > 0 &&
+        poolPriceUsd != null
+          ? poolPriceUsd / poolPriceSol
+          : null;
+      const solUsdPrice =
+        solPriceFromCoin != null ? solPriceFromCoin : solPriceFromPool;
+      if (Number.isFinite(solUsdPrice) && solUsdPrice > 0) {
+        return expectedSol * solUsdPrice;
+      }
+    }
+
+    return null;
+  })();
 
   // Cost basis from pnl view (preferred)
-  const avgCostUsd = pnl?.avg_cost_usd != null ? Number(pnl.avg_cost_usd) : null;
-  const basisTokenAmount = pnl?.position_token_amount != null ? Number(pnl.position_token_amount) : null;
-  const costBasisUsd = avgCostUsd != null && basisTokenAmount != null
-    ? avgCostUsd * basisTokenAmount
-    : null;
+  const avgCostUsd =
+    pnl?.avg_cost_usd != null ? Number(pnl.avg_cost_usd) : null;
+  const costPerToken =
+    Number.isFinite(avgCostUsd) && avgCostUsd > 0
+      ? avgCostUsd
+      : entryPriceUsdNum;
+  const pnlTokenAmount =
+    pnl?.position_token_amount != null
+      ? Number(pnl.position_token_amount)
+      : null;
+  const basisTokenAmount =
+    Number.isFinite(pnlTokenAmount) && pnlTokenAmount > 0
+      ? pnlTokenAmount
+      : Number.isFinite(currentTokenAmountNum) && currentTokenAmountNum > 0
+      ? currentTokenAmountNum
+      : Number.isFinite(entryTokenAmountNum) && entryTokenAmountNum > 0
+      ? entryTokenAmountNum
+      : null;
+  const costBasisUsd =
+    costPerToken != null && basisTokenAmount != null
+      ? costPerToken * basisTokenAmount
+      : null;
 
-  const unrealUsd = pnl?.unrealized_usd != null ? Number(pnl.unrealized_usd) : null;
+  const unrealUsd =
+    pnl?.unrealized_usd != null ? Number(pnl.unrealized_usd) : null;
   const totalUsd = pnl?.total_usd != null ? Number(pnl.total_usd) : null;
 
-  const roiUnrealizedPct = costBasisUsd && unrealUsd != null
-    ? (unrealUsd / costBasisUsd) * 100
-    : null;
+  const avgCostUsdValid = Number.isFinite(avgCostUsd) && avgCostUsd > 0;
+  const priceBasedRoiPct =
+    costPerToken != null && priceUsd != null && costPerToken > 0
+      ? ((priceUsd - costPerToken) / costPerToken) * 100
+      : null;
+  let roiUnrealizedPct =
+    costBasisUsd && unrealUsd != null ? (unrealUsd / costBasisUsd) * 100 : null;
+  if (
+    roiUnrealizedPct == null ||
+    (!avgCostUsdValid &&
+      priceBasedRoiPct != null &&
+      (unrealUsd == null || Number(unrealUsd) === 0))
+  ) {
+    roiUnrealizedPct = priceBasedRoiPct;
+  }
 
-  const roiTotalPct = costBasisUsd && totalUsd != null
-    ? (totalUsd / costBasisUsd) * 100
-    : null;
+  const roiTotalPct =
+    costBasisUsd && totalUsd != null ? (totalUsd / costBasisUsd) * 100 : null;
 
   const liquidityUsd =
     (pool?.liquidity_usd != null ? Number(pool.liquidity_usd) : null) ??
@@ -231,9 +320,13 @@ function computeDerived({ position, coin, pool, pnl }) {
     (coin?.liquidity_usd != null ? Number(coin.liquidity_usd) : null) ??
     null;
 
-  const liquidityToPositionRatio = liquidityUsd && positionValueUsd
-    ? liquidityUsd / positionValueUsd
-    : null;
+  const liquidityToPositionRatio =
+    Number.isFinite(liquidityUsd) &&
+    liquidityUsd > 0 &&
+    Number.isFinite(positionValueUsd) &&
+    positionValueUsd > 0
+      ? liquidityUsd / positionValueUsd
+      : null;
 
   return {
     positionValueUsd,
@@ -254,10 +347,12 @@ function pickNumber(v) {
 }
 
 function normalizeCandle(c) {
-  if (!c || typeof c !== 'object') return null;
+  if (!c || typeof c !== "object") return null;
 
   // Common field aliases
-  const t = pickNumber(c.t ?? c.time ?? c.ts ?? c.timestamp ?? c.startTime ?? c.start);
+  const t = pickNumber(
+    c.t ?? c.time ?? c.ts ?? c.timestamp ?? c.startTime ?? c.start
+  );
   const o = pickNumber(c.o ?? c.open);
   const h = pickNumber(c.h ?? c.high);
   const l = pickNumber(c.l ?? c.low);
@@ -293,10 +388,21 @@ function normalizeOhlcvResponse(resp) {
   return out;
 }
 
-async function fetchTokenPoolOhlcv({ dataClient, mint, poolAddress, type, timeFrom, timeTo, fastCache, removeOutliers, timezone, marketCap }) {
+async function fetchTokenPoolOhlcv({
+  dataClient,
+  mint,
+  poolAddress,
+  type,
+  timeFrom,
+  timeTo,
+  fastCache,
+  removeOutliers,
+  timezone,
+  marketCap,
+}) {
   const sdkClient = dataClient?.client;
-  if (!sdkClient || typeof sdkClient.getPoolChartData !== 'function') {
-    throw new Error('dataClient must expose .client.getPoolChartData(...)');
+  if (!sdkClient || typeof sdkClient.getPoolChartData !== "function") {
+    throw new Error("dataClient must expose .client.getPoolChartData(...)");
   }
 
   return sdkClient.getPoolChartData({
@@ -326,6 +432,7 @@ async function fetchTokenPoolOhlcv({ dataClient, mint, poolAddress, type, timeFr
  * @param {Object} [args.ohlcv] - OHLCV options (type/lookbackMs/fastCache/removeOutliers/timezone/marketCap)
  * @param {Object} [args.indicators] - Indicator options (rsiPeriod/atrPeriod/slopePeriods/emaFast/emaSlow/macdSignal/vwapPeriods)
  * @param {boolean} [args.includeCandles] - When true, include normalized candles in evaluation.chart.candles
+ * @param {boolean} [args.includeOhlcv] - When false, skip OHLCV + indicator fetching/computation entirely (light mode).
  * @param {number} [args.nowMs] - Override current time (ms)
  * @param {string[]} [args.eventIntervals] - intervals to load (default 5m/15m/1h)
  * @param {Object} [args.freshness] - overrides for freshness windows (ms)
@@ -341,39 +448,48 @@ async function buildEvaluation({
   ohlcv,
   indicators,
   includeCandles,
+  includeOhlcv,
 }) {
   const now = Number.isFinite(Number(nowMs)) ? Number(nowMs) : Date.now();
   const windows = { ...DEFAULT_FRESHNESS, ...(freshness || {}) };
-  const intervals = Array.isArray(eventIntervals) && eventIntervals.length
-    ? eventIntervals
-    : DEFAULT_EVENT_INTERVALS;
+  const intervals =
+    Array.isArray(eventIntervals) && eventIntervals.length
+      ? eventIntervals
+      : DEFAULT_EVENT_INTERVALS;
 
   const warnings = [];
 
   const resolvedDb = db || contextDb;
   if (!resolvedDb) {
-    throw new Error('buildEvaluation requires a sqlite db from context or args.db');
+    throw new Error(
+      "buildEvaluation requires a sqlite db from context or args.db"
+    );
   }
 
   // ---- Coin ----
   const coin = await loadCoin(resolvedDb, position.mint);
   if (!coin) {
-    warnings.push('coin_missing');
+    warnings.push("coin_missing");
   } else {
-    if (coin.status !== 'complete') warnings.push('coin_not_complete');
-    if (isStale(coin.lastUpdated, windows.coin, now)) warnings.push('coin_stale');
+    if (coin.status !== "complete") warnings.push("coin_not_complete");
+    if (isStale(coin.lastUpdated, windows.coin, now))
+      warnings.push("coin_stale");
   }
 
   // ---- Pool ----
   const pool = await loadBestPool(resolvedDb, position.mint);
   if (!pool) {
-    warnings.push('pool_missing');
+    warnings.push("pool_missing");
   } else if (isStale(pool.lastUpdated, windows.pool, now)) {
-    warnings.push('pool_stale');
+    warnings.push("pool_stale");
   }
 
   // ---- Events ----
-  const events = await loadLatestEventsByInterval(resolvedDb, position.mint, intervals);
+  const events = await loadLatestEventsByInterval(
+    resolvedDb,
+    position.mint,
+    intervals
+  );
   for (const interval of intervals) {
     const row = events[interval];
     if (!row) {
@@ -388,18 +504,21 @@ async function buildEvaluation({
   // ---- Risk ----
   const risk = await loadRisk(resolvedDb, position.mint);
   if (!risk) {
-    warnings.push('risk_missing');
+    warnings.push("risk_missing");
   } else {
-    if (isStale(risk.updatedAt, windows.risk, now)) warnings.push('risk_stale');
+    if (isStale(risk.updatedAt, windows.risk, now)) warnings.push("risk_stale");
 
     // Parse risksJson once for downstream consumers (strategies/autopsy/HUD).
     // Store on a new non-breaking field `risk.risks` (array) when possible.
     if (risk.risks == null && risk.risksJson != null) {
       try {
-        const parsed = typeof risk.risksJson === 'string' ? JSON.parse(risk.risksJson) : risk.risksJson;
+        const parsed =
+          typeof risk.risksJson === "string"
+            ? JSON.parse(risk.risksJson)
+            : risk.risksJson;
         if (Array.isArray(parsed)) risk.risks = parsed;
       } catch (e) {
-        warnings.push('risk_risks_json_parse_failed');
+        warnings.push("risk_risks_json_parse_failed");
       }
     }
   }
@@ -410,95 +529,114 @@ async function buildEvaluation({
     coinMint: position.mint,
     tradeUuid: position.tradeUuid,
   });
-  if (!pnl) warnings.push('pnl_missing');
+  if (!pnl) warnings.push("pnl_missing");
 
   // ---- Derived ----
   let derived = {};
   try {
     derived = computeDerived({ position, coin, pool, pnl });
   } catch (err) {
-    warnings.push('derived_failed');
+    warnings.push("derived_failed");
   }
 
   // ---- OHLCV + indicators (optional) ----
   let chart = null;
   let ta = null;
 
-  try {
-    const hasDataClient = !!dataClient;
-    const poolAddress = pool?.id || null;
+  const ohlcvEnabled = includeOhlcv !== false;
+  if (!ohlcvEnabled) {
+    // Light mode: skip OHLCV/TA to keep evaluations cheap.
+    warnings.push("ohlcv_skipped");
+  }
 
-    if (hasDataClient && poolAddress) {
-      const o = { ...DEFAULT_OHLCV, ...(ohlcv || {}) };
-      const ind = { ...DEFAULT_INDICATORS, ...(indicators || {}) };
+  if (ohlcvEnabled) {
+    try {
+      const hasDataClient = !!dataClient;
+      const poolAddress = pool?.id || null;
 
-      const timeTo = Math.floor(now / 1000);
-      const timeFrom = Math.floor((now - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs)) / 1000);
+      if (hasDataClient && poolAddress) {
+        const o = { ...DEFAULT_OHLCV, ...(ohlcv || {}) };
+        const ind = { ...DEFAULT_INDICATORS, ...(indicators || {}) };
 
-      const raw = await fetchTokenPoolOhlcv({
-        dataClient,
-        mint: position.mint,
-        poolAddress,
-        type: o.type,
-        timeFrom,
-        timeTo,
-        fastCache: o.fastCache,
-        removeOutliers: o.removeOutliers,
-        timezone: o.timezone,
-        marketCap: o.marketCap,
-      });
+        const timeTo = Math.floor(now / 1000);
+        const timeFrom = Math.floor(
+          (now - Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs)) / 1000
+        );
 
-      const candles = normalizeOhlcvResponse(raw);
-      const closes = candles.map((c) => c.c);
+        const raw = await fetchTokenPoolOhlcv({
+          dataClient,
+          mint: position.mint,
+          poolAddress,
+          type: o.type,
+          timeFrom,
+          timeTo,
+          fastCache: o.fastCache,
+          removeOutliers: o.removeOutliers,
+          timezone: o.timezone,
+          marketCap: o.marketCap,
+        });
 
-      chart = {
-        type: o.type,
-        lookbackMs: Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs),
-        poolAddress,
-        points: candles.length,
-        timeFrom,
-        timeTo,
-        candles: includeCandles ? candles : undefined,
-      };
+        const candles = normalizeOhlcvResponse(raw);
+        const closes = candles.map((c) => c.c);
 
-      const emaFast = computeEmaSeries(closes, ind.emaFast);
-      const emaSlow = computeEmaSeries(closes, ind.emaSlow);
-      const macd = computeMacd(closes, ind.emaFast, ind.emaSlow, ind.macdSignal);
-      const vwapRes = computeVwap(candles, ind.vwapPeriods);
+        chart = {
+          type: o.type,
+          lookbackMs: Number(o.lookbackMs || DEFAULT_OHLCV.lookbackMs),
+          poolAddress,
+          points: candles.length,
+          timeFrom,
+          timeTo,
+          candles: includeCandles ? candles : undefined,
+        };
 
-      ta = {
-        rsi: computeRsi(closes, ind.rsiPeriod),
-        atr: computeAtr(candles, ind.atrPeriod),
-        slopePctPerCandle: computeSlopePct(closes, ind.slopePeriods),
+        const emaFast = computeEmaSeries(closes, ind.emaFast);
+        const emaSlow = computeEmaSeries(closes, ind.emaSlow);
+        const macd = computeMacd(
+          closes,
+          ind.emaFast,
+          ind.emaSlow,
+          ind.macdSignal
+        );
+        const vwapRes = computeVwap(candles, ind.vwapPeriods);
 
-        emaFast,
-        emaSlow,
-        macd,
+        ta = {
+          rsi: computeRsi(closes, ind.rsiPeriod),
+          atr: computeAtr(candles, ind.atrPeriod),
+          slopePctPerCandle: computeSlopePct(closes, ind.slopePeriods),
 
-        vwap: vwapRes.vwap,
-        vwapVolume: vwapRes.volume,
+          emaFast,
+          emaSlow,
+          macd,
 
-        lastClose: closes.length ? closes[closes.length - 1] : null,
-      };
+          vwap: vwapRes.vwap,
+          vwapVolume: vwapRes.volume,
 
-      // Strategy-friendly derived metric: ATR as a percentage of price.
-      // Many sizing/stop models use ATR% rather than absolute ATR units.
-      if (derived && ta && ta.atr != null && ta.lastClose != null) {
-        const atr = Number(ta.atr);
-        const lastClose = Number(ta.lastClose);
-        if (Number.isFinite(atr) && Number.isFinite(lastClose) && lastClose > 0) {
-          derived.atrPct = (atr / lastClose) * 100;
+          lastClose: closes.length ? closes[closes.length - 1] : null,
+        };
+
+        // Strategy-friendly derived metric: ATR as a percentage of price.
+        // Many sizing/stop models use ATR% rather than absolute ATR units.
+        if (derived && ta && ta.atr != null && ta.lastClose != null) {
+          const atr = Number(ta.atr);
+          const lastClose = Number(ta.lastClose);
+          if (
+            Number.isFinite(atr) &&
+            Number.isFinite(lastClose) &&
+            lastClose > 0
+          ) {
+            derived.atrPct = (atr / lastClose) * 100;
+          }
         }
-      }
 
-      if (candles.length === 0) warnings.push('ohlcv_empty');
-      if (vwapRes.volume === 0) warnings.push('ohlcv_zero_volume');
-    } else {
-      if (!hasDataClient) warnings.push('ohlcv_no_client');
-      if (!poolAddress) warnings.push('ohlcv_no_pool');
+        if (candles.length === 0) warnings.push("ohlcv_empty");
+        if (vwapRes.volume === 0) warnings.push("ohlcv_zero_volume");
+      } else {
+        if (!hasDataClient) warnings.push("ohlcv_no_client");
+        if (!poolAddress) warnings.push("ohlcv_no_pool");
+      }
+    } catch (err) {
+      warnings.push("ohlcv_failed");
     }
-  } catch (err) {
-    warnings.push('ohlcv_failed');
   }
 
   const evaluation = {

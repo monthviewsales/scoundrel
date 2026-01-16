@@ -1,23 +1,11 @@
 const originalEnv = process.env.NODE_ENV;
 
-jest.mock('../ai/gptClient', () => {
-  const mockCallResponses = jest.fn();
-  const mockParseResponsesJSON = jest.fn();
-  const mockLog = { debug: jest.fn() };
-  return {
-    callResponses: mockCallResponses,
-    parseResponsesJSON: mockParseResponsesJSON,
-    log: mockLog,
-    __esModule: false,
-    _mock: {
-      callResponses: mockCallResponses,
-      parseResponsesJSON: mockParseResponsesJSON,
-      log: mockLog
-    }
-  };
+jest.mock('../ai/warlordAI', () => {
+  const mockRunTask = jest.fn();
+  return { runTask: mockRunTask, _mock: { runTask: mockRunTask } };
 });
 
-const { _mock } = require('../ai/gptClient');
+const { _mock } = require('../ai/warlordAI');
 
 describe.skip('ask processor (skipped: ask.js not yet wired)', () => {
   beforeEach(() => {
@@ -37,8 +25,7 @@ describe.skip('ask processor (skipped: ask.js not yet wired)', () => {
     process.env.NODE_ENV = 'development';
     const ask = require('../lib/ask');
 
-    _mock.callResponses.mockResolvedValue({ raw: true });
-    _mock.parseResponsesJSON.mockReturnValue({
+    _mock.runTask.mockResolvedValue({
       answer: 'Hello world',
       bullets: ['Tip 1', 'Tip 2'],
       actions: ['Action A']
@@ -46,10 +33,9 @@ describe.skip('ask processor (skipped: ask.js not yet wired)', () => {
 
     const result = await ask({ question: 'hi?', profile: { id: 1 }, rows: ['r1', 'r2'] });
 
-    expect(_mock.callResponses).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'ask_v1',
-      system: expect.stringContaining('Scoundrel'),
-      user: expect.objectContaining({
+    expect(_mock.runTask).toHaveBeenCalledWith(expect.objectContaining({
+      task: 'ask',
+      payload: expect.objectContaining({
         question: 'hi?',
         profile: { id: 1 }
       })
@@ -59,6 +45,5 @@ describe.skip('ask processor (skipped: ask.js not yet wired)', () => {
     expect(result).toContain('• Tip 1');
     expect(result).toContain('• Tip 2');
     expect(result).toContain('Next actions:\n- Action A');
-    expect(_mock.log.debug).toHaveBeenCalled();
   });
 });

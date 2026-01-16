@@ -4,10 +4,13 @@ const context = require('./sqlite/context');
 const wallets = require('./sqlite/wallets');
 const profiles = require('./sqlite/profiles');
 const coins = require('./sqlite/coins');
+const coinMetadata = require('./sqlite/coinMetadata');
 const trading = require('./sqlite/trading');
 const sessions = require('./sqlite/sessions');
 const legacy = require('./sqlite/legacyAdapter');
+const evaluations = require('./sqlite/evaluations');
 const sellops = require('./sqlite/sellops');
+const buyops = require('./sqlite/buyops');
 const targets = require('./sqlite/targets');
 
 // Prefer specialized submodules where available; fall back to legacy implementations for the rest.
@@ -16,9 +19,12 @@ const BootyBox = {
   ...wallets,
   ...profiles,
   ...coins,
+  ...coinMetadata,
   ...trading,
   ...sessions,
+  ...evaluations,
   ...sellops,
+  ...buyops,
   ...targets,
   engine: 'sqlite',
 };
@@ -41,9 +47,12 @@ module.exports.modules = {
   wallets,
   profiles,
   coins,
+  coinMetadata,
   trading,
   sessions,
   legacy,
+  evaluations,
   sellops,
+  buyops,
   targets,
 };

@@ -57,11 +57,34 @@ function runSqliteMigrations(sqlite, logger) {
     'INSERT INTO bootybox_migrations (name, applied_at) VALUES (?, ?)'
   );
 
+  const shouldSkipMigration = (file) => {
+    if (file !== '011_sc_wallets_strategy.sqlite.sql') return false;
+    try {
+      const cols = sqlite.prepare('PRAGMA table_info(sc_wallets)').all();
+      if (!cols || cols.length === 0) return false;
+      const names = new Set(cols.map((col) => col.name));
+      return names.has('strategy');
+    } catch (err) {
+      logger.debug?.(
+        `[BootyBox:migrations] Unable to inspect sc_wallets for ${file}: ${err.message}`
+      );
+      return false;
+    }
+  };
+
   for (const file of files) {
     if (applied.has(file)) {
       logger.debug?.('[BootyBox:migrations] SQLite migration already applied, skipping', {
         migration: file,
       });
+      continue;
+    }
+
+    if (shouldSkipMigration(file)) {
+      logger.info?.('[BootyBox:migrations] SQLite migration already applied via schema bootstrap', {
+        migration: file,
+      });
+      insertStmt.run(file, Date.now());
       continue;
     }
 

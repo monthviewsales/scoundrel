@@ -54,7 +54,7 @@ describe('warchest HUD CLI', () => {
       'lib',
       'warchest',
       'workers',
-      'warchestService.js',
+      'warchestHudWorker.js',
     );
 
     await hud({ walletSpecs });
@@ -63,10 +63,10 @@ describe('warchest HUD CLI', () => {
     const [execPath, args, opts] = childProcess.spawn.mock.calls[0];
     expect(execPath).toBe(process.execPath);
     expect(args[0]).toBe(workerPath);
-    expect(args).toEqual(expect.arrayContaining(['--wallet', walletSpecs[0], '--hud']));
+    expect(args).toEqual(expect.arrayContaining(['--wallet', walletSpecs[0]]));
     expect(args).toEqual(expect.arrayContaining(['--follow-hub']));
     expect(args).toEqual(expect.arrayContaining(['--hub-events', path.join(process.cwd(), 'data', 'warchest', 'tx-events.json')]));
-    expect(args).toEqual(expect.arrayContaining(['--hub-status', path.join(process.cwd(), 'data', 'warchest', 'status.json')]));
+    expect(args).toEqual(expect.arrayContaining(['--hud-state', path.join(process.cwd(), 'data', 'warchest', 'hud-state.json')]));
     expect(opts.stdio).toBe('inherit');
   });
 });

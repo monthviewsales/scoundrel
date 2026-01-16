@@ -1,0 +1,26 @@
+{
+  "tokenInfo": {
+    "mint": "BM8b4U4cyXCieBRPDAAAygiQwKQemEJntt2yWJ8Jpump",
+    "symbol": "CC©",
+    "name": "Copyrighted Coin ©",
+    "decimals": 6,
+    "image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fipfs-forward.solanatracker.io%2Fipfs%2Fbafybeiex6n5raseg6jfqivm5pe4izafdbqrp252kgwjgbi4i5atzo6duaa",
+    "uri": "https://ipfs.io/ipfs/bafkreihp5fyxbaooqtfe5j2zmj5frdvtsnbq2zin7d7k7uzkgqxbubq74y",
+    "marketCap": 261748.03852727354,
+    "status": "complete",
+    "lastUpdated": 1768062519013,
+    "lastEvaluated": 0,
+    "price": 0.000001921971140767199,
+    "liquidity": 197.994025332,
+    "buyScore": 0,
+    "priceSol": 0.000001921971140767199,
+    "priceUsd": 0.0002617501389124014,
+    "liquiditySol": 197.994025332,
+    "liquidityUsd": 53928.971705360134,
+    "marketCapSol": 1921.9557181217062,
+    "marketCapUsd": 261748.03852727354,
+    "tokenCreatedAt": 1768015756000,
+    "firstSeenAt": 1768062519013,
+    "strictSocials": "{}"
+  }
+}

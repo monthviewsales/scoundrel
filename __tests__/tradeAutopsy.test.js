@@ -1,41 +1,44 @@
-jest.mock('../ai/gptClient', () => {
-  const mockCallResponses = jest.fn();
-  const mockParseResponsesJSON = jest.fn();
-  const mockLog = { debug: jest.fn(), warn: jest.fn() };
+const originalApiKey = process.env.OPENAI_API_KEY;
+
+jest.mock('../ai/warlordAI', () => {
+  const mockRunTask = jest.fn();
   return {
-    callResponses: mockCallResponses,
-    parseResponsesJSON: mockParseResponsesJSON,
-    log: mockLog,
-    __mock: { callResponses: mockCallResponses, parseResponsesJSON: mockParseResponsesJSON, log: mockLog },
+    createWarlordAI: jest.fn(() => ({ runTask: mockRunTask })),
+    __mock: { runTask: mockRunTask },
   };
 });
 
 describe('tradeAutopsy job', () => {
   let analyzeTradeAutopsy;
-  let clientMock;
+  let runTaskMock;
 
   beforeEach(() => {
+    process.env.OPENAI_API_KEY = '';
     jest.resetModules();
-    clientMock = require('../ai/gptClient').__mock;
+    runTaskMock = require('../ai/warlordAI').__mock.runTask;
     ({ analyzeTradeAutopsy } = require('../ai/jobs/tradeAutopsy'));
+  });
+
+  afterAll(() => {
+    process.env.OPENAI_API_KEY = originalApiKey;
   });
 
   test('throws when payload missing', async () => {
     await expect(analyzeTradeAutopsy({})).rejects.toThrow('[tradeAutopsy] missing payload');
   });
 
-  test('calls Responses with schema and returns parsed payload', async () => {
+  test('delegates to warlordAI and returns payload', async () => {
     const payload = { wallet: { address: 'abc' } };
-    clientMock.callResponses.mockResolvedValue({ ok: true });
-    clientMock.parseResponsesJSON.mockReturnValue({ grade: 'A', summary: 'ok', entryAnalysis: 'e', exitAnalysis: 'x', riskManagement: 'r', profitability: 'p', lessons: [], tags: [] });
+    const response = { grade: 'A', summary: 'ok', entryAnalysis: 'e', exitAnalysis: 'x', riskManagement: 'r', profitability: 'p', lessons: [], tags: [] };
+    runTaskMock.mockResolvedValue(response);
 
     const res = await analyzeTradeAutopsy({ payload, model: 'gpt-test' });
 
-    expect(clientMock.callResponses).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'trade_autopsy_v2_3',
-      schema: expect.objectContaining({ required: expect.arrayContaining(['grade', 'summary']) }),
-      user: { campaign: payload },
-    }));
+    expect(runTaskMock).toHaveBeenCalledWith({
+      task: 'tradeAutopsy',
+      payload,
+      model: 'gpt-test',
+    });
     expect(res.grade).toBe('A');
   });
 });

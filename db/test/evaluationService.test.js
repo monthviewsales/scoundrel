@@ -169,4 +169,85 @@ describe('evaluationService', () => {
     expect(evaluation.derived.costBasisUsd).toBeCloseTo(100);
     expect(evaluation.derived.roiUnrealizedPct).toBeCloseTo(100);
   });
+
+  test('buildEvaluation derives ROI from entry price when pnl is missing', async () => {
+    const now = Date.now();
+    const mint = 'mint-eval-2';
+
+    adapter.addOrUpdateCoin({
+      mint,
+      symbol: 'ENTRY',
+      name: 'Entry Token',
+      status: 'complete',
+      priceUsd: 1.5,
+      priceSol: 0.1,
+      liquidityUsd: 500,
+      events: {
+        '5m': { priceChangePercentage: 1, volume: { usd: 100, quote: 5 }, buys: 2, sells: 1, txns: 3, wallets: 4 },
+        '15m': { priceChangePercentage: 2, volume: { usd: 150, quote: 7 }, buys: 3, sells: 2, txns: 5, wallets: 6 },
+        '1h': { priceChangePercentage: 3, volume: { usd: 200, quote: 9 }, buys: 4, sells: 3, txns: 7, wallets: 8 },
+      },
+      risk: {
+        score: 7,
+        rugged: false,
+        snipers: { count: 0, totalBalance: 0, totalPercentage: 0 },
+        insiders: { count: 0, totalBalance: 0, totalPercentage: 0 },
+        dev: { percentage: 1.5, amount: 100 },
+        fees: { total: 0 },
+        risks: [],
+      },
+    });
+
+    context.db.prepare(
+      `INSERT INTO pools (
+        id,
+        coin_mint,
+        liquidity_usd,
+        price_usd,
+        createdAt,
+        lastUpdated,
+        market,
+        quoteToken
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      'pool-2',
+      mint,
+      500,
+      1.5,
+      now - 1000,
+      now,
+      'raydium',
+      'SOL'
+    );
+
+    const openPosition = adapter.ensureOpenPositionRun({
+      walletId: 1,
+      walletAlias: 'alpha',
+      coinMint: mint,
+      currentTokenAmount: 100,
+      openAt: now,
+    }).position;
+
+    context.db.prepare(
+      'UPDATE sc_positions SET entry_price_usd = ? WHERE position_id = ?'
+    ).run(1, openPosition.position_id);
+
+    const { evaluation, warnings } = await buildEvaluation({
+      db: context.db,
+      position: {
+        walletId: 1,
+        walletAlias: 'alpha',
+        mint,
+        tradeUuid: openPosition.trade_uuid,
+        currentTokenAmount: 100,
+        entryPriceUsd: 1,
+      },
+      nowMs: now,
+      includeOhlcv: false,
+    });
+
+    expect(warnings).toContain('ohlcv_skipped');
+    expect(evaluation.derived.costBasisUsd).toBeCloseTo(100);
+    expect(evaluation.derived.roiUnrealizedPct).toBeCloseTo(50);
+  });
 });
