@@ -859,11 +859,11 @@ program
 
 program
   .command("test")
-  .description("Run a quick self-check (env + minimal OpenAI config presence)")
+  .description("Run a quick self-check of env + local setup")
   .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
-    `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`
+    `\nChecks:\n  • Reports Node version + working directory.\n  • Ensures OPENAI_API_KEY is present (AI jobs require it).\n  • Verifies core AI CLI files (ask/dossier + ai client/job).\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nNotes:\n  • Does not call external APIs.\n  • Use --no-tui for console-only output.\n\nExamples:\n  $ scoundrel test\n  $ scoundrel test --no-tui\n`
   )
   .action(async (opts) => {
     const run = async () => {
