@@ -683,7 +683,7 @@ program
   .description(
     "Run the warchest HUD follower or clean up legacy daemon artifacts"
   )
-  .argument("<action>", "start|stop|restart|hud|status")
+  .argument("<action>", "start|stop|restart|hud|status|heal")
   .option(
     "--wallet <spec>",
     "Wallet spec alias:pubkey:color (repeatable, use multiple --wallet flags)",
@@ -720,6 +720,9 @@ Examples:
 
   # Show hub/HUD health snapshot
   $ scoundrel warchestd status
+
+  # Heal positions against current wallet holdings
+  $ scoundrel warchestd heal --wallet sampleWallet:DDkF...:orange
 `
   )
   .action(async (action, opts) => {
@@ -781,6 +784,10 @@ Examples:
         await warchestService.restart({
           walletSpecs,
           hudStatePath,
+        });
+      } else if (action === "heal") {
+        await warchestService.heal({
+          walletSpecs,
         });
       } else if (action === "hud") {
         // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
