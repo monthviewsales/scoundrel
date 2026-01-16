@@ -35,7 +35,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 ```bash
 npm install
 cp .env.sample .env
-node index.js --help
+node index.js -h
 npm test
 ```
 
@@ -338,7 +338,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 ## Commands
 
-> Run `node index.js --help` (scoundrel) or `node warlordai.js --help` for flags & examples.
+> Run `node index.js -h` / `node warlordai.js -h` (or `scoundrel -h` / `warlordai -h`) for flags & examples. `-h` is the same as `--help`.
 
 - **Quick reference**
   
