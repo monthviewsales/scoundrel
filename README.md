@@ -448,6 +448,14 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `set-key` updates the signing key source (keychain secret, env var, or clears it).
 - Keychain secrets are encrypted at rest in `sc_wallet_secrets`; the master key lives in macOS Keychain (configure via `SC_KEYCHAIN_SERVICE` / `SC_KEYCHAIN_ACCOUNT`).
 
+#### Keychain setup
+1) Run `scoundrel wallet add` (new wallet) or `scoundrel wallet set-key <alias>` (existing wallet).
+2) Choose `k` (keychain) as the key source and paste the private key (base58 string or Solana `id.json` array).
+3) macOS Keychain will prompt the first time the master key is created or accessed. Approve once to cache it for the session.
+4) Start `scoundrel warchestd start ...` after at least one signing wallet is stored; the service preloads the keychain master key on boot.
+
+If you prefer `.env` fallback, pick `e` (env) and set the env var name in the wallet record.
+
 ### warchestd `<start|stop|restart|hud|status>`
 - Service/HUD controller around `lib/warchest/workers/warchestService.js` (service) and `lib/warchest/workers/warchestHudWorker.js` (Ink TUI).
 - `start/restart` launch the headless service (accept `--wallet alias:pubkey:color` repeatable). `hud` runs the foreground HUD (selector fallback). `status` reads the health snapshot and reports slot/RPC timings/wallet count.
