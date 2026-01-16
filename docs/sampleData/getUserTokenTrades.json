@@ -1,0 +1,71 @@
+{
+	"trades": [
+		{
+			"tx": "5ofykb5wa9hWhU3W8HpxTbR4Yc4y9Cr5EYkVQYAjLNT44cVrSWaDPH7q7qdiETCvptfAukMVBVTwSTBauWUmbMJi",
+			"amount": 2094.849423,
+			"priceUsd": 0.0033064431206773267,
+			"volume": 6.926500463533218,
+			"volumeSol": 0.05,
+			"type": "buy",
+			"wallet": "D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua",
+			"time": 1764726273794,
+			"program": "dflow",
+			"pools": []
+		},
+		{
+			"tx": "29YiCKuHQtens6kx1S7ka374Ty9koMv6sP6RUYN7rjGY1jGeAjE2uicWCuYRdbpMALT7URivgwhMJRda6X2rZ7oN",
+			"amount": 2245.335729,
+			"priceUsd": 0.0029363699592373873,
+			"volume": 6.593136383037979,
+			"volumeSol": 0.05,
+			"type": "buy",
+			"wallet": "D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua",
+			"time": 1763582221732,
+			"program": "jupiter",
+			"pools": []
+		},
+		{
+			"tx": "36Sze7NP9mfoEqJrYaPbivv7hjK3j63SzaVhoMjnXQVNsnBdedt6Uz8qGrG7rthevQg63vpVPjhgV2JBeUr5yNrX",
+			"amount": 4221.747609,
+			"priceUsd": 0.004689432326093349,
+			"volume": 19.797599710251905,
+			"volumeSol": 0.1,
+			"type": "buy",
+			"wallet": "D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua",
+			"time": 1761511148895,
+			"program": "dflow",
+			"pools": []
+		},
+		{
+			"tx": "3FgKCm84PP3Gm8p3H7rU3Dpf1NJncXMPXGCe349cYFEQZbEgnqZenf4YPC8drjAXE1t3eP6HS4jNwV98ZhqNnGaT",
+			"amount": 6422.183895,
+			"priceUsd": 0.008522634982986553,
+			"volume": 54.73392913069984,
+			"volumeSol": 0.24475085400000002,
+			"type": "buy",
+			"wallet": "D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua",
+			"time": 1759373342242,
+			"program": "dflow",
+			"pools": [
+				"HCfytQ49w6Dn9UhHCqjNYTZYQ6z5SwqmsyYYqW4EKDdA"
+			]
+		},
+		{
+			"tx": "5aYLHemG75FqpmiJTZHfqqv9RA6UCw2qVx7u2dMyYjWb4UCZ8U1ETpk98fCiWWZrg3DooFveEyFj32LNnG7o8DLD",
+			"amount": 3004.99325,
+			"priceUsd": 0.005463975727411131,
+			"volume": 16.419210179034287,
+			"volumeSol": 0.1,
+			"type": "buy",
+			"wallet": "D2xBFAiwVBnV7xnmqvdFLuL62qesi7kCNVyT4rZwfNua",
+			"time": 1752516929004,
+			"program": "jupiter",
+			"pools": [
+				"45ssPkUQs1ssbeDqxD2mZrMdJYAXF7GyQyhS5xDXuWC5"
+			]
+		}
+	],
+	"nextCursor": null,
+	"hasNextPage": false,
+	"sortDirection": "DESC"
+}

@@ -10,6 +10,7 @@ const getPnlPositionsLive = require('./trading/getPnlPositionsLive');
 const getTokenAmtByAlias = require('./trading/getTokenAmtByAlias');
 const loadOpenPositions = require('./trading/loadOpenPositions');
 const updatePositionStrategyName = require('./trading/updatePositionStrategyName');
+const positionHealing = require('./trading/positionHealing');
 
 const chalk = require('chalk');
 const { logger } = require('./context');
@@ -39,6 +40,12 @@ module.exports = {
   getPendingSwapCount: legacy.getPendingSwapCount,
   getTokenAmount: legacy.getTokenAmount,
   updatePositionStrategyName,
+  loadOpenPositionsByWalletId: positionHealing.loadOpenPositionsByWalletId,
+  listScTradeTxidsByWalletMint: positionHealing.listScTradeTxidsByWalletMint,
+  insertScTrades: positionHealing.insertScTrades,
+  updatePositionSnapshot: positionHealing.updatePositionSnapshot,
+  closePositionRun: positionHealing.closePositionRun,
+  rebuildScPnlForWalletMint: positionHealing.rebuildScPnlForWalletMint,
   isSwapPending: legacy.isSwapPending,
   logEvaluation: legacy.logEvaluation,
   markPendingSwap: legacy.markPendingSwap,
