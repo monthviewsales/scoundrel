@@ -2383,25 +2383,6 @@ const BootyBox = {
       .all(minBuyScore, limit);
   },
 
-  /**
-   * Retrieves all currently open positions joined with coin metadata.
-   * Only includes positions where the coin status is 'complete'.
-   * @returns {Array<Object>} List of open position records with metadata.
-   */
-  getOpenPositions() {
-    return db
-      .prepare(
-        `
-      SELECT positions.*, coins.symbol, coins.name, coins.decimals, coins.image, coins.status,
-             coins.price AS coin_price
-      FROM positions
-      JOIN coins ON coins.mint = positions.coin_mint
-      WHERE coins.status = 'complete'
-    `
-      )
-      .all();
-  },
-
   /* *
    * Adds or replaces a tracked open position.
    * Prevents overwriting highestPrice if the incoming value is lower.
@@ -2474,225 +2455,6 @@ const BootyBox = {
       lastUpdated,
     });
   },
-
-  /**
-   * Deletes a position by coin mint, used when a position is sold.
-   * @param {string} mint - The token mint of the coin.
-   */
-  /*   removePosition(mint) {
-    db.prepare(`DELETE FROM positions WHERE coin_mint = ?`).run(mint);
-  }, */
-
-  /**
-   * Logs a buy transaction to the buy history table.
-   * @param {Object} buy - Buy record including price, qty, timestamp, txid, and fees (lamports).
-   */
-  /* logBuy(buy) {
-    if (!buy.price || buy.price === 0) {
-      logger.warn(
-        `[BootyBox] Ignoring buy log — no valid price for TXID: ${buy.txid}`
-      );
-      return;
-    }
-    const exists = db
-      .prepare(`SELECT 1 FROM buys WHERE txid = ?`)
-      .get(buy.txid);
-    if (exists) {
-      logger.warn(`⚠️ [BootyBox] Duplicate BUY tx skipped: ${buy.txid}`);
-      return;
-    }
-
-    let trade_uuid = buy.trade_uuid || resolveTradeUuid(buy.coin_mint);
-    if (trade_uuid) {
-      tradeUuidMap.set(buy.coin_mint, trade_uuid);
-      deletePendingTradeUuid(buy.coin_mint);
-    }
-
-    const timestamp = buy.timestamp || Date.now();
-    const stmt = db.prepare(`
-      INSERT INTO buys (
-        coin_mint,
-        trade_uuid,
-        price,
-        priceUsd,
-        qty,
-        timestamp,
-        txid,
-        fees,
-        feesUsd,
-        solUsdPrice,
-        slippage,
-        priceImpact,
-        hiddenTax,
-        executionPrice,
-        currentPrice
-      ) VALUES (
-        @coin_mint,
-        @trade_uuid,
-        @price,
-        @priceUsd,
-        @qty,
-        @timestamp,
-        @txid,
-        @fees,
-        @feesUsd,
-        @solUsdPrice,
-        @slippage,
-        @priceImpact,
-        @hiddenTax,
-        @executionPrice,
-        @currentPrice
-      )
-    `);
-    stmt.run({
-      ...buy,
-      trade_uuid,
-      timestamp,
-      solUsdPrice: buy.solUsdPrice ?? null,
-      slippage: buy.slippage ?? null,
-      priceImpact: buy.priceImpact ?? null,
-      hiddenTax: buy.hiddenTax ?? null,
-      executionPrice: buy.executionPrice ?? null,
-      currentPrice: buy.currentPrice ?? null,
-    });
-    // Also log to trades table
-    const wallet = buy.wallet || defaultWalletPublicKey || null;
-    if (!wallet) {
-      logger.warn(
-        chalk.bgYellow.black(
-          `[BootyBox] WARNING: Missing wallet for BUY on mint ${buy.coin_mint}. Trade data will be incomplete and analytics may be fucked.`
-        )
-      );
-    }
-    BootyBox.insertTrades(buy.coin_mint, wallet, [
-      {
-        trade_uuid,
-        tx: buy.txid,
-        wallet,
-        amount: buy.qty,
-        priceUsd: buy.priceUsd,
-        volume: buy.qty * buy.priceUsd,
-        volumeSol: buy.qty * buy.price,
-        type: "buy",
-        time: timestamp,
-        program: buy.program || "swap",
-        pools: Array.isArray(buy.pools) ? buy.pools : [],
-      },
-    ]);
-  }, */
-
-  /**
-   * Logs a sell transaction to the sell history table.
-   * @param {Object} sell - Sell record including price, priceUsd, qty, timestamp, txid, pnl, pnlPct, fees, feesUsd.
-   */
-  /* logSell(sell) {
-    const exists = db
-      .prepare(`SELECT 1 FROM sells WHERE txid = ?`)
-      .get(sell.txid);
-    if (exists) {
-      logger.warn(`⚠️ [BootyBox] Duplicate SELL tx skipped: ${sell.txid}`);
-      return;
-    }
-
-    let trade_uuid = sell.trade_uuid || resolveTradeUuid(sell.coin_mint);
-    if (trade_uuid) {
-      tradeUuidMap.set(sell.coin_mint, trade_uuid);
-      deletePendingTradeUuid(sell.coin_mint);
-    }
-
-    const timestamp = sell.timestamp || Date.now();
-    const stmt = db.prepare(`
-      INSERT INTO sells (
-        coin_mint,
-        trade_uuid,
-        price,
-        priceUsd,
-        qty,
-        timestamp,
-        txid,
-        pnl,
-        pnlPct,
-        fees,
-        feesUsd,
-        solUsdPrice,
-        slippage,
-        priceImpact,
-        hiddenTax,
-        executionPrice,
-        currentPrice
-      ) VALUES (
-        @coin_mint,
-        @trade_uuid,
-        @price,
-        @priceUsd,
-        @qty,
-        @timestamp,
-        @txid,
-        @pnl,
-        @pnlPct,
-        @fees,
-        @feesUsd,
-        @solUsdPrice,
-        @slippage,
-        @priceImpact,
-        @hiddenTax,
-        @executionPrice,
-        @currentPrice
-      )
-    `);
-    stmt.run({
-      ...sell,
-      trade_uuid,
-      timestamp,
-      solUsdPrice: sell.solUsdPrice ?? null,
-      slippage: sell.slippage ?? null,
-      priceImpact: sell.priceImpact ?? null,
-      hiddenTax: sell.hiddenTax ?? null,
-      executionPrice: sell.executionPrice ?? null,
-      currentPrice: sell.currentPrice ?? null,
-    });
-    // Also log to trades table
-    const wallet = sell.wallet || defaultWalletPublicKey || null;
-    if (!wallet) {
-      logger.warn(
-        chalk.bgYellow.black(
-          `[BootyBox] WARNING: Missing wallet for SELL on mint ${sell.coin_mint}. Trade data will be incomplete and analytics may be fucked.`
-        )
-      );
-    }
-    BootyBox.insertTrades(sell.coin_mint, wallet, [
-      {
-        trade_uuid,
-        tx: sell.txid,
-        wallet,
-        amount: sell.qty,
-        priceUsd: sell.priceUsd,
-        volume: sell.qty * sell.priceUsd,
-        volumeSol: sell.qty * sell.price,
-        type: "sell",
-        time: timestamp,
-        program: sell.program || "swap",
-        pools: Array.isArray(sell.pools) ? sell.pools : [],
-      },
-    ]);
-    clearTradeUuid(sell.coin_mint);
-  }, */
-
-  /*   getLatestBuyByMint(mint) {
-    return db
-      .prepare(
-        "SELECT * FROM buys WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
-      )
-      .get(mint);
-  }, */
-
-  /*   getLatestSellByMint(mint) {
-    return db
-      .prepare(
-        "SELECT * FROM sells WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
-      )
-      .get(mint);
-  }, */
 
   /**
    * Logs a buy or sell evaluation result.
@@ -2774,201 +2536,6 @@ const BootyBox = {
     WHERE mint = @mint
   `
     ).run({ ts, mint });
-  },
-
-  /**
-   * Inserts or updates the PnL row for a given mint.
-   * If the row already exists, per‐trade values are added to running totals,
-   * transaction counts incremented, and timestamps updated.
-   *
-   * @param {string} mint    – The token mint
-   * @param {Object} pnlData – Per‐trade PnL data with keys:
-   *   holding, held, sold, sold_usd, realized, unrealized,
-   *   fees_sol, fees_usd, total, total_sold, total_invested,
-   *   average_buy_amount, current_value, cost_basis,
-   *   first_trade_time, last_buy_time, last_sell_time, last_trade_time,
-   *   buy_transactions, sell_transactions, total_transactions, lastUpdated
-   */
-  updatePnL(mint, pnlData) {
-    if (!mint) return;
-    pnlData = pnlData || {};
-    // Normalize timestamps and transaction counts
-    const now = Date.now();
-    const lastUpdated = pnlData.lastUpdated || now;
-    const buyTx =
-      pnlData.buy_transactions != null ? pnlData.buy_transactions : 0;
-    const sellTx =
-      pnlData.sell_transactions != null ? pnlData.sell_transactions : 0;
-    const totalTx =
-      pnlData.total_transactions != null
-        ? pnlData.total_transactions
-        : buyTx + sellTx;
-    const hasTrade = buyTx > 0 || sellTx > 0;
-    const firstTradeTime =
-      pnlData.first_trade_time || (hasTrade ? lastUpdated : null);
-    const lastBuyTime =
-      pnlData.last_buy_time || (buyTx > 0 ? lastUpdated : null);
-    const lastSellTime =
-      pnlData.last_sell_time || (sellTx > 0 ? lastUpdated : null);
-    const lastTradeTime =
-      pnlData.last_trade_time || (hasTrade ? lastUpdated : null);
-
-    const upsert = db.prepare(`
-      INSERT INTO pnl (
-        coin_mint, holding, held, sold, sold_usd, realized, unrealized,
-        fees_sol, fees_usd, total, total_sold, total_invested,
-        average_buy_amount, current_value, cost_basis,
-        first_trade_time, last_buy_time, last_sell_time,
-        last_trade_time, buy_transactions, sell_transactions,
-        total_transactions, lastUpdated
-      ) VALUES (
-        @coin_mint, @holding, @held, @sold, @sold_usd, @realized, @unrealized,
-        @fees_sol, @fees_usd, @total, @total_sold, @total_invested,
-        @average_buy_amount, @current_value, @cost_basis,
-        @first_trade_time, @last_buy_time, @last_sell_time,
-        @last_trade_time, @buy_transactions, @sell_transactions,
-        @total_transactions, @lastUpdated
-      )
-      ON CONFLICT(coin_mint) DO UPDATE SET
-        holding           = holding + excluded.holding,
-        held              = held + excluded.held,
-        sold              = sold + excluded.sold,
-        sold_usd          = sold_usd + excluded.sold_usd,
-        realized          = realized + excluded.realized,
-        unrealized        = excluded.unrealized,
-        fees_sol          = fees_sol + excluded.fees_sol,
-        fees_usd          = fees_usd + excluded.fees_usd,
-        total             = total + excluded.total,
-        total_sold        = total_sold + excluded.total_sold,
-        total_invested    = total_invested + excluded.total_invested,
-        average_buy_amount= excluded.average_buy_amount,
-        current_value     = excluded.current_value,
-        cost_basis        = excluded.cost_basis,
-        first_trade_time  = COALESCE(first_trade_time, excluded.first_trade_time),
-        last_buy_time     = COALESCE(excluded.last_buy_time, last_buy_time),
-        last_sell_time    = COALESCE(excluded.last_sell_time, last_sell_time),
-        last_trade_time   = COALESCE(excluded.last_trade_time, last_trade_time),
-        buy_transactions  = buy_transactions + excluded.buy_transactions,
-        sell_transactions = sell_transactions + excluded.sell_transactions,
-        total_transactions= total_transactions + excluded.total_transactions,
-        lastUpdated       = excluded.lastUpdated;
-    `);
-    // Build a complete params object so every named SQL placeholder is provided
-    const params = {
-      coin_mint: mint,
-      holding: pnlData.holding || 0,
-      held: pnlData.held || 0,
-      sold: pnlData.sold || 0,
-      sold_usd: pnlData.sold_usd || 0,
-      realized: pnlData.realized || 0,
-      unrealized: pnlData.unrealized || 0,
-      fees_sol: pnlData.fees_sol || 0,
-      fees_usd: pnlData.fees_usd || 0,
-      total: pnlData.total || 0,
-      total_sold: pnlData.total_sold || 0,
-      total_invested: pnlData.total_invested || 0,
-      average_buy_amount: pnlData.average_buy_amount || 0,
-      current_value: pnlData.current_value || 0,
-      cost_basis: pnlData.cost_basis || 0,
-      first_trade_time: firstTradeTime,
-      last_buy_time: lastBuyTime,
-      last_sell_time: lastSellTime,
-      last_trade_time: lastTradeTime,
-      buy_transactions: buyTx,
-      sell_transactions: sellTx,
-      total_transactions: totalTx,
-      lastUpdated: lastUpdated,
-    };
-    upsert.run(params);
-
-    // Bump parent coin's timestamp to preserve it
-    db.prepare(
-      `
-      UPDATE coins
-      SET lastUpdated = ?
-      WHERE mint = ?
-    `
-    ).run(lastUpdated, mint);
-
-    // Also refresh the position’s lastValidated so cleanup keeps it alive
-    db.prepare(
-      `
-      UPDATE positions
-      SET lastValidated = ?
-      WHERE coin_mint = ?
-    `
-    ).run(lastUpdated, mint);
-  },
-
-  /**
-   * Stores an array of trades for a given mint and wallet.
-   * Replaces existing trades for that pair.
-   * @param {string} mint
-   * @param {string} wallet
-   * @param {Array} trades
-   */
-  insertTrades(mint, wallet, trades) {
-    if (!Array.isArray(trades) || trades.length === 0) return;
-
-    const fallbackWallet =
-      normalizeWalletField(wallet) ||
-      normalizeWalletField(defaultWalletPublicKey);
-    const fallbackUuid = resolveTradeUuid(mint);
-
-    const insertStmt = db.prepare(`
-      INSERT INTO trades (
-        trade_uuid, tx, mint, wallet, amount, priceUsd, volume, volumeSol, type, time, program, pools
-      ) VALUES (
-        @trade_uuid, @tx, @mint, @wallet, @amount, @priceUsd, @volume, @volumeSol, @type, @time, @program, @pools
-      )
-      ON CONFLICT(tx) DO UPDATE SET
-        trade_uuid = COALESCE(excluded.trade_uuid, trades.trade_uuid),
-        wallet = COALESCE(excluded.wallet, trades.wallet),
-        amount = COALESCE(excluded.amount, trades.amount),
-        priceUsd = COALESCE(excluded.priceUsd, trades.priceUsd),
-        volume = COALESCE(excluded.volume, trades.volume),
-        volumeSol = COALESCE(excluded.volumeSol, trades.volumeSol),
-        type = COALESCE(excluded.type, trades.type),
-        time = COALESCE(excluded.time, trades.time),
-        program = COALESCE(excluded.program, trades.program),
-        pools = COALESCE(excluded.pools, trades.pools)
-    `);
-
-    const insertMany = db.transaction((tradeList) => {
-      for (const trade of tradeList) {
-        const tradeUuid =
-          trade.trade_uuid || fallbackUuid || resolveTradeUuid(mint);
-        if (tradeUuid) {
-          tradeUuidMap.set(mint, tradeUuid);
-          deletePendingTradeUuid(mint);
-        }
-        const walletValue =
-          normalizeWalletField(trade.wallet) || fallbackWallet || null;
-        if (!walletValue) {
-          logger.warn(
-            chalk.bgYellow.black(
-              `[BootyBox] WARNING: Missing wallet for trade on mint ${mint}. Trade data will be incomplete and analytics may be corrupted.`
-            )
-          );
-        }
-        insertStmt.run({
-          trade_uuid: tradeUuid || null,
-          tx: trade.tx,
-          mint,
-          wallet: walletValue,
-          amount: Number.isFinite(trade.amount) ? trade.amount : null,
-          priceUsd: Number.isFinite(trade.priceUsd) ? trade.priceUsd : null,
-          volume: Number.isFinite(trade.volume) ? trade.volume : null,
-          volumeSol: Number.isFinite(trade.volumeSol) ? trade.volumeSol : null,
-          type: trade.type || null,
-          time: trade.time || null,
-          program: trade.program || null,
-          pools: JSON.stringify(Array.isArray(trade.pools) ? trade.pools : []),
-        });
-      }
-    });
-
-    insertMany(trades);
   },
 
   /**
@@ -3404,20 +2971,6 @@ const BootyBox = {
   },
 
   /**
-   * Updates the previous RSI value for a given coin in the positions table.
-   * Useful for momentum-based exit logic like cliffGuard.
-   * @param {string} mint - The coin mint address.
-   * @param {number} rsi - The RSI value to store.
-   */
-  updatePreviousRsi(mint, rsi) {
-    db.prepare(`UPDATE positions SET previousRsi = ? WHERE coin_mint = ?`).run(
-      rsi,
-      mint
-    );
-    logger.debug(`[BootyBox] Stored previous RSI for ${mint}: ${rsi}`);
-  },
-
-  /**
    * Removes coins not updated or evaluated within the last N hours,
    * but preserves coins with open positions or any PnL history.
    * Then resets buyScore on all remaining coins.
@@ -3483,3 +3036,462 @@ BootyBox.init = async (options = {}) => {
 BootyBox.engine = "sqlite";
 
 module.exports = BootyBox;
+
+// Deprecated / bewareWF Legacy
+//
+// Legacy helpers trimmed from the active BootyBox surface.
+// Restore by moving the desired block back into BootyBox exports.
+//
+//   /**
+//    * Retrieves all currently open positions joined with coin metadata.
+//    * Only includes positions where the coin status is 'complete'.
+//    * @returns {Array<Object>} List of open position records with metadata.
+//    */
+//   getOpenPositions() {
+//     return db
+//       .prepare(
+//         `
+//       SELECT positions.*, coins.symbol, coins.name, coins.decimals, coins.image, coins.status,
+//              coins.price AS coin_price
+//       FROM positions
+//       JOIN coins ON coins.mint = positions.coin_mint
+//       WHERE coins.status = 'complete'
+//     `
+//       )
+//       .all();
+//   },
+//
+//
+//   /**
+//    * Deletes a position by coin mint, used when a position is sold.
+//    * @param {string} mint - The token mint of the coin.
+//    */
+//   /*   removePosition(mint) {
+//     db.prepare(`DELETE FROM positions WHERE coin_mint = ?`).run(mint);
+//   }, */
+//
+//
+//   /**
+//    * Logs a buy transaction to the buy history table.
+//    * @param {Object} buy - Buy record including price, qty, timestamp, txid, and fees (lamports).
+//    */
+//   /* logBuy(buy) {
+//     if (!buy.price || buy.price === 0) {
+//       logger.warn(
+//         `[BootyBox] Ignoring buy log — no valid price for TXID: ${buy.txid}`
+//       );
+//       return;
+//     }
+//     const exists = db
+//       .prepare(`SELECT 1 FROM buys WHERE txid = ?`)
+//       .get(buy.txid);
+//     if (exists) {
+//       logger.warn(`⚠️ [BootyBox] Duplicate BUY tx skipped: ${buy.txid}`);
+//       return;
+//     }
+//
+//     let trade_uuid = buy.trade_uuid || resolveTradeUuid(buy.coin_mint);
+//     if (trade_uuid) {
+//       tradeUuidMap.set(buy.coin_mint, trade_uuid);
+//       deletePendingTradeUuid(buy.coin_mint);
+//     }
+//
+//     const timestamp = buy.timestamp || Date.now();
+//     const stmt = db.prepare(`
+//       INSERT INTO buys (
+//         coin_mint,
+//         trade_uuid,
+//         price,
+//         priceUsd,
+//         qty,
+//         timestamp,
+//         txid,
+//         fees,
+//         feesUsd,
+//         solUsdPrice,
+//         slippage,
+//         priceImpact,
+//         hiddenTax,
+//         executionPrice,
+//         currentPrice
+//       ) VALUES (
+//         @coin_mint,
+//         @trade_uuid,
+//         @price,
+//         @priceUsd,
+//         @qty,
+//         @timestamp,
+//         @txid,
+//         @fees,
+//         @feesUsd,
+//         @solUsdPrice,
+//         @slippage,
+//         @priceImpact,
+//         @hiddenTax,
+//         @executionPrice,
+//         @currentPrice
+//       )
+//     `);
+//     stmt.run({
+//       ...buy,
+//       trade_uuid,
+//       timestamp,
+//       solUsdPrice: buy.solUsdPrice ?? null,
+//       slippage: buy.slippage ?? null,
+//       priceImpact: buy.priceImpact ?? null,
+//       hiddenTax: buy.hiddenTax ?? null,
+//       executionPrice: buy.executionPrice ?? null,
+//       currentPrice: buy.currentPrice ?? null,
+//     });
+//     // Also log to trades table
+//     const wallet = buy.wallet || defaultWalletPublicKey || null;
+//     if (!wallet) {
+//       logger.warn(
+//         chalk.bgYellow.black(
+//           `[BootyBox] WARNING: Missing wallet for BUY on mint ${buy.coin_mint}. Trade data will be incomplete and analytics may be fucked.`
+//         )
+//       );
+//     }
+//     BootyBox.insertTrades(buy.coin_mint, wallet, [
+//       {
+//         trade_uuid,
+//         tx: buy.txid,
+//         wallet,
+//         amount: buy.qty,
+//         priceUsd: buy.priceUsd,
+//         volume: buy.qty * buy.priceUsd,
+//         volumeSol: buy.qty * buy.price,
+//         type: "buy",
+//         time: timestamp,
+//         program: buy.program || "swap",
+//         pools: Array.isArray(buy.pools) ? buy.pools : [],
+//       },
+//     ]);
+//   }, */
+//
+//
+//   /**
+//    * Logs a sell transaction to the sell history table.
+//    * @param {Object} sell - Sell record including price, priceUsd, qty, timestamp, txid, pnl, pnlPct, fees, feesUsd.
+//    */
+//   /* logSell(sell) {
+//     const exists = db
+//       .prepare(`SELECT 1 FROM sells WHERE txid = ?`)
+//       .get(sell.txid);
+//     if (exists) {
+//       logger.warn(`⚠️ [BootyBox] Duplicate SELL tx skipped: ${sell.txid}`);
+//       return;
+//     }
+//
+//     let trade_uuid = sell.trade_uuid || resolveTradeUuid(sell.coin_mint);
+//     if (trade_uuid) {
+//       tradeUuidMap.set(sell.coin_mint, trade_uuid);
+//       deletePendingTradeUuid(sell.coin_mint);
+//     }
+//
+//     const timestamp = sell.timestamp || Date.now();
+//     const stmt = db.prepare(`
+//       INSERT INTO sells (
+//         coin_mint,
+//         trade_uuid,
+//         price,
+//         priceUsd,
+//         qty,
+//         timestamp,
+//         txid,
+//         pnl,
+//         pnlPct,
+//         fees,
+//         feesUsd,
+//         solUsdPrice,
+//         slippage,
+//         priceImpact,
+//         hiddenTax,
+//         executionPrice,
+//         currentPrice
+//       ) VALUES (
+//         @coin_mint,
+//         @trade_uuid,
+//         @price,
+//         @priceUsd,
+//         @qty,
+//         @timestamp,
+//         @txid,
+//         @pnl,
+//         @pnlPct,
+//         @fees,
+//         @feesUsd,
+//         @solUsdPrice,
+//         @slippage,
+//         @priceImpact,
+//         @hiddenTax,
+//         @executionPrice,
+//         @currentPrice
+//       )
+//     `);
+//     stmt.run({
+//       ...sell,
+//       trade_uuid,
+//       timestamp,
+//       solUsdPrice: sell.solUsdPrice ?? null,
+//       slippage: sell.slippage ?? null,
+//       priceImpact: sell.priceImpact ?? null,
+//       hiddenTax: sell.hiddenTax ?? null,
+//       executionPrice: sell.executionPrice ?? null,
+//       currentPrice: sell.currentPrice ?? null,
+//     });
+//     // Also log to trades table
+//     const wallet = sell.wallet || defaultWalletPublicKey || null;
+//     if (!wallet) {
+//       logger.warn(
+//         chalk.bgYellow.black(
+//           `[BootyBox] WARNING: Missing wallet for SELL on mint ${sell.coin_mint}. Trade data will be incomplete and analytics may be fucked.`
+//         )
+//       );
+//     }
+//     BootyBox.insertTrades(sell.coin_mint, wallet, [
+//       {
+//         trade_uuid,
+//         tx: sell.txid,
+//         wallet,
+//         amount: sell.qty,
+//         priceUsd: sell.priceUsd,
+//         volume: sell.qty * sell.priceUsd,
+//         volumeSol: sell.qty * sell.price,
+//         type: "sell",
+//         time: timestamp,
+//         program: sell.program || "swap",
+//         pools: Array.isArray(sell.pools) ? sell.pools : [],
+//       },
+//     ]);
+//     clearTradeUuid(sell.coin_mint);
+//   }, */
+//
+//   /*   getLatestBuyByMint(mint) {
+//     return db
+//       .prepare(
+//         "SELECT * FROM buys WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
+//       )
+//       .get(mint);
+//   }, */
+//
+//   /*   getLatestSellByMint(mint) {
+//     return db
+//       .prepare(
+//         "SELECT * FROM sells WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
+//       )
+//       .get(mint);
+//   }, */
+//
+//
+//   /**
+//    * Inserts or updates the PnL row for a given mint.
+//    * If the row already exists, per‐trade values are added to running totals,
+//    * transaction counts incremented, and timestamps updated.
+//    *
+//    * @param {string} mint    – The token mint
+//    * @param {Object} pnlData – Per‐trade PnL data with keys:
+//    *   holding, held, sold, sold_usd, realized, unrealized,
+//    *   fees_sol, fees_usd, total, total_sold, total_invested,
+//    *   average_buy_amount, current_value, cost_basis,
+//    *   first_trade_time, last_buy_time, last_sell_time, last_trade_time,
+//    *   buy_transactions, sell_transactions, total_transactions, lastUpdated
+//    */
+//   updatePnL(mint, pnlData) {
+//     if (!mint) return;
+//     pnlData = pnlData || {};
+//     // Normalize timestamps and transaction counts
+//     const now = Date.now();
+//     const lastUpdated = pnlData.lastUpdated || now;
+//     const buyTx =
+//       pnlData.buy_transactions != null ? pnlData.buy_transactions : 0;
+//     const sellTx =
+//       pnlData.sell_transactions != null ? pnlData.sell_transactions : 0;
+//     const totalTx =
+//       pnlData.total_transactions != null
+//         ? pnlData.total_transactions
+//         : buyTx + sellTx;
+//     const hasTrade = buyTx > 0 || sellTx > 0;
+//     const firstTradeTime =
+//       pnlData.first_trade_time || (hasTrade ? lastUpdated : null);
+//     const lastBuyTime =
+//       pnlData.last_buy_time || (buyTx > 0 ? lastUpdated : null);
+//     const lastSellTime =
+//       pnlData.last_sell_time || (sellTx > 0 ? lastUpdated : null);
+//     const lastTradeTime =
+//       pnlData.last_trade_time || (hasTrade ? lastUpdated : null);
+//
+//     const upsert = db.prepare(`
+//       INSERT INTO pnl (
+//         coin_mint, holding, held, sold, sold_usd, realized, unrealized,
+//         fees_sol, fees_usd, total, total_sold, total_invested,
+//         average_buy_amount, current_value, cost_basis,
+//         first_trade_time, last_buy_time, last_sell_time,
+//         last_trade_time, buy_transactions, sell_transactions,
+//         total_transactions, lastUpdated
+//       ) VALUES (
+//         @coin_mint, @holding, @held, @sold, @sold_usd, @realized, @unrealized,
+//         @fees_sol, @fees_usd, @total, @total_sold, @total_invested,
+//         @average_buy_amount, @current_value, @cost_basis,
+//         @first_trade_time, @last_buy_time, @last_sell_time,
+//         @last_trade_time, @buy_transactions, @sell_transactions,
+//         @total_transactions, @lastUpdated
+//       )
+//       ON CONFLICT(coin_mint) DO UPDATE SET
+//         holding           = holding + excluded.holding,
+//         held              = held + excluded.held,
+//         sold              = sold + excluded.sold,
+//         sold_usd          = sold_usd + excluded.sold_usd,
+//         realized          = realized + excluded.realized,
+//         unrealized        = excluded.unrealized,
+//         fees_sol          = fees_sol + excluded.fees_sol,
+//         fees_usd          = fees_usd + excluded.fees_usd,
+//         total             = total + excluded.total,
+//         total_sold        = total_sold + excluded.total_sold,
+//         total_invested    = total_invested + excluded.total_invested,
+//         average_buy_amount= excluded.average_buy_amount,
+//         current_value     = excluded.current_value,
+//         cost_basis        = excluded.cost_basis,
+//         first_trade_time  = COALESCE(first_trade_time, excluded.first_trade_time),
+//         last_buy_time     = COALESCE(excluded.last_buy_time, last_buy_time),
+//         last_sell_time    = COALESCE(excluded.last_sell_time, last_sell_time),
+//         last_trade_time   = COALESCE(excluded.last_trade_time, last_trade_time),
+//         buy_transactions  = buy_transactions + excluded.buy_transactions,
+//         sell_transactions = sell_transactions + excluded.sell_transactions,
+//         total_transactions= total_transactions + excluded.total_transactions,
+//         lastUpdated       = excluded.lastUpdated;
+//     `);
+//     // Build a complete params object so every named SQL placeholder is provided
+//     const params = {
+//       coin_mint: mint,
+//       holding: pnlData.holding || 0,
+//       held: pnlData.held || 0,
+//       sold: pnlData.sold || 0,
+//       sold_usd: pnlData.sold_usd || 0,
+//       realized: pnlData.realized || 0,
+//       unrealized: pnlData.unrealized || 0,
+//       fees_sol: pnlData.fees_sol || 0,
+//       fees_usd: pnlData.fees_usd || 0,
+//       total: pnlData.total || 0,
+//       total_sold: pnlData.total_sold || 0,
+//       total_invested: pnlData.total_invested || 0,
+//       average_buy_amount: pnlData.average_buy_amount || 0,
+//       current_value: pnlData.current_value || 0,
+//       cost_basis: pnlData.cost_basis || 0,
+//       first_trade_time: firstTradeTime,
+//       last_buy_time: lastBuyTime,
+//       last_sell_time: lastSellTime,
+//       last_trade_time: lastTradeTime,
+//       buy_transactions: buyTx,
+//       sell_transactions: sellTx,
+//       total_transactions: totalTx,
+//       lastUpdated: lastUpdated,
+//     };
+//     upsert.run(params);
+//
+//     // Bump parent coin's timestamp to preserve it
+//     db.prepare(
+//       `
+//       UPDATE coins
+//       SET lastUpdated = ?
+//       WHERE mint = ?
+//     `
+//     ).run(lastUpdated, mint);
+//
+//     // Also refresh the position’s lastValidated so cleanup keeps it alive
+//     db.prepare(
+//       `
+//       UPDATE positions
+//       SET lastValidated = ?
+//       WHERE coin_mint = ?
+//     `
+//     ).run(lastUpdated, mint);
+//   },
+//
+//
+//   /**
+//    * Stores an array of trades for a given mint and wallet.
+//    * Replaces existing trades for that pair.
+//    * @param {string} mint
+//    * @param {string} wallet
+//    * @param {Array} trades
+//    */
+//   insertTrades(mint, wallet, trades) {
+//     if (!Array.isArray(trades) || trades.length === 0) return;
+//
+//     const fallbackWallet =
+//       normalizeWalletField(wallet) ||
+//       normalizeWalletField(defaultWalletPublicKey);
+//     const fallbackUuid = resolveTradeUuid(mint);
+//
+//     const insertStmt = db.prepare(`
+//       INSERT INTO trades (
+//         trade_uuid, tx, mint, wallet, amount, priceUsd, volume, volumeSol, type, time, program, pools
+//       ) VALUES (
+//         @trade_uuid, @tx, @mint, @wallet, @amount, @priceUsd, @volume, @volumeSol, @type, @time, @program, @pools
+//       )
+//       ON CONFLICT(tx) DO UPDATE SET
+//         trade_uuid = COALESCE(excluded.trade_uuid, trades.trade_uuid),
+//         wallet = COALESCE(excluded.wallet, trades.wallet),
+//         amount = COALESCE(excluded.amount, trades.amount),
+//         priceUsd = COALESCE(excluded.priceUsd, trades.priceUsd),
+//         volume = COALESCE(excluded.volume, trades.volume),
+//         volumeSol = COALESCE(excluded.volumeSol, trades.volumeSol),
+//         type = COALESCE(excluded.type, trades.type),
+//         time = COALESCE(excluded.time, trades.time),
+//         program = COALESCE(excluded.program, trades.program),
+//         pools = COALESCE(excluded.pools, trades.pools)
+//     `);
+//
+//     const insertMany = db.transaction((tradeList) => {
+//       for (const trade of tradeList) {
+//         const tradeUuid =
+//           trade.trade_uuid || fallbackUuid || resolveTradeUuid(mint);
+//         if (tradeUuid) {
+//           tradeUuidMap.set(mint, tradeUuid);
+//           deletePendingTradeUuid(mint);
+//         }
+//         const walletValue =
+//           normalizeWalletField(trade.wallet) || fallbackWallet || null;
+//         if (!walletValue) {
+//           logger.warn(
+//             chalk.bgYellow.black(
+//               `[BootyBox] WARNING: Missing wallet for trade on mint ${mint}. Trade data will be incomplete and analytics may be corrupted.`
+//             )
+//           );
+//         }
+//         insertStmt.run({
+//           trade_uuid: tradeUuid || null,
+//           tx: trade.tx,
+//           mint,
+//           wallet: walletValue,
+//           amount: Number.isFinite(trade.amount) ? trade.amount : null,
+//           priceUsd: Number.isFinite(trade.priceUsd) ? trade.priceUsd : null,
+//           volume: Number.isFinite(trade.volume) ? trade.volume : null,
+//           volumeSol: Number.isFinite(trade.volumeSol) ? trade.volumeSol : null,
+//           type: trade.type || null,
+//           time: trade.time || null,
+//           program: trade.program || null,
+//           pools: JSON.stringify(Array.isArray(trade.pools) ? trade.pools : []),
+//         });
+//       }
+//     });
+//
+//     insertMany(trades);
+//   },
+//
+//
+//   /**
+//    * Updates the previous RSI value for a given coin in the positions table.
+//    * Useful for momentum-based exit logic like cliffGuard.
+//    * @param {string} mint - The coin mint address.
+//    * @param {number} rsi - The RSI value to store.
+//    */
+//   updatePreviousRsi(mint, rsi) {
+//     db.prepare(`UPDATE positions SET previousRsi = ? WHERE coin_mint = ?`).run(
+//       rsi,
+//       mint
+//     );
+//     logger.debug(`[BootyBox] Stored previous RSI for ${mint}: ${rsi}`);
+//   },
+//
