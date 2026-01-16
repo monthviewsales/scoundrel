@@ -14,6 +14,7 @@ const {
   getHubCoordinator,
   closeHubCoordinator,
 } = require("./lib/warchest/hub");
+const { prepareTuiScreen } = require("./lib/tui/terminal");
 const warchestRun =
   typeof warchestModule === "function"
     ? warchestModule
@@ -59,6 +60,7 @@ function shouldUseTui(opts = {}) {
 async function runCommandTui({ command, args, options, run }) {
   const priorInkMode = process.env.SC_INK_MODE;
   process.env.SC_INK_MODE = "true";
+  const restoreScreen = prepareTuiScreen();
   try {
     const { loadCommandTuiApp } = require("./lib/tui/commandTui");
     const { render } = await import("ink");
@@ -73,6 +75,7 @@ async function runCommandTui({ command, args, options, run }) {
     );
     await waitUntilExit();
   } finally {
+    if (typeof restoreScreen === "function") restoreScreen();
     if (priorInkMode === undefined) {
       delete process.env.SC_INK_MODE;
     } else {
