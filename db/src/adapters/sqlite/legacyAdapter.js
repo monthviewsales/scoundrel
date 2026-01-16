@@ -13,7 +13,7 @@ const {
   deletePendingTradeUuid,
   setDefaultWalletPublicKey,
   getDefaultWalletPublicKey,
-} = require('./context');
+} = require("./context");
 let dbClosed = false;
 let defaultWalletPublicKey = getDefaultWalletPublicKey();
 
@@ -48,9 +48,7 @@ function ensureKolWalletForProfile(wallet, traderName) {
   if (!pubkey) return;
 
   const aliasFromName =
-    traderName && typeof traderName === "string"
-      ? traderName.trim()
-      : null;
+    traderName && typeof traderName === "string" ? traderName.trim() : null;
   const alias = (aliasFromName && aliasFromName.slice(0, 64)) || pubkey;
 
   const existing = db
@@ -79,7 +77,9 @@ function ensureKolWalletForProfile(wallet, traderName) {
 
     params.push(Date.now(), existing.wallet_id);
     db.prepare(
-      `UPDATE sc_wallets SET ${updates.join(", ")}, updated_at = ? WHERE wallet_id = ?`
+      `UPDATE sc_wallets SET ${updates.join(
+        ", "
+      )}, updated_at = ? WHERE wallet_id = ?`
     ).run(...params);
     return;
   }
@@ -237,7 +237,9 @@ function getWarchestWalletByAlias(alias) {
 
 function insertWarchestWallet(record) {
   if (!record || !record.alias || !record.pubkey) {
-    throw new Error("insertWarchestWallet: alias and pubkey are required fields.");
+    throw new Error(
+      "insertWarchestWallet: alias and pubkey are required fields."
+    );
   }
   const now = Date.now();
   const stmt = db.prepare(
@@ -296,9 +298,7 @@ function updateWarchestWalletColor(alias, color) {
 
 function deleteWarchestWallet(alias) {
   if (!alias) return false;
-  const res = db
-    .prepare("DELETE FROM sc_wallets WHERE alias = ?")
-    .run(alias);
+  const res = db.prepare("DELETE FROM sc_wallets WHERE alias = ?").run(alias);
   return !!(res && res.changes);
 }
 
@@ -370,9 +370,7 @@ function setDefaultFundingWallet(identifier) {
 
   const now = Date.now();
   const tx = db.transaction(() => {
-    db.prepare(
-      "UPDATE sc_wallets SET is_default_funding = 0"
-    ).run();
+    db.prepare("UPDATE sc_wallets SET is_default_funding = 0").run();
     db.prepare(
       "UPDATE sc_wallets SET is_default_funding = 1, updated_at = ? WHERE wallet_id = ?"
     ).run(now, walletRow.wallet_id);
@@ -490,13 +488,7 @@ function upsertKolWalletFromDossier({ wallet, traderName, color }) {
   return getWarchestWalletByAlias(alias);
 }
 
-function upsertProfileSnapshot({
-  profileId,
-  name,
-  wallet,
-  profile,
-  source,
-}) {
+function upsertProfileSnapshot({ profileId, name, wallet, profile, source }) {
   if (!profileId || !wallet) {
     throw new Error("upsertProfileSnapshot: profileId and wallet required");
   }
@@ -742,8 +734,7 @@ function recordAsk({
     profile: profile ? JSON.stringify(profile) : null,
     rows: rows ? JSON.stringify(rows) : null,
     model: model || null,
-    temperature:
-      typeof temperature === "number" ? temperature : null,
+    temperature: typeof temperature === "number" ? temperature : null,
     response_raw: JSON.stringify(responseRaw ?? null),
     answer: answer || "",
     bullets: JSON.stringify(Array.isArray(bullets) ? bullets : []),
@@ -810,20 +801,16 @@ function recordTune({
     tune_id: tuneId,
     correlation_id: correlationId || tuneId,
     profile: profile ? JSON.stringify(profile) : null,
-    current_settings: currentSettings
-      ? JSON.stringify(currentSettings)
-      : null,
+    current_settings: currentSettings ? JSON.stringify(currentSettings) : null,
     model: model || null,
-    temperature:
-      typeof temperature === "number" ? temperature : null,
+    temperature: typeof temperature === "number" ? temperature : null,
     response_raw: JSON.stringify(responseRaw ?? null),
     answer: answer || "",
     bullets: JSON.stringify(Array.isArray(bullets) ? bullets : []),
     actions: JSON.stringify(Array.isArray(actions) ? actions : []),
-    changes:
-      JSON.stringify(
-        changes && typeof changes === "object" ? changes : {}
-      ),
+    changes: JSON.stringify(
+      changes && typeof changes === "object" ? changes : {}
+    ),
     patch: JSON.stringify(Array.isArray(patch) ? patch : []),
     risks: JSON.stringify(Array.isArray(risks) ? risks : []),
     rationale: typeof rationale === "string" ? rationale : "",
@@ -831,13 +818,7 @@ function recordTune({
   });
 }
 
-function recordJobRun({
-  jobRunId,
-  job,
-  context,
-  input,
-  responseRaw,
-}) {
+function recordJobRun({ jobRunId, job, context, input, responseRaw }) {
   if (!jobRunId || !job) {
     throw new Error("recordJobRun: jobRunId and job are required");
   }
@@ -868,8 +849,7 @@ function recordJobRun({
   });
 }
 
-const profileJson = (value) =>
-  value == null ? null : JSON.stringify(value);
+const profileJson = (value) => (value == null ? null : JSON.stringify(value));
 
 function sqlNow() {
   const d = new Date();
@@ -886,9 +866,7 @@ function sqlNow() {
 function getLatestWalletProfileVersion(wallet) {
   if (!wallet) return 0;
   const row = db
-    .prepare(
-      "SELECT version FROM sc_wallet_profiles WHERE wallet = ? LIMIT 1"
-    )
+    .prepare("SELECT version FROM sc_wallet_profiles WHERE wallet = ? LIMIT 1")
     .get(wallet);
   if (!row || row.version == null) return 0;
   const raw = Number(row.version);
@@ -1338,11 +1316,17 @@ function applyScTradeEventToPositions(event) {
   const closedAt = nextCurrent <= 0 ? executedAt : existing.closed_at || null;
 
   const entryTokenFallback =
-    Number(existing.entry_token_amount) > 0 ? existing.entry_token_amount : nextBought;
+    Number(existing.entry_token_amount) > 0
+      ? existing.entry_token_amount
+      : nextBought;
   const entryPriceSolFallback =
-    Number(existing.entry_price_sol) > 0 ? existing.entry_price_sol : priceSolPerToken;
+    Number(existing.entry_price_sol) > 0
+      ? existing.entry_price_sol
+      : priceSolPerToken;
   const entryPriceUsdFallback =
-    Number(existing.entry_price_usd) > 0 ? existing.entry_price_usd : priceUsdPerToken;
+    Number(existing.entry_price_usd) > 0
+      ? existing.entry_price_usd
+      : priceUsdPerToken;
 
   db.prepare(
     `UPDATE sc_positions SET
@@ -1396,7 +1380,9 @@ function upsertCoinRisk(mint, risk) {
   const dev = risk.dev || {};
   const fees = risk.fees || {};
 
-  const snipersCount = Number.isFinite(snipers.count) ? Number(snipers.count) : 0;
+  const snipersCount = Number.isFinite(snipers.count)
+    ? Number(snipers.count)
+    : 0;
   const snipersTotalBalance = Number.isFinite(snipers.totalBalance)
     ? Number(snipers.totalBalance)
     : 0;
@@ -1404,7 +1390,9 @@ function upsertCoinRisk(mint, risk) {
     ? Number(snipers.totalPercentage)
     : 0;
 
-  const insidersCount = Number.isFinite(insiders.count) ? Number(insiders.count) : 0;
+  const insidersCount = Number.isFinite(insiders.count)
+    ? Number(insiders.count)
+    : 0;
   const insidersTotalBalance = Number.isFinite(insiders.totalBalance)
     ? Number(insiders.totalBalance)
     : 0;
@@ -1419,7 +1407,9 @@ function upsertCoinRisk(mint, risk) {
     top10Percent = Math.round(top10Percent * 100) / 100;
   }
 
-  const devPercent = Number.isFinite(dev.percentage) ? Number(dev.percentage) : 0;
+  const devPercent = Number.isFinite(dev.percentage)
+    ? Number(dev.percentage)
+    : 0;
   const devAmountTokens = Number.isFinite(dev.amount) ? Number(dev.amount) : 0;
 
   const feesTotalSol = Number.isFinite(fees.total) ? Number(fees.total) : 0;
@@ -1532,7 +1522,8 @@ function upsertCoinRisk(mint, risk) {
   const snipersTotalPercentDelta =
     snipersTotalPercent - (Number(existing.snipersTotalPercent) || 0);
 
-  const insidersCountDelta = insidersCount - (Number(existing.insidersCount) || 0);
+  const insidersCountDelta =
+    insidersCount - (Number(existing.insidersCount) || 0);
   const insidersTotalBalanceDelta =
     insidersTotalBalance - (Number(existing.insidersTotalBalance) || 0);
   const insidersTotalPercentDelta =
@@ -1688,29 +1679,37 @@ function upsertCoinEvents(mint, events) {
       if (!payload || typeof payload !== "object") continue;
       const interval = String(intervalKey);
 
-      const priceChangePercentage = Number.isFinite(payload.priceChangePercentage)
+      const priceChangePercentage = Number.isFinite(
+        payload.priceChangePercentage
+      )
         ? Number(payload.priceChangePercentage)
         : 0;
 
       const volumeSol = Number.isFinite(payload.volumeSol)
         ? Number(payload.volumeSol)
         : Number.isFinite(payload.volume?.quote)
-          ? Number(payload.volume.quote)
-          : 0;
+        ? Number(payload.volume.quote)
+        : 0;
       const volumeUsd = Number.isFinite(payload.volumeUsd)
         ? Number(payload.volumeUsd)
         : Number.isFinite(payload.volume?.usd)
-          ? Number(payload.volume.usd)
-          : 0;
+        ? Number(payload.volume.usd)
+        : 0;
 
-      const buysCount = Number.isFinite(payload.buys) ? Number(payload.buys) : 0;
-      const sellsCount = Number.isFinite(payload.sells) ? Number(payload.sells) : 0;
-      const txnsCount = Number.isFinite(payload.txns) ? Number(payload.txns) : 0;
+      const buysCount = Number.isFinite(payload.buys)
+        ? Number(payload.buys)
+        : 0;
+      const sellsCount = Number.isFinite(payload.sells)
+        ? Number(payload.sells)
+        : 0;
+      const txnsCount = Number.isFinite(payload.txns)
+        ? Number(payload.txns)
+        : 0;
       const holdersCount = Number.isFinite(payload.wallets)
         ? Number(payload.wallets)
         : Number.isFinite(payload.holders)
-          ? Number(payload.holders)
-          : 0;
+        ? Number(payload.holders)
+        : 0;
 
       const existing = stmtSelect.get(mint, interval);
 
@@ -1739,7 +1738,8 @@ function upsertCoinEvents(mint, events) {
         continue;
       }
 
-      const previousUpdatedAt = existing.updatedAt || existing.insertedAt || now;
+      const previousUpdatedAt =
+        existing.updatedAt || existing.insertedAt || now;
 
       const priceChangePercentageDelta =
         priceChangePercentage - (Number(existing.priceChangePercentage) || 0);
@@ -1837,7 +1837,8 @@ const BootyBox = {
 
       const priceSol =
         (mainPool && mainPool.price && Number(mainPool.price.quote)) ||
-        (Number(coin.price) || null);
+        Number(coin.price) ||
+        null;
       const priceUsd =
         mainPool && mainPool.price && Number(mainPool.price.usd)
           ? Number(mainPool.price.usd)
@@ -2174,15 +2175,17 @@ const BootyBox = {
           if (!pool || typeof pool !== "object") continue;
 
           const poolId =
-            (typeof pool.poolId === 'string' && pool.poolId.trim()) ||
-            (typeof pool.id === 'string' && pool.id.trim()) ||
-            (typeof pool.poolAddress === 'string' && pool.poolAddress.trim()) ||
-            (typeof pool.address === 'string' && pool.address.trim()) ||
+            (typeof pool.poolId === "string" && pool.poolId.trim()) ||
+            (typeof pool.id === "string" && pool.id.trim()) ||
+            (typeof pool.poolAddress === "string" && pool.poolAddress.trim()) ||
+            (typeof pool.address === "string" && pool.address.trim()) ||
             null;
 
           if (!poolId) {
             logger.warn(
-              `[BootyBox] addOrUpdateCoin: skipping pool without poolId for mint ${mint} market=${pool.market || 'n/a'}`
+              `[BootyBox] addOrUpdateCoin: skipping pool without poolId for mint ${mint} market=${
+                pool.market || "n/a"
+              }`
             );
             continue;
           }
@@ -2476,7 +2479,7 @@ const BootyBox = {
    * Deletes a position by coin mint, used when a position is sold.
    * @param {string} mint - The token mint of the coin.
    */
-/*   removePosition(mint) {
+  /*   removePosition(mint) {
     db.prepare(`DELETE FROM positions WHERE coin_mint = ?`).run(mint);
   }, */
 
@@ -2675,7 +2678,7 @@ const BootyBox = {
     clearTradeUuid(sell.coin_mint);
   }, */
 
-/*   getLatestBuyByMint(mint) {
+  /*   getLatestBuyByMint(mint) {
     return db
       .prepare(
         "SELECT * FROM buys WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
@@ -2683,7 +2686,7 @@ const BootyBox = {
       .get(mint);
   }, */
 
-/*   getLatestSellByMint(mint) {
+  /*   getLatestSellByMint(mint) {
     return db
       .prepare(
         "SELECT * FROM sells WHERE coin_mint = ? ORDER BY timestamp DESC LIMIT 1"
@@ -2998,7 +3001,7 @@ const BootyBox = {
       .get(mint);
   },
 
-    /**
+  /**
    * Retrieves the highest scoring eligible coin for a potential buy.
    * Excludes coins already in open positions and those not marked 'complete'.
    * @param {Object} [options]
@@ -3032,13 +3035,17 @@ const BootyBox = {
    */
   getTokenAmount(mint) {
     const result = db
-      .prepare(`SELECT current_token_amount
+      .prepare(
+        `SELECT current_token_amount
         FROM sc_positions
         WHERE coin_mint = ?
           AND (closed_at = 0 OR closed_at IS NULL)
-        LIMIT 1;`)
+        LIMIT 1;`
+      )
       .get(mint);
-    return result && typeof result.current_token_amount === "number" ? result.current_token_amount : 0;
+    return result && typeof result.current_token_amount === "number"
+      ? result.current_token_amount
+      : 0;
   },
 
   /**
@@ -3470,7 +3477,7 @@ BootyBox.init = async (options = {}) => {
   defaultWalletPublicKey =
     options.publicKey || options.wallet || options.defaultWallet || null;
   setDefaultWalletPublicKey(defaultWalletPublicKey);
-  logger.debug("[BootyBox] SQLite database ready");
+  // logger.debug("[BootyBox] SQLite database ready");
 };
 
 BootyBox.engine = "sqlite";
