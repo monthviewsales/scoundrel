@@ -7,7 +7,8 @@
 
   // Default to the latest Grok model for xAI Responses.
   const DEFAULT_MODEL = 'grok-4-1-fast-reasoning';
-  const xAIApiKey = process.env.xAI_API_KEY;
+  const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID;
+  const xAIApiKey = process.env.xAI_API_KEY || (isTestEnv ? 'test' : undefined);
 
   const client = new OpenAI({ 
     apiKey: xAIApiKey,
