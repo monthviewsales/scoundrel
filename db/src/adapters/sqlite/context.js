@@ -69,7 +69,9 @@ try {
 const db = new Database(dbFile);
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
-db.pragma('busy_timeout = 3000');
+db.pragma('busy_timeout = 10000');
+db.pragma('journal_size_limit = 67108864');
+db.pragma('temp_store = MEMORY');
 db.pragma('foreign_keys = ON');
 
 let dbClosed = false;
