@@ -65,7 +65,7 @@ Common env vars (full list in `.env.sample`):
 | `TARGETSCAN_SKIP_VECTOR_STORE` | Deprecated: force skip targetscan vector store uploads when set to `true` | empty |
 | `ASK_EXPLICIT_RAG` | Enable explicit vector store search for ask strategy questions (alias: `WARLORDAI_EXPLICIT_RAG`) | empty |
 | `xAI_API_KEY` | xAI API access for Grok-backed jobs (DevScan) | required for devscan AI |
-| `DEVSCAN_RESPONSES_MODEL` | DevScan model override | `grok-4-1-fast-reasoning` |
+| `xAI_API_MODEL` | Default Grok model override for xAI jobs | `grok-4-1-fast-reasoning` |
 | `SOLANATRACKER_API_KEY` | SolanaTracker Data API access | required |
 | `SOLANATRACKER_URL` | SolanaTracker Data API base URL | `https://data.solanatracker.io` |
 | `SOLANATRACKER_RPC_HTTP_URL` | SolanaTracker HTTP RPC endpoint | required for RPC usage |
@@ -113,7 +113,7 @@ Common env vars (full list in `.env.sample`):
 
 AI clients:
 - OpenAI powers dossier, autopsy, and targetscan summaries; it also uploads final payloads to vector stores.
-- Grok (xAI) powers `devscan` summaries; set `xAI_API_KEY` and optionally `DEVSCAN_RESPONSES_MODEL`.
+- Grok (xAI) powers `devscan` summaries; set `xAI_API_KEY` and optionally `xAI_API_MODEL`.
 
 ## Testing
 
@@ -434,7 +434,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 ### warlordai devscan
 - Queries DevScan for a token mint and/or developer wallet; supports `--mint`, `--dev`, `--devtokens`.
 - Runs Grok summaries by default; use `--raw-only` to skip AI.
-- Env: `DEVSCAN_API_KEY`, `xAI_API_KEY`, optional `DEVSCAN_RESPONSES_MODEL`.
+- Env: `DEVSCAN_API_KEY`, `xAI_API_KEY`, optional `xAI_API_MODEL`.
 - Artifacts land under `data/devscan/<segments>/{raw,prompt,response}/` when enabled.
 
 ### warlordai targetscan

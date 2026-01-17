@@ -47,7 +47,7 @@ const { runXJob } = createXJob(client);
 
 ## Recent patterns (DevScan + Grok)
 - DevScan summaries use Grok (xAI) client; keep the default client for that job as `grokClient`.
-- Do not reuse `OPENAI_RESPONSES_MODEL` for Grok jobs. Use a job-specific override (e.g., `DEVSCAN_RESPONSES_MODEL`) or the Grok default.
+- Do not reuse `OPENAI_RESPONSES_MODEL` for Grok jobs. Use `xAI_API_MODEL` or the Grok default.
 - Ensure the Grok client base URL includes `/v1` (`https://api.x.ai/v1`) to avoid 404s.
 - If an AI job runs from a CLI flow, wire artifacts through `createCommandRun`:
   - raw payloads: `artifacts.write('raw', ...)`

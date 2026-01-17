@@ -5,8 +5,8 @@
   const OpenAI = require('openai');
   const log = require('../lib/log');
 
-  // Default to the latest Grok model for xAI Responses.
-  const DEFAULT_MODEL = 'grok-4-1-fast-reasoning';
+  // Prefer xAI_API_MODEL to pin Grok models across all Grok tool calls.
+  const DEFAULT_MODEL = process.env.xAI_API_MODEL || 'grok-4-1-fast-reasoning';
   const xAIApiKey = process.env.xAI_API_KEY;
 
   const client = new OpenAI({ 
