@@ -59,7 +59,7 @@ function shouldUseTui(opts = {}) {
 
 async function runCommandTui({ command, args, options, run }) {
   const priorInkMode = process.env.SC_INK_MODE;
-  process.env.SC_INK_MODE = "true";
+  process.env.SC_INK_MODE = "1";
   const restoreScreen = prepareTuiScreen();
   try {
     const { loadCommandTuiApp } = require("./lib/tui/commandTui");
@@ -71,7 +71,12 @@ async function runCommandTui({ command, args, options, run }) {
         args,
         options,
         run,
-      })
+      }),
+      {
+        isInteractive: true,
+        stdin: process.stdin,
+        stdout: process.stdout,
+      }
     );
     await waitUntilExit();
   } finally {
@@ -232,19 +237,23 @@ program
     "Run in background on interval (uses WARCHEST_TARGET_LIST_INTERVAL_MS)"
   )
   .option("--interval <ms|OFF>", "Override interval in ms (or OFF to disable)")
+  .option("--skip-targetscan", "Skip spawning targetscan workers")
   .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
-    `\nExamples:\n  $ scoundrel targetlist\n  $ scoundrel targetlist --interval 600000\n  $ scoundrel targetlist --daemon\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/targetlist/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`
+    `\nExamples:\n  $ scoundrel targetlist\n  $ scoundrel targetlist --interval 600000\n  $ scoundrel targetlist --daemon\n  $ scoundrel targetlist --skip-targetscan\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/targetlist/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`
   )
   .action(async (opts) => {
-    const run = async () => {
+    const run = async (runtime = {}) => {
     const intervalMs =
       opts && opts.interval ? String(opts.interval).trim() : undefined;
     const runOnce = !(opts && opts.daemon);
+    const skipTargetScan =
+      opts && (opts.skipTargetscan === true || opts.skipTargetScan === true);
     const payload = {
       runOnce,
       ...(intervalMs ? { intervalMs } : {}),
+      ...(skipTargetScan ? { skipTargetScan: true } : {}),
     };
 
     const hub = getHubCoordinator();
@@ -252,6 +261,18 @@ program
       const result = await hub.runTargetList(payload, {
         detached: !runOnce,
         timeoutMs: runOnce ? 60000 : undefined,
+        ...(runtime && typeof runtime.onProgress === "function"
+          ? {
+              onProgress: (msg) => {
+                if (!msg || msg.type !== "progress" || !msg.payload) return;
+                runtime.onProgress({
+                  event: msg.payload.event,
+                  data: msg.payload.data,
+                  ts: msg.payload.ts,
+                });
+              },
+            }
+          : {}),
       });
 
       if (!runOnce) {
@@ -259,7 +280,7 @@ program
           `[scoundrel] target list worker detached (pid=${result.pid})`
         );
         logger.info(`[scoundrel] payload file: ${result.payloadFile}`);
-        return;
+        return result;
       }
 
       if (result && result.artifacts) {
@@ -291,10 +312,23 @@ program
           );
         }
       }
+      if (result && result.totals) {
+        const rawTotal = result.totals.raw;
+        const filteredTotal = result.totals.filtered;
+        if (rawTotal != null || filteredTotal != null) {
+          logger.info(
+            `[scoundrel] target list bouncer: raw=${
+              rawTotal ?? "n/a"
+            } filtered=${filteredTotal ?? "n/a"}`
+          );
+        }
+      }
+      return result;
     } catch (err) {
       const message = err?.message || String(err);
       logger.error(`[scoundrel] target list failed: ${message}`);
       process.exitCode = 1;
+      return null;
     } finally {
       closeHubCoordinator();
     }
