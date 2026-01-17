@@ -91,16 +91,22 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
+        tokenAddress: { type: "string" },
         timeFrom: { type: "number" },
         timeTo: { type: "number" },
       },
-      required: ["mint", "timeFrom", "timeTo"],
+      required: ["timeFrom", "timeTo"],
       additionalProperties: false,
     },
-    handler: async ({ mint, timeFrom, timeTo }) => {
+    handler: async ({ mint, tokenAddress, timeFrom, timeTo }) => {
       const client = await createSolanaTrackerDataClient();
+      const target = typeof mint === "string" && mint.trim() !== ""
+        ? mint.trim()
+        : typeof tokenAddress === "string" && tokenAddress.trim() !== ""
+          ? tokenAddress.trim()
+          : undefined;
       try {
-        return await client.getPriceRange(mint, timeFrom, timeTo);
+        return await client.getPriceRange(target, timeFrom, timeTo);
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();
@@ -114,14 +120,14 @@ const toolDefinitions = [
     parameters: {
       type: "object",
       properties: {
-        mint: { type: "string" },
+        limit: { type: "integer", minimum: 1 },
       },
       additionalProperties: false,
     },
-    handler: async ({ mint }) => {
+    handler: async ({ limit }) => {
       const client = await createSolanaTrackerDataClient();
       try {
-        return await client.getTokenOverview({ mint });
+        return await client.getTokenOverview({ limit });
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();
@@ -136,18 +142,23 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
+        tokenAddress: { type: "string" },
         includePriceChanges: { type: "boolean" },
       },
-      required: [],
       additionalProperties: false,
     },
-    handler: async ({ mint, includePriceChanges }) => {
+    handler: async ({ mint, tokenAddress, includePriceChanges }) => {
       const client = await createSolanaTrackerDataClient();
+      const payload = {};
+      if (typeof mint === "string" && mint.trim() !== "") {
+        payload.mint = mint.trim();
+      } else if (typeof tokenAddress === "string" && tokenAddress.trim() !== "") {
+        payload.tokenAddress = tokenAddress.trim();
+      }
       try {
         return await client.getTokenPrice({
-          mint,
-          tokenAddress,
-          includePriceChanges,
+          ...payload,
+          includePriceChanges: includePriceChanges === true,
         });
       } finally {
         if (client && typeof client.close === "function") {
@@ -164,14 +175,20 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
+        tokenAddress: { type: "string" },
       },
-      required: ["mint"],
       additionalProperties: false,
     },
-    handler: async ({ mint }) => {
+    handler: async ({ mint, tokenAddress }) => {
       const client = await createSolanaTrackerDataClient();
+      const payload = {};
+      if (typeof mint === "string" && mint.trim() !== "") {
+        payload.mint = mint.trim();
+      } else if (typeof tokenAddress === "string" && tokenAddress.trim() !== "") {
+        payload.tokenAddress = tokenAddress.trim();
+      }
       try {
-        return await client.getTokenSnapshotNow(mint);
+        return await client.getTokenSnapshotNow(payload);
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();
@@ -186,14 +203,19 @@ const toolDefinitions = [
       type: "object",
       properties: {
         mint: { type: "string" },
+        tokenAddress: { type: "string" },
       },
-      required: ["mint"],
       additionalProperties: false,
     },
-    handler: async ({ mint }) => {
+    handler: async ({ mint, tokenAddress }) => {
       const client = await createSolanaTrackerDataClient();
+      const target = typeof mint === "string" && mint.trim() !== ""
+        ? mint.trim()
+        : typeof tokenAddress === "string" && tokenAddress.trim() !== ""
+          ? tokenAddress.trim()
+          : undefined;
       try {
-        return await client.getAthPrice(mint);
+        return await client.getAthPrice(target);
       } finally {
         if (client && typeof client.close === "function") {
           await client.close();

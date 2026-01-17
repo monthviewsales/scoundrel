@@ -47,9 +47,9 @@ function buildUser(payload) {
       file_search: 'Search the WarlordAI vector store for dossiers, autopsies, and target scans.',
       local_tools: [
         'solanaTrackerData.getWalletTrades: wallet trades for a time window.',
-        'solanaTrackerData.getTokenSnapshotNow: token overview + pricing now.',
+        'solanaTrackerData.getTokenSnapshotNow: token overview + pricing now (mint or tokenAddress).',
         'solanaTrackerData.getTokenRiskScores: token risk flags and factors.',
-        'solanaTrackerData.getPriceRange: token price range for a time window.',
+        'solanaTrackerData.getPriceRange: token price range for a time window (mint or tokenAddress).',
       ],
     },
   };
