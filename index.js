@@ -909,31 +909,53 @@ program
   .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
-    `\nChecks:\n  • Reports Node version + working directory.\n  • Ensures OPENAI_API_KEY is present (AI jobs require it).\n  • Verifies core AI CLI files (ask/dossier + ai client/job).\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nNotes:\n  • Does not call external APIs.\n  • Use --no-tui for console-only output.\n\nExamples:\n  $ scoundrel test\n  $ scoundrel test --no-tui\n`
+    `\nChecks:\n  • Reports Node version + working directory.\n  • Ensures OPENAI_API_KEY, SOLANATRACKER_API_KEY, and xAI_API_KEY are present.\n  • Verifies core AI CLI files (ask/dossier + gptClient + warlordAI + walletDossier).\n  • Verifies swap config file exists (or SWAP_CONFIG_JSON override).\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n  • Confirms at least one wallet is registered in the DB.\n\nNotes:\n  • Does not call external APIs.\n  • Use --no-tui for console-only output.\n\nExamples:\n  $ scoundrel test\n  $ scoundrel test --no-tui\n`
   )
   .action(async (opts) => {
     const run = async () => {
       console.log("[test] starting test action");
-      const hasKey = !!process.env.OPENAI_API_KEY;
+      const hasOpenAiKey = !!process.env.OPENAI_API_KEY;
+      const hasSolanaTrackerKey = !!process.env.SOLANATRACKER_API_KEY;
+      const hasXaiKey = !!process.env.xAI_API_KEY;
+      const cwd = process.cwd();
+      const nodeVersion = process.version;
       logger.info("[scoundrel] environment check:");
-      logger.info(`  OPENAI_API_KEY: ${hasKey ? "present" : "MISSING"}`);
-      logger.info(`  Working directory: ${process.cwd()}`);
-      logger.info(`  Node version: ${process.version}`);
+      logger.info(`  OPENAI_API_KEY present? ${hasOpenAiKey ? "yes" : "no"}`);
+      logger.info(
+        `  SOLANATRACKER_API_KEY present? ${hasSolanaTrackerKey ? "yes" : "no"}`
+      );
+      logger.info(`  xAI_API_KEY present? ${hasXaiKey ? "yes" : "no"}`);
+      logger.info(`  Working directory: ${cwd}`);
+      logger.info(`  Node version: ${nodeVersion}`);
 
       // Check presence of core modules in the new pipeline
       const pathsToCheck = [
         join(__dirname, "lib", "cli", "dossier.js"),
-        join(__dirname, "ai", "client.js"),
+        join(__dirname, "ai", "gptClient.js"),
+        join(__dirname, "ai", "warlordAI.js"),
         join(__dirname, "ai", "jobs", "walletDossier.js"),
         join(__dirname, "lib", "cli", "ask.js"),
       ];
       logger.info("\n[scoundrel] core files:");
-      pathsToCheck.forEach((p) => {
+      const coreFiles = pathsToCheck.map((p) => {
         const ok = existsSync(p);
-        logger.info(
-          `  ${relative(process.cwd(), p)}: ${ok ? "present" : "missing"}`
-        );
+        const relPath = relative(cwd, p);
+        logger.info(`  ${relPath}: ${ok ? "present" : "missing"}`);
+        return { path: relPath, present: ok };
       });
+
+      const { getConfigPath } = require("./lib/swap/swapConfig");
+      const swapConfigPath = getConfigPath();
+      const swapConfigOverride = !!process.env.SWAP_CONFIG_JSON;
+      const swapConfigExists = existsSync(swapConfigPath);
+      const swapConfigOk = swapConfigOverride || swapConfigExists;
+      logger.info("\n[swap] configuration:");
+      logger.info(
+        `  Swap config: ${swapConfigOk ? "present" : "missing"}${
+          swapConfigOverride ? " (env override)" : ""
+        }`
+      );
+      logger.info(`  Path     : ${swapConfigPath}`);
 
       // DB diagnostics
       const { BOOTYBOX_SQLITE_PATH = join(__dirname, "db", "bootybox.db") } =
@@ -943,6 +965,12 @@ program
       logger.info(`  Engine   : sqlite`);
       logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
 
+      const dbStatus = {
+        path: BOOTYBOX_SQLITE_PATH,
+        ok: false,
+        error: null,
+      };
+
       try {
         if (typeof BootyBox.init === "function") {
           await BootyBox.init();
@@ -951,21 +979,87 @@ program
           await BootyBox.ping();
         }
         logger.info("[db] ✅ sqlite reachable");
+        dbStatus.ok = true;
       } catch (e) {
         const msg = e && e.message ? e.message : e;
         logger.info(`[db] ❌ connection failed: ${msg}`);
+        dbStatus.error = msg;
         if (e && e.stack) {
           logger.debug && logger.debug(e.stack);
         }
       }
 
-      if (!hasKey) {
-        logger.info("\nTip: add OPENAI_API_KEY to your .env file.");
-        process.exitCode = 1;
-        return;
+      const walletsStatus = {
+        count: null,
+        ok: false,
+        error: null,
+      };
+
+      logger.info("\n[wallets] registry:");
+      if (!dbStatus.ok) {
+        walletsStatus.error = "DB unavailable";
+        logger.info("  Wallets : unavailable (DB error)");
+      } else if (typeof BootyBox.listWarchestWallets === "function") {
+        try {
+          const wallets = BootyBox.listWarchestWallets();
+          const count = Array.isArray(wallets) ? wallets.length : 0;
+          walletsStatus.count = count;
+          walletsStatus.ok = count > 0;
+          logger.info(
+            `  Wallets : ${count} ${count > 0 ? "(ok)" : "(none found)"}`
+          );
+        } catch (err) {
+          const msg = err?.message || String(err);
+          walletsStatus.error = msg;
+          logger.info(`  Wallets : error (${msg})`);
+        }
+      } else {
+        walletsStatus.error = "Wallet registry unavailable";
+        logger.info("  Wallets : unavailable (missing listWarchestWallets)");
       }
-      logger.info("\n[scoundrel] ✅ basic checks passed.");
-      process.exitCode = 0;
+
+      const ok =
+        hasOpenAiKey &&
+        hasSolanaTrackerKey &&
+        hasXaiKey &&
+        coreFiles.every((entry) => entry.present) &&
+        swapConfigOk &&
+        dbStatus.ok &&
+        walletsStatus.ok;
+
+      if (!hasOpenAiKey) {
+        logger.info("\nTip: add OPENAI_API_KEY to your .env file.");
+      }
+      if (!hasSolanaTrackerKey) {
+        logger.info("\nTip: add SOLANATRACKER_API_KEY to your .env file.");
+      }
+      if (!hasXaiKey) {
+        logger.info("\nTip: add xAI_API_KEY to your .env file.");
+      }
+      logger.info(
+        `\n[scoundrel] ${ok ? "✅ basic checks passed." : "basic checks completed with warnings."}`
+      );
+      process.exitCode = ok ? 0 : 1;
+
+      return {
+        ok,
+        env: {
+          openaiKey: hasOpenAiKey,
+          solanaTrackerKey: hasSolanaTrackerKey,
+          xaiKey: hasXaiKey,
+          cwd,
+          nodeVersion,
+        },
+        coreFiles,
+        swapConfig: {
+          path: swapConfigPath,
+          exists: swapConfigExists,
+          override: swapConfigOverride,
+          ok: swapConfigOk,
+        },
+        db: dbStatus,
+        wallets: walletsStatus,
+      };
     };
 
     if (shouldUseTui(opts)) {
