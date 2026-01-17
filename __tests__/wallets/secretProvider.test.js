@@ -22,23 +22,23 @@ describe('wallet secretProvider', () => {
     expect(hasUsablePrivateKey({ hasPrivateKey: false })).toBe(false);
   });
 
-  test('returns null when wallet missing and private key not required', () => {
-    expect(getPrivateKeyForWallet(null, { requirePrivateKey: false })).toBeNull();
+  test('returns null when wallet missing and private key not required', async () => {
+    await expect(getPrivateKeyForWallet(null, { requirePrivateKey: false })).resolves.toBeNull();
   });
 
-  test('errors when wallet missing and private key required', () => {
-    expect(() => getPrivateKeyForWallet(null)).toThrow('wallet is required');
+  test('errors when wallet missing and private key required', async () => {
+    await expect(getPrivateKeyForWallet(null)).rejects.toThrow('wallet is required');
   });
 
-  test('errors when has_private_key is false and key required', () => {
-    expect(() =>
+  test('errors when has_private_key is false and key required', async () => {
+    await expect(
       getPrivateKeyForWallet({ alias: 'alpha', has_private_key: 0 })
-    ).toThrow('does not have an attached private key');
+    ).rejects.toThrow('does not have an attached private key');
   });
 
-  test('resolves env-sourced keys', () => {
+  test('resolves env-sourced keys', async () => {
     process.env.WALLET_SECRET = 'super-secret';
-    const secret = getPrivateKeyForWallet({
+    const secret = await getPrivateKeyForWallet({
       alias: 'alpha',
       has_private_key: 1,
       key_source: 'env',
@@ -47,42 +47,42 @@ describe('wallet secretProvider', () => {
     expect(secret).toBe('super-secret');
   });
 
-  test('errors when env key_ref is missing', () => {
-    expect(() =>
+  test('errors when env key_ref is missing', async () => {
+    await expect(
       getPrivateKeyForWallet({
         alias: 'alpha',
         has_private_key: 1,
         key_source: 'env',
       })
-    ).toThrow('key_source=env but key_ref is NULL');
+    ).rejects.toThrow('key_source=env but key_ref is NULL');
   });
 
-  test('errors when env var is not set', () => {
-    expect(() =>
+  test('errors when env var is not set', async () => {
+    await expect(
       getPrivateKeyForWallet({
         alias: 'alpha',
         has_private_key: 1,
         key_source: 'env',
         key_ref: 'MISSING_ENV',
       })
-    ).toThrow('Environment variable "MISSING_ENV"');
+    ).rejects.toThrow('Environment variable "MISSING_ENV"');
   });
 
-  test('blocks plaintext_dev in production', () => {
+  test('blocks plaintext_dev in production', async () => {
     process.env.NODE_ENV = 'production';
-    expect(() =>
+    await expect(
       getPrivateKeyForWallet({
         alias: 'alpha',
         has_private_key: 1,
         key_source: 'plaintext_dev',
         key_ref: 'plaintext-secret',
       })
-    ).toThrow('plaintext_dev, which is not allowed in production');
+    ).rejects.toThrow('plaintext_dev, which is not allowed in production');
   });
 
-  test('allows plaintext_dev outside production', () => {
+  test('allows plaintext_dev outside production', async () => {
     process.env.NODE_ENV = 'development';
-    const secret = getPrivateKeyForWallet({
+    const secret = await getPrivateKeyForWallet({
       alias: 'alpha',
       has_private_key: 1,
       key_source: 'plaintext_dev',
@@ -91,13 +91,13 @@ describe('wallet secretProvider', () => {
     expect(secret).toBe('plaintext-secret');
   });
 
-  test('errors on unsupported key source when required', () => {
-    expect(() =>
+  test('errors on unsupported key source when required', async () => {
+    await expect(
       getPrivateKeyForWallet({
         alias: 'alpha',
         has_private_key: 1,
         key_source: 'vault',
       })
-    ).toThrow('unsupported key_source');
+    ).rejects.toThrow('unsupported key_source');
   });
 });

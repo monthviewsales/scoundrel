@@ -79,6 +79,57 @@ function ensureCoinMetadataSchema(db) {
   }
 }
 
+function ensurePendingTradeUuidsSchema(db) {
+  const table = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_trade_uuids'").get();
+  if (!table) return;
+
+  const cols = db.prepare('PRAGMA table_info(pending_trade_uuids)').all();
+  const hasWalletId = cols.some((c) => c.name === 'wallet_id');
+  const hasMintPrimaryKey = cols.some((c) => c.name === 'mint' && c.pk);
+  const uniqueIndexes = listUniqueIndexColumns(db, 'pending_trade_uuids');
+  const hasWalletMintUnique = uniqueIndexes.some(
+    (colsList) => colsList.length === 2 && colsList.includes('wallet_id') && colsList.includes('mint')
+  );
+
+  if (hasWalletId && hasWalletMintUnique && !hasMintPrimaryKey) {
+    db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_pending_trade_uuids_created_at ON pending_trade_uuids (created_at)'
+    );
+    return;
+  }
+
+  db.exec('BEGIN');
+  try {
+    db.exec('ALTER TABLE pending_trade_uuids RENAME TO pending_trade_uuids_old;');
+    db.exec(`
+      CREATE TABLE pending_trade_uuids (
+        wallet_id    INTEGER,
+        mint         TEXT NOT NULL,
+        trade_uuid   TEXT NOT NULL,
+        created_at   INTEGER NOT NULL,
+        UNIQUE(wallet_id, mint)
+      );
+    `);
+
+    const walletIdSelect = hasWalletId ? 'wallet_id' : 'NULL';
+    db.exec(`
+      INSERT INTO pending_trade_uuids (wallet_id, mint, trade_uuid, created_at)
+      SELECT ${walletIdSelect}, mint, trade_uuid, created_at
+      FROM pending_trade_uuids_old;
+    `);
+
+    db.exec('DROP TABLE pending_trade_uuids_old;');
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_pending_trade_uuids_created_at ON pending_trade_uuids (created_at)'
+  );
+}
+
 function ensureSqliteSchema(db, tradeUuidMap) {
 db.exec(`
   CREATE TABLE IF NOT EXISTS coins (
@@ -299,11 +350,25 @@ db.exec(`
     strategy             TEXT NULL,
     color                TEXT NULL,
     has_private_key      INTEGER NOT NULL DEFAULT 0,
-    key_source           TEXT NOT NULL DEFAULT 'none',               -- 'none','keychain','db_encrypted'
+    key_source           TEXT NOT NULL DEFAULT 'none',               -- 'none','keychain','env','db_encrypted'
     key_ref              TEXT NULL,
     created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS sc_wallet_secrets (
+    secret_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_id    INTEGER NOT NULL UNIQUE,
+    cipher_text  TEXT NOT NULL,
+    iv           TEXT NOT NULL,
+    auth_tag     TEXT NOT NULL,
+    algorithm    TEXT NOT NULL DEFAULT 'aes-256-gcm',
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sc_wallet_secrets_wallet_id
+    ON sc_wallet_secrets(wallet_id);
 
   CREATE TABLE IF NOT EXISTS sc_profiles (
     profile_id  TEXT PRIMARY KEY,
@@ -972,6 +1037,7 @@ ensureColumn(db, "pending_trade_uuids", "wallet_id", "INTEGER");
 ensureColumn(db, "pending_trade_uuids", "mint", "TEXT NOT NULL");
 ensureColumn(db, "pending_trade_uuids", "trade_uuid", "TEXT NOT NULL");
 ensureColumn(db, "pending_trade_uuids", "created_at", "INTEGER NOT NULL");
+ensurePendingTradeUuidsSchema(db);
 
 ensureColumn(db, "sc_pnl_positions", "wallet_alias", "TEXT");
 ensureColumn(db, "sc_pnl_positions", "total_tokens_bought", "REAL");

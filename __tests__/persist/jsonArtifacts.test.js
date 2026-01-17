@@ -10,6 +10,7 @@ const {
   formatRunId,
   getArtifactConfig,
   loadLatestJson,
+  createArtifactWriter,
   normalizeTraderAlias,
   readJsonArtifact,
   removeArtifacts,
@@ -85,5 +86,19 @@ describe('jsonArtifacts helpers', () => {
     const runId = formatRunId();
     expect(runId).toMatch(/^[0-9T-]+Z?$/);
     expect(runId.includes(':')).toBe(false);
+  });
+
+  test('final artifacts auto-prefix the command', () => {
+    const originalEnv = process.env;
+    process.env = { ...originalEnv, SC_DATA_DIR: tmpDir, SAVE_ENRICHED: 'true' };
+
+    const writer = createArtifactWriter({ command: 'autopsy', runId: 'run123' });
+    const first = writer.write('final', 'token_final', { ok: true });
+    const second = writer.write('final', 'autopsy-token_final', { ok: true });
+
+    expect(path.basename(first)).toBe('autopsy-token_final-run123.json');
+    expect(path.basename(second)).toBe('autopsy-token_final-run123.json');
+
+    process.env = originalEnv;
   });
 });

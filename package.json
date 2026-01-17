@@ -37,6 +37,7 @@
     "https-proxy-agent": "^7.0.6",
     "ink": "^4.4.1",
     "ink-text-input": "^5.0.1",
+    "keytar": "^7.9.0",
     "openai": "^6.8.1",
     "react": "^18.2.0",
     "react-reconciler": "^0.29.2",

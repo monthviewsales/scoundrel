@@ -53,7 +53,7 @@ Date: 2025-12-21
 
 ## Files updated (high-level)
 - `index.js`, `lib/cli/trade.js`
-- `lib/warchest/workers/swapWorker.js`, `lib/swapEngine.js`, `lib/swap/swapHelper.js`
+- `lib/warchest/workers/swapWorker.js`, `lib/swapEngine.js`
 - `lib/services/txInsightService.js`
 - `lib/swap/swapConfig.js`, `lib/swap/config.json`
 - `lib/solana/rpcMethods/index.js`

@@ -14,6 +14,7 @@ const {
   getHubCoordinator,
   closeHubCoordinator,
 } = require("./lib/warchest/hub");
+const { prepareTuiScreen } = require("./lib/tui/terminal");
 const warchestRun =
   typeof warchestModule === "function"
     ? warchestModule
@@ -47,6 +48,46 @@ function resolveVersion() {
   return "0.0.0";
 }
 
+function shouldUseTui(opts = {}) {
+  if (!process.stdout.isTTY || !process.stdin.isTTY) return false;
+  if (process.env.SC_NO_TUI === "true") return false;
+  if (Object.prototype.hasOwnProperty.call(opts, "tui") && opts.tui === false) {
+    return false;
+  }
+  return true;
+}
+
+async function runCommandTui({ command, args, options, run }) {
+  const priorInkMode = process.env.SC_INK_MODE;
+  process.env.SC_INK_MODE = "1";
+  const restoreScreen = prepareTuiScreen();
+  try {
+    const { loadCommandTuiApp } = require("./lib/tui/commandTui");
+    const { render } = await import("ink");
+    const { CommandTuiApp } = await loadCommandTuiApp();
+    const { waitUntilExit } = render(
+      React.createElement(CommandTuiApp, {
+        command,
+        args,
+        options,
+        run,
+      }),
+      {
+        isInteractive: true,
+        stdin: process.stdin,
+        stdout: process.stdout,
+      }
+    );
+    await waitUntilExit();
+  } finally {
+    if (typeof restoreScreen === "function") restoreScreen();
+    if (priorInkMode === undefined) {
+      delete process.env.SC_INK_MODE;
+    } else {
+      process.env.SC_INK_MODE = priorInkMode;
+    }
+  }
+}
 
 program
   .name("scoundrel")
@@ -57,7 +98,7 @@ program
 
 program.addHelpText(
   "after",
-  `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-5-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`
+  `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-5-mini)\n  xAI_API_KEY                 Required for Grok-backed DevScan summaries\n  DEVSCAN_API_KEY             Required for DevScan public API lookups\n  DEVSCAN_RESPONSES_MODEL     (default: grok-4-1-fast-reasoning)\n  WARLORDAI_VECTOR_STORE      Optional vector store id for file_search RAG\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n  SC_NO_TUI                   Set to true to disable the interactive TUI\n`
 );
 program.addHelpText(
   "after",
@@ -65,16 +106,17 @@ program.addHelpText(
 );
 
 program
-  .command("vectorstore-prune")
-  .description("Prune vector store files by filename prefix and age")
-  .option(
-    "--vector-store-id <id>",
-    "Vector store id (defaults to WARLORDAI_VECTOR_STORE)"
-  )
+  .command("openai-fileprune")
+  .description("Prune OpenAI files by filename prefix and age")
   .option(
     "--prefix <prefix>",
     "Filename prefix(es) to match (comma-separated)",
     "targetscan"
+  )
+  .option(
+    "--purpose <purpose>",
+    "Only return files with the given purpose (default: assistants)",
+    "assistants"
   )
   .option(
     "--older-than-hours <n>",
@@ -85,86 +127,104 @@ program
     "Delete files older than N seconds (overrides hours)"
   )
   .option("--dry-run", "List matches without deleting")
-  .option("--delete-file", "Also delete underlying file objects")
   .option("--max-deletes <n>", "Stop after deleting N files")
   .option("--timeout-ms <n>", "Worker timeout in ms (0 disables)", "900000")
+  .option("--no-tui", "Disable TUI")
   .action(async (opts) => {
-    const vectorStoreId = opts?.vectorStoreId
-      ? String(opts.vectorStoreId).trim()
-      : null;
-    const prefix = opts?.prefix ? String(opts.prefix).trim() : null;
-    const olderThanSeconds = Number(opts?.olderThanSeconds);
-    const olderThanHours = Number(opts?.olderThanHours);
-    const maxDeletes = Number(opts?.maxDeletes);
-    const timeoutMsInput = Number(opts?.timeoutMs);
-    const timeoutMs =
-      Number.isFinite(timeoutMsInput) && timeoutMsInput >= 0
-        ? timeoutMsInput
-        : 900000;
-    const resolvedStoreId = vectorStoreId || process.env.WARLORDAI_VECTOR_STORE;
+    const run = async (runtime = {}) => {
+      const prefix = opts?.prefix ? String(opts.prefix).trim() : null;
+      const purpose = opts?.purpose ? String(opts.purpose).trim() : null;
+      const olderThanSeconds = Number(opts?.olderThanSeconds);
+      const olderThanHours = Number(opts?.olderThanHours);
+      const maxDeletes = Number(opts?.maxDeletes);
+      const timeoutMsInput = Number(opts?.timeoutMs);
+      const timeoutMs =
+        Number.isFinite(timeoutMsInput) && timeoutMsInput >= 0
+          ? timeoutMsInput
+          : 900000;
 
-    if (!resolvedStoreId) {
-      logger.error(
-        "[scoundrel] vectorstore-prune requires WARLORDAI_VECTOR_STORE or --vector-store-id"
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      logger.error(
-        "[scoundrel] OPENAI_API_KEY is required for vectorstore-prune"
-      );
-      process.exitCode = 1;
-      return;
-    }
-
-    const payload = {
-      action: "prune",
-      ...(vectorStoreId ? { vectorStoreId } : {}),
-      ...(prefix ? { prefix } : {}),
-      ...(Number.isFinite(olderThanSeconds) && olderThanSeconds > 0
-        ? { olderThanSeconds }
-        : Number.isFinite(olderThanHours) && olderThanHours > 0
-        ? { olderThanHours }
-        : {}),
-      ...(opts?.dryRun ? { dryRun: true } : {}),
-      ...(opts?.deleteFile ? { deleteFile: true } : {}),
-      ...(Number.isFinite(maxDeletes) && maxDeletes > 0 ? { maxDeletes } : {}),
-    };
-
-    try {
-      const workerPath = join(
-        __dirname,
-        "lib",
-        "warchest",
-        "workers",
-        "vectorStoreWorker.js"
-      );
-      const { result } = await forkWorkerWithPayload(workerPath, {
-        timeoutMs,
-        payload,
-      });
-
-      if (!result || result.skipped) {
-        logger.info("[scoundrel] vector store prune skipped");
-        return;
+      if (!process.env.OPENAI_API_KEY) {
+        logger.error(
+          "[scoundrel] OPENAI_API_KEY is required for openai-fileprune"
+        );
+        process.exitCode = 1;
+        return null;
       }
 
-      logger.info(
-        `[scoundrel] vector store prune complete: scanned=${
-          result.scanned || 0
-        } ` +
-          `matched=${result.matched || 0} deleted=${result.deleted || 0} ` +
-          `dryRun=${result.dryRun ? "true" : "false"} errors=${
-            result.errors || 0
-          }`
-      );
-    } catch (err) {
-      logger.error(
-        `[scoundrel] vectorstore-prune failed: ${err?.message || err}`
-      );
-      process.exitCode = 1;
+      const payload = {
+        action: "prune",
+        ...(prefix ? { prefix } : {}),
+        ...(purpose ? { purpose } : {}),
+        ...(Number.isFinite(olderThanSeconds) && olderThanSeconds > 0
+          ? { olderThanSeconds }
+          : Number.isFinite(olderThanHours) && olderThanHours > 0
+          ? { olderThanHours }
+          : {}),
+        ...(opts?.dryRun ? { dryRun: true } : {}),
+        ...(Number.isFinite(maxDeletes) && maxDeletes > 0
+          ? { maxDeletes }
+          : {}),
+      };
+
+      try {
+        const workerPath = join(
+          __dirname,
+          "lib",
+          "warchest",
+          "workers",
+          "openaiFilePruneWorker.js"
+        );
+        const onProgress =
+          runtime && typeof runtime.onProgress === "function"
+            ? (msg) => {
+                if (!msg || msg.type !== "progress" || !msg.payload) return;
+                runtime.onProgress({
+                  event: msg.payload.event,
+                  data: msg.payload.data,
+                  ts: msg.payload.ts,
+                });
+              }
+            : null;
+        const { result } = await forkWorkerWithPayload(workerPath, {
+          timeoutMs,
+          payload,
+          ...(onProgress ? { onProgress } : {}),
+        });
+
+        if (!result || result.skipped) {
+          logger.info("[scoundrel] openai file prune skipped");
+          return result || null;
+        }
+
+        logger.info(
+          `[scoundrel] openai file prune complete: scanned=${
+            result.scanned || 0
+          } ` +
+            `matched=${result.matched || 0} deleted=${result.deleted || 0} ` +
+            `dryRun=${result.dryRun ? "true" : "false"} errors=${
+              result.errors || 0
+            }`
+        );
+        return result;
+      } catch (err) {
+        logger.error(
+          `[scoundrel] openai-fileprune failed: ${err?.message || err}`
+        );
+        process.exitCode = 1;
+        return null;
+      }
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "openai-fileprune",
+        options: opts,
+        run,
+      });
+      return;
     }
+
+    await run();
   });
 
 program
@@ -177,17 +237,23 @@ program
     "Run in background on interval (uses WARCHEST_TARGET_LIST_INTERVAL_MS)"
   )
   .option("--interval <ms|OFF>", "Override interval in ms (or OFF to disable)")
+  .option("--skip-targetscan", "Skip spawning targetscan workers")
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
-    `\nExamples:\n  $ scoundrel targetlist\n  $ scoundrel targetlist --interval 600000\n  $ scoundrel targetlist --daemon\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/targetlist/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`
+    `\nExamples:\n  $ scoundrel targetlist\n  $ scoundrel targetlist --interval 600000\n  $ scoundrel targetlist --daemon\n  $ scoundrel targetlist --skip-targetscan\n\nNotes:\n  • Uses SOLANATRACKER_API_KEY from .env.\n  • Writes raw JSON artifacts under ./data/targetlist/ when SAVE_RAW is enabled.\n  • WARCHEST_TARGET_LIST_INTERVAL_MS controls the timer interval when running with --daemon.\n`
   )
   .action(async (opts) => {
+    const run = async (runtime = {}) => {
     const intervalMs =
       opts && opts.interval ? String(opts.interval).trim() : undefined;
     const runOnce = !(opts && opts.daemon);
+    const skipTargetScan =
+      opts && (opts.skipTargetscan === true || opts.skipTargetScan === true);
     const payload = {
       runOnce,
       ...(intervalMs ? { intervalMs } : {}),
+      ...(skipTargetScan ? { skipTargetScan: true } : {}),
     };
 
     const hub = getHubCoordinator();
@@ -195,6 +261,18 @@ program
       const result = await hub.runTargetList(payload, {
         detached: !runOnce,
         timeoutMs: runOnce ? 60000 : undefined,
+        ...(runtime && typeof runtime.onProgress === "function"
+          ? {
+              onProgress: (msg) => {
+                if (!msg || msg.type !== "progress" || !msg.payload) return;
+                runtime.onProgress({
+                  event: msg.payload.event,
+                  data: msg.payload.data,
+                  ts: msg.payload.ts,
+                });
+              },
+            }
+          : {}),
       });
 
       if (!runOnce) {
@@ -202,7 +280,7 @@ program
           `[scoundrel] target list worker detached (pid=${result.pid})`
         );
         logger.info(`[scoundrel] payload file: ${result.payloadFile}`);
-        return;
+        return result;
       }
 
       if (result && result.artifacts) {
@@ -234,13 +312,38 @@ program
           );
         }
       }
+      if (result && result.totals) {
+        const rawTotal = result.totals.raw;
+        const filteredTotal = result.totals.filtered;
+        if (rawTotal != null || filteredTotal != null) {
+          logger.info(
+            `[scoundrel] target list bouncer: raw=${
+              rawTotal ?? "n/a"
+            } filtered=${filteredTotal ?? "n/a"}`
+          );
+        }
+      }
+      return result;
     } catch (err) {
       const message = err?.message || String(err);
       logger.error(`[scoundrel] target list failed: ${message}`);
       process.exitCode = 1;
+      return null;
     } finally {
       closeHubCoordinator();
     }
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "targetlist",
+        options: opts,
+        run,
+      });
+      return;
+    }
+
+    await run();
   });
 
 program
@@ -265,6 +368,7 @@ program
     "-s, --session",
     "Interactive review session for this transaction (TUI)"
   )
+  .option("--no-tui", "Disable TUI")
   .option(
     "-w, --wallet <aliasOrAddress>",
     "Wallet alias or address that initiated the swap (focus wallet)"
@@ -297,6 +401,16 @@ Notes:
         "[scoundrel] ./lib/tx must export a default function or { run }"
       );
       process.exit(1);
+    }
+
+    const opts = cmd && typeof cmd.opts === "function" ? cmd.opts() : cmd || {};
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "tx",
+        args: { signature },
+        options: opts,
+      });
+      return;
     }
 
     try {
@@ -341,6 +455,7 @@ program
     "-c, --config",
     "Manage swap configuration instead of executing a swap"
   )
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `\nExamples:\n  # Execute swaps\n  $ scoundrel swap 36xsfxxxxxxxxx2rta5pump -w warlord -b 0.1\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s 50%\n  $ scoundrel swap 36xsf1xquajvto11slgf6hmqkqp2ieibh7v2rta5pump -w warlord -s auto --detach\n\n  # Manage swap configuration\n  $ scoundrel swap --config\n`
@@ -371,6 +486,15 @@ program
         process.exitCode = 1;
         return;
       }
+    }
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "swap",
+        args: { mint },
+        options: opts,
+      });
+      return;
     }
 
     // Swap execution mode: enforce -b/--buy or -s/--sell semantics and delegate to ./lib/cli/swap
@@ -457,6 +581,7 @@ program
     "Force refresh from API and skip cached DB metadata",
     false
   )
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `
@@ -485,6 +610,16 @@ Notes:
       process.exit(1);
     }
 
+    const tuiOpts = cmd && typeof cmd.opts === "function" ? cmd.opts() : opts;
+    if (shouldUseTui(tuiOpts)) {
+      await runCommandTui({
+        command: "addcoin",
+        args: { mint },
+        options: tuiOpts,
+      });
+      return;
+    }
+
     try {
       const opts = cmd && typeof cmd.opts === "function" ? cmd.opts() : {};
       const forceRefresh = !!opts.force;
@@ -504,13 +639,14 @@ Notes:
 program
   .command("wallet")
   .description("Manage your Scoundrel wallet registry")
-  .argument("[subcommand]", "add|list|remove|set-color")
+  .argument("[subcommand]", "add|list|remove|set-color|set-key")
   .argument("[arg1]", "First argument for subcommand (e.g., alias)")
   .argument("[arg2]", "Second argument for subcommand (e.g., color)")
   .option(
     "-s, --solo",
     "Select a single wallet interactively (registry-only for now)"
   )
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `
@@ -519,6 +655,7 @@ Examples:
   $ scoundrel wallet list
   $ scoundrel wallet remove sampleWallet
   $ scoundrel wallet set-color sampleWallet cyan
+  $ scoundrel wallet set-key sampleWallet
   $ scoundrel wallet -solo
 `
   )
@@ -530,10 +667,26 @@ Examples:
       // wallet CLI expects "-solo" or "--solo" in argv
       args.push("-solo");
     }
+    if (opts.tui === false) {
+      args.push("--no-tui");
+    }
 
     if (subcommand) args.push(subcommand);
     if (arg1) args.push(arg1);
     if (arg2) args.push(arg2);
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "wallet",
+        options: {
+          ...opts,
+          subcommand,
+          walletAlias: arg1,
+          color: arg2,
+        },
+      });
+      return;
+    }
 
     try {
       if (!warchestRun) {
@@ -569,7 +722,7 @@ program
   .description(
     "Run the warchest HUD follower or clean up legacy daemon artifacts"
   )
-  .argument("<action>", "start|stop|restart|hud|status")
+  .argument("<action>", "start|stop|restart|hud|status|heal")
   .option(
     "--wallet <spec>",
     "Wallet spec alias:pubkey:color (repeatable, use multiple --wallet flags)",
@@ -606,6 +759,9 @@ Examples:
 
   # Show hub/HUD health snapshot
   $ scoundrel warchestd status
+
+  # Heal positions against current wallet holdings
+  $ scoundrel warchestd heal --wallet sampleWallet:DDkF...:orange
 `
   )
   .action(async (action, opts) => {
@@ -668,6 +824,10 @@ Examples:
           walletSpecs,
           hudStatePath,
         });
+      } else if (action === "heal") {
+        await warchestService.heal({
+          walletSpecs,
+        });
       } else if (action === "hud") {
         // Dedicated HUD action: run the HUD in the foreground as a TUI viewer.
         warchestService.hud({
@@ -696,11 +856,13 @@ program
   .command("migrate")
   .description("Run BootyBox SQLite migrations")
   .option("--db <path>", "Override BOOTYBOX_SQLITE_PATH for this run")
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
     `\nExamples:\n  $ scoundrel migrate\n  $ BOOTYBOX_SQLITE_PATH=/tmp/bootybox.db scoundrel migrate\n  $ scoundrel migrate --db /tmp/bootybox.db\n`
   )
   .action(async (opts) => {
+    const run = async () => {
     const dbPath =
       opts.db ||
       process.env.BOOTYBOX_SQLITE_PATH ||
@@ -727,69 +889,189 @@ program
         );
       }
     }
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "migrate",
+        options: opts,
+        run,
+      });
+      return;
+    }
+
+    await run();
   });
 
 program
   .command("test")
-  .description("Run a quick self-check (env + minimal OpenAI config presence)")
+  .description("Run a quick self-check of env + local setup")
+  .option("--no-tui", "Disable TUI")
   .addHelpText(
     "after",
-    `\nChecks:\n  • Ensures OPENAI_API_KEY is present.\n  • Verifies presence of core files in ./lib and ./ai.\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n\nExample:\n  $ scoundrel test\n`
+    `\nChecks:\n  • Reports Node version + working directory.\n  • Ensures OPENAI_API_KEY, SOLANATRACKER_API_KEY, and xAI_API_KEY are present.\n  • Verifies core AI CLI files (ask/dossier + gptClient + warlordAI + walletDossier).\n  • Verifies swap config file exists (or SWAP_CONFIG_JSON override).\n  • Attempts a BootyBox SQLite init/ping and prints DB path.\n  • Confirms at least one wallet is registered in the DB.\n\nNotes:\n  • Does not call external APIs.\n  • Use --no-tui for console-only output.\n\nExamples:\n  $ scoundrel test\n  $ scoundrel test --no-tui\n`
   )
-  .action(async () => {
-    console.log("[test] starting test action");
-    const hasKey = !!process.env.OPENAI_API_KEY;
-    logger.info("[scoundrel] environment check:");
-    logger.info(`  OPENAI_API_KEY: ${hasKey ? "present" : "MISSING"}`);
-    logger.info(`  Working directory: ${process.cwd()}`);
-    logger.info(`  Node version: ${process.version}`);
-
-    // Check presence of core modules in the new pipeline
-    const pathsToCheck = [
-      join(__dirname, "lib", "cli", "dossier.js"),
-      join(__dirname, "ai", "client.js"),
-      join(__dirname, "ai", "jobs", "walletDossier.js"),
-      join(__dirname, "lib", "cli", "ask.js"),
-    ];
-    logger.info("\n[scoundrel] core files:");
-    pathsToCheck.forEach((p) => {
-      const ok = existsSync(p);
+  .action(async (opts) => {
+    const run = async () => {
+      console.log("[test] starting test action");
+      const hasOpenAiKey = !!process.env.OPENAI_API_KEY;
+      const hasSolanaTrackerKey = !!process.env.SOLANATRACKER_API_KEY;
+      const hasXaiKey = !!process.env.xAI_API_KEY;
+      const cwd = process.cwd();
+      const nodeVersion = process.version;
+      logger.info("[scoundrel] environment check:");
+      logger.info(`  OPENAI_API_KEY present? ${hasOpenAiKey ? "yes" : "no"}`);
       logger.info(
-        `  ${relative(process.cwd(), p)}: ${ok ? "present" : "missing"}`
+        `  SOLANATRACKER_API_KEY present? ${hasSolanaTrackerKey ? "yes" : "no"}`
       );
-    });
+      logger.info(`  xAI_API_KEY present? ${hasXaiKey ? "yes" : "no"}`);
+      logger.info(`  Working directory: ${cwd}`);
+      logger.info(`  Node version: ${nodeVersion}`);
 
-    // DB diagnostics
-    const { BOOTYBOX_SQLITE_PATH = join(__dirname, "db", "bootybox.db") } =
-      process.env;
+      // Check presence of core modules in the new pipeline
+      const pathsToCheck = [
+        join(__dirname, "lib", "cli", "dossier.js"),
+        join(__dirname, "ai", "gptClient.js"),
+        join(__dirname, "ai", "warlordAI.js"),
+        join(__dirname, "ai", "jobs", "walletDossier.js"),
+        join(__dirname, "lib", "cli", "ask.js"),
+      ];
+      logger.info("\n[scoundrel] core files:");
+      const coreFiles = pathsToCheck.map((p) => {
+        const ok = existsSync(p);
+        const relPath = relative(cwd, p);
+        logger.info(`  ${relPath}: ${ok ? "present" : "missing"}`);
+        return { path: relPath, present: ok };
+      });
 
-    logger.info("\n[db] configuration:");
-    logger.info(`  Engine   : sqlite`);
-    logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
+      const { getConfigPath } = require("./lib/swap/swapConfig");
+      const swapConfigPath = getConfigPath();
+      const swapConfigOverride = !!process.env.SWAP_CONFIG_JSON;
+      const swapConfigExists = existsSync(swapConfigPath);
+      const swapConfigOk = swapConfigOverride || swapConfigExists;
+      logger.info("\n[swap] configuration:");
+      logger.info(
+        `  Swap config: ${swapConfigOk ? "present" : "missing"}${
+          swapConfigOverride ? " (env override)" : ""
+        }`
+      );
+      logger.info(`  Path     : ${swapConfigPath}`);
 
-    try {
-      if (typeof BootyBox.init === "function") {
-        await BootyBox.init();
+      // DB diagnostics
+      const { BOOTYBOX_SQLITE_PATH = join(__dirname, "db", "bootybox.db") } =
+        process.env;
+
+      logger.info("\n[db] configuration:");
+      logger.info(`  Engine   : sqlite`);
+      logger.info(`  Path     : ${BOOTYBOX_SQLITE_PATH}`);
+
+      const dbStatus = {
+        path: BOOTYBOX_SQLITE_PATH,
+        ok: false,
+        error: null,
+      };
+
+      try {
+        if (typeof BootyBox.init === "function") {
+          await BootyBox.init();
+        }
+        if (typeof BootyBox.ping === "function") {
+          await BootyBox.ping();
+        }
+        logger.info("[db] ✅ sqlite reachable");
+        dbStatus.ok = true;
+      } catch (e) {
+        const msg = e && e.message ? e.message : e;
+        logger.info(`[db] ❌ connection failed: ${msg}`);
+        dbStatus.error = msg;
+        if (e && e.stack) {
+          logger.debug && logger.debug(e.stack);
+        }
       }
-      if (typeof BootyBox.ping === "function") {
-        await BootyBox.ping();
+
+      const walletsStatus = {
+        count: null,
+        ok: false,
+        error: null,
+      };
+
+      logger.info("\n[wallets] registry:");
+      if (!dbStatus.ok) {
+        walletsStatus.error = "DB unavailable";
+        logger.info("  Wallets : unavailable (DB error)");
+      } else if (typeof BootyBox.listWarchestWallets === "function") {
+        try {
+          const wallets = BootyBox.listWarchestWallets();
+          const count = Array.isArray(wallets) ? wallets.length : 0;
+          walletsStatus.count = count;
+          walletsStatus.ok = count > 0;
+          logger.info(
+            `  Wallets : ${count} ${count > 0 ? "(ok)" : "(none found)"}`
+          );
+        } catch (err) {
+          const msg = err?.message || String(err);
+          walletsStatus.error = msg;
+          logger.info(`  Wallets : error (${msg})`);
+        }
+      } else {
+        walletsStatus.error = "Wallet registry unavailable";
+        logger.info("  Wallets : unavailable (missing listWarchestWallets)");
       }
-      logger.info("[db] ✅ sqlite reachable");
-    } catch (e) {
-      const msg = e && e.message ? e.message : e;
-      logger.info(`[db] ❌ connection failed: ${msg}`);
-      if (e && e.stack) {
-        logger.debug && logger.debug(e.stack);
+
+      const ok =
+        hasOpenAiKey &&
+        hasSolanaTrackerKey &&
+        hasXaiKey &&
+        coreFiles.every((entry) => entry.present) &&
+        swapConfigOk &&
+        dbStatus.ok &&
+        walletsStatus.ok;
+
+      if (!hasOpenAiKey) {
+        logger.info("\nTip: add OPENAI_API_KEY to your .env file.");
       }
+      if (!hasSolanaTrackerKey) {
+        logger.info("\nTip: add SOLANATRACKER_API_KEY to your .env file.");
+      }
+      if (!hasXaiKey) {
+        logger.info("\nTip: add xAI_API_KEY to your .env file.");
+      }
+      logger.info(
+        `\n[scoundrel] ${ok ? "✅ basic checks passed." : "basic checks completed with warnings."}`
+      );
+      process.exitCode = ok ? 0 : 1;
+
+      return {
+        ok,
+        env: {
+          openaiKey: hasOpenAiKey,
+          solanaTrackerKey: hasSolanaTrackerKey,
+          xaiKey: hasXaiKey,
+          cwd,
+          nodeVersion,
+        },
+        coreFiles,
+        swapConfig: {
+          path: swapConfigPath,
+          exists: swapConfigExists,
+          override: swapConfigOverride,
+          ok: swapConfigOk,
+        },
+        db: dbStatus,
+        wallets: walletsStatus,
+      };
+    };
+
+    if (shouldUseTui(opts)) {
+      await runCommandTui({
+        command: "test",
+        options: opts,
+        run,
+      });
+      return;
     }
 
-    if (!hasKey) {
-      logger.info("\nTip: add OPENAI_API_KEY to your .env file.");
-      process.exit(1);
-    } else {
-      logger.info("\n[scoundrel] ✅ basic checks passed.");
-      process.exit(0);
-    }
+    await run();
   });
 
 // Default/help handling is provided by commander

@@ -35,7 +35,7 @@ Scoundrel is part of the VAULT77 🔐77 toolchain — a research and trading sid
 ```bash
 npm install
 cp .env.sample .env
-node index.js --help
+node index.js -h
 npm test
 ```
 
@@ -75,6 +75,8 @@ Common env vars (full list in `.env.sample`):
 | `DB_ENGINE` | BootyBox DB engine selector | `sqlite` |
 | `BOOTYBOX_SQLITE_PATH` | SQLite DB location | `db/bootybox.db` |
 | `BOOTYBOX_LOG_LEVEL` | BootyBox log level | `debug` |
+| `SC_KEYCHAIN_SERVICE` | Keychain service name for the master key | `scoundrel` |
+| `SC_KEYCHAIN_ACCOUNT` | Keychain account name for the master key | `wallet-master-key` |
 | `FEATURE_MINT_COUNT` | Default mint sample size for dossiers | `8` |
 | `HARVEST_LIMIT` | Max trades per harvest | `100` |
 | `WARCHEST_HUD_MAX_TX` | HUD recent tx limit | `10` |
@@ -316,7 +318,9 @@ Wallet-related helpers now live under `lib/wallets/`:
 
 - `walletRegistry.js` – thin wrapper over the BootyBox-backed warchest registry (no behavior changes).
 - `walletSelection.js` – shared CLI/TUI selection helpers (aliases, colors, default funding).
-- `walletManagement.js` – orchestration helpers for add/list/remove/set-color flows.
+- `walletManagement.js` – orchestration helpers for add/list/remove/set-color/set-key flows.
+- `keychainProvider.js` – loads the Keychain-backed master key (cached per process).
+- `keystore.js` – encrypts/decrypts wallet secrets stored in `sc_wallet_secrets`.
 - `resolver.js` – resolves aliases or pubkeys to registry records or watch-only passthroughs.
 - `state.js` – shared live SOL/token state wrapper.
 - `WalletScanner.js` – passthrough to the raw RPC wallet scanner.
@@ -334,7 +338,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 
 ## Commands
 
-> Run `node index.js --help` (scoundrel) or `node warlordai.js --help` for flags & examples.
+> Run `node index.js -h` / `node warlordai.js -h` (or `scoundrel -h` / `warlordai -h`) for flags & examples. `-h` is the same as `--help`.
 
 - **Quick reference**
   
@@ -349,7 +353,7 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - `tx <signature>` — Inspect transaction status, fees, and (optional) swap deltas for a focus wallet/mint.
 - `swap <mint>` — Execute a swap through the SolanaTracker swap API (also manages swap config via `-c`).
 - `addcoin <mint>` — Fetch and persist token metadata via SolanaTracker Data API.
-- `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/solo picker).
+- `wallet [subcommand]` — Manage local wallet registry (add/list/remove/set-color/set-key/solo picker).
 - `warchestd <action>` — Start the headless warchest service, launch the HUD TUI, or show hub status.
 - `test` — Environment + dependency smoke test.
 
@@ -438,9 +442,19 @@ See the per-file JSDoc in `lib/solanaTrackerData/methods/*.js`, the matching tes
 - Manual runs upsert the mint into `sc_targets` and emit a HUD event with `symbol`, `buyScore`, and `summary`.
 - Options: `--concurrency <n>`, `--send-vector-store` to upload final artifacts.
 
-### wallet `[add|list|remove|set-color]` [args]
+### wallet `[add|list|remove|set-color|set-key]` [args]
 - Wallet registry backed by BootyBox. `--solo` opens a picker for quick lookups.
-- `add` prompts for pubkey + signing/watch flag + alias; `set-color` enforces a small palette.
+- `add` prompts for pubkey + signing/watch flag + key source (keychain/env/none) + alias.
+- `set-key` updates the signing key source (keychain secret, env var, or clears it).
+- Keychain secrets are encrypted at rest in `sc_wallet_secrets`; the master key lives in macOS Keychain (configure via `SC_KEYCHAIN_SERVICE` / `SC_KEYCHAIN_ACCOUNT`).
+
+#### Keychain setup
+1) Run `scoundrel wallet add` (new wallet) or `scoundrel wallet set-key <alias>` (existing wallet).
+2) Choose `k` (keychain) as the key source and paste the private key (base58 string or Solana `id.json` array).
+3) macOS Keychain will prompt the first time the master key is created or accessed. Approve once to cache it for the session.
+4) Start `scoundrel warchestd start ...` after at least one signing wallet is stored; the service preloads the keychain master key on boot.
+
+If you prefer `.env` fallback, pick `e` (env) and set the env var name in the wallet record.
 
 ### warchestd `<start|stop|restart|hud|status>`
 - Service/HUD controller around `lib/warchest/workers/warchestService.js` (service) and `lib/warchest/workers/warchestHudWorker.js` (Ink TUI).
