@@ -98,7 +98,7 @@ program
 
 program.addHelpText(
   "after",
-  `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-5-mini)\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n`
+  `\nEnvironment:\n  OPENAI_API_KEY              Required for OpenAI Responses\n  OPENAI_RESPONSES_MODEL      (default: gpt-5-mini)\n  xAI_API_KEY                 Required for Grok-backed DevScan summaries\n  DEVSCAN_API_KEY             Required for DevScan public API lookups\n  DEVSCAN_RESPONSES_MODEL     (default: grok-4-1-fast-reasoning)\n  WARLORDAI_VECTOR_STORE      Optional vector store id for file_search RAG\n  FEATURE_MINT_COUNT          (default: 8) Number of recent mints to summarize for technique features\n  SOLANATRACKER_API_KEY       Required for SolanaTracker Data API\n  NODE_ENV                    development|production (controls logging verbosity)\n  SC_NO_TUI                   Set to true to disable the interactive TUI\n`
 );
 program.addHelpText(
   "after",
