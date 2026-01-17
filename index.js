@@ -101,16 +101,17 @@ program.addHelpText(
 );
 
 program
-  .command("vectorstore-prune")
-  .description("Prune vector store files by filename prefix and age")
-  .option(
-    "--vector-store-id <id>",
-    "Vector store id (defaults to WARLORDAI_VECTOR_STORE)"
-  )
+  .command("openai-fileprune")
+  .description("Prune OpenAI files by filename prefix and age")
   .option(
     "--prefix <prefix>",
     "Filename prefix(es) to match (comma-separated)",
     "targetscan"
+  )
+  .option(
+    "--purpose <purpose>",
+    "Only return files with the given purpose (default: assistants)",
+    "assistants"
   )
   .option(
     "--older-than-hours <n>",
@@ -121,93 +122,97 @@ program
     "Delete files older than N seconds (overrides hours)"
   )
   .option("--dry-run", "List matches without deleting")
-  .option("--delete-file", "Also delete underlying file objects")
   .option("--max-deletes <n>", "Stop after deleting N files")
   .option("--timeout-ms <n>", "Worker timeout in ms (0 disables)", "900000")
   .option("--no-tui", "Disable TUI")
   .action(async (opts) => {
-    const run = async () => {
-    const vectorStoreId = opts?.vectorStoreId
-      ? String(opts.vectorStoreId).trim()
-      : null;
-    const prefix = opts?.prefix ? String(opts.prefix).trim() : null;
-    const olderThanSeconds = Number(opts?.olderThanSeconds);
-    const olderThanHours = Number(opts?.olderThanHours);
-    const maxDeletes = Number(opts?.maxDeletes);
-    const timeoutMsInput = Number(opts?.timeoutMs);
-    const timeoutMs =
-      Number.isFinite(timeoutMsInput) && timeoutMsInput >= 0
-        ? timeoutMsInput
-        : 900000;
-    const resolvedStoreId = vectorStoreId || process.env.WARLORDAI_VECTOR_STORE;
+    const run = async (runtime = {}) => {
+      const prefix = opts?.prefix ? String(opts.prefix).trim() : null;
+      const purpose = opts?.purpose ? String(opts.purpose).trim() : null;
+      const olderThanSeconds = Number(opts?.olderThanSeconds);
+      const olderThanHours = Number(opts?.olderThanHours);
+      const maxDeletes = Number(opts?.maxDeletes);
+      const timeoutMsInput = Number(opts?.timeoutMs);
+      const timeoutMs =
+        Number.isFinite(timeoutMsInput) && timeoutMsInput >= 0
+          ? timeoutMsInput
+          : 900000;
 
-    if (!resolvedStoreId) {
-      logger.error(
-        "[scoundrel] vectorstore-prune requires WARLORDAI_VECTOR_STORE or --vector-store-id"
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      logger.error(
-        "[scoundrel] OPENAI_API_KEY is required for vectorstore-prune"
-      );
-      process.exitCode = 1;
-      return;
-    }
-
-    const payload = {
-      action: "prune",
-      ...(vectorStoreId ? { vectorStoreId } : {}),
-      ...(prefix ? { prefix } : {}),
-      ...(Number.isFinite(olderThanSeconds) && olderThanSeconds > 0
-        ? { olderThanSeconds }
-        : Number.isFinite(olderThanHours) && olderThanHours > 0
-        ? { olderThanHours }
-        : {}),
-      ...(opts?.dryRun ? { dryRun: true } : {}),
-      ...(opts?.deleteFile ? { deleteFile: true } : {}),
-      ...(Number.isFinite(maxDeletes) && maxDeletes > 0 ? { maxDeletes } : {}),
-    };
-
-    try {
-      const workerPath = join(
-        __dirname,
-        "lib",
-        "warchest",
-        "workers",
-        "vectorStoreWorker.js"
-      );
-      const { result } = await forkWorkerWithPayload(workerPath, {
-        timeoutMs,
-        payload,
-      });
-
-      if (!result || result.skipped) {
-        logger.info("[scoundrel] vector store prune skipped");
-        return;
+      if (!process.env.OPENAI_API_KEY) {
+        logger.error(
+          "[scoundrel] OPENAI_API_KEY is required for openai-fileprune"
+        );
+        process.exitCode = 1;
+        return null;
       }
 
-      logger.info(
-        `[scoundrel] vector store prune complete: scanned=${
-          result.scanned || 0
-        } ` +
-          `matched=${result.matched || 0} deleted=${result.deleted || 0} ` +
-          `dryRun=${result.dryRun ? "true" : "false"} errors=${
-            result.errors || 0
-          }`
-      );
-    } catch (err) {
-      logger.error(
-        `[scoundrel] vectorstore-prune failed: ${err?.message || err}`
-      );
-      process.exitCode = 1;
-    }
+      const payload = {
+        action: "prune",
+        ...(prefix ? { prefix } : {}),
+        ...(purpose ? { purpose } : {}),
+        ...(Number.isFinite(olderThanSeconds) && olderThanSeconds > 0
+          ? { olderThanSeconds }
+          : Number.isFinite(olderThanHours) && olderThanHours > 0
+          ? { olderThanHours }
+          : {}),
+        ...(opts?.dryRun ? { dryRun: true } : {}),
+        ...(Number.isFinite(maxDeletes) && maxDeletes > 0
+          ? { maxDeletes }
+          : {}),
+      };
+
+      try {
+        const workerPath = join(
+          __dirname,
+          "lib",
+          "warchest",
+          "workers",
+          "openaiFilePruneWorker.js"
+        );
+        const onProgress =
+          runtime && typeof runtime.onProgress === "function"
+            ? (msg) => {
+                if (!msg || msg.type !== "progress" || !msg.payload) return;
+                runtime.onProgress({
+                  event: msg.payload.event,
+                  data: msg.payload.data,
+                  ts: msg.payload.ts,
+                });
+              }
+            : null;
+        const { result } = await forkWorkerWithPayload(workerPath, {
+          timeoutMs,
+          payload,
+          ...(onProgress ? { onProgress } : {}),
+        });
+
+        if (!result || result.skipped) {
+          logger.info("[scoundrel] openai file prune skipped");
+          return result || null;
+        }
+
+        logger.info(
+          `[scoundrel] openai file prune complete: scanned=${
+            result.scanned || 0
+          } ` +
+            `matched=${result.matched || 0} deleted=${result.deleted || 0} ` +
+            `dryRun=${result.dryRun ? "true" : "false"} errors=${
+              result.errors || 0
+            }`
+        );
+        return result;
+      } catch (err) {
+        logger.error(
+          `[scoundrel] openai-fileprune failed: ${err?.message || err}`
+        );
+        process.exitCode = 1;
+        return null;
+      }
     };
 
     if (shouldUseTui(opts)) {
       await runCommandTui({
-        command: "vectorstore-prune",
+        command: "openai-fileprune",
         options: opts,
         run,
       });
