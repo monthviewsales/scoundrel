@@ -16,6 +16,8 @@ Agents **must** read and follow this document before making any changes.
 ## Shared Patterns
 
 - For creating new CLI analysis flows (dossier/autopsy/devscan pattern), follow `docs/analysis-flow-factory.md`.
+- When searching the repo, always skip `node_modules`.
+- Avoid searching `/data` unless you are looking for logs or a JSON artifact created by a function.
 
 ### Known locations
 
